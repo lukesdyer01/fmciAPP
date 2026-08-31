@@ -204,6 +204,67 @@ app.get(`${BASE}/orgs/my`, async (c) => {
   return c.json(active);
 });
 
+function serializeGroup(g: any, callerId: string) {
+  const memberIds = Array.isArray(g.memberIds) ? g.memberIds : [];
+  return { ...g, members: memberIds.length, joined: memberIds.includes(callerId) };
+}
+
+app.get(`${BASE}/groups`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const groups = await kv.get("groups") ?? [];
+  return c.json(groups.map((g: any) => serializeGroup(g, caller.id)));
+});
+
+app.post(`${BASE}/groups`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const body = await c.req.json();
+  if (!body.name || !String(body.name).trim()) return c.json({ error: "Group name is required" }, 400);
+  const groups = await kv.get("groups") ?? [];
+  const newGroup = {
+    id: `g${Date.now()}`,
+    name: String(body.name).trim(),
+    description: body.description ?? "",
+    about: body.about ?? body.description ?? "",
+    type: ["Leadership-Only", "Private", "Public", "Invite-Only"].includes(body.type) ? body.type : "Public",
+    img: body.img ?? "",
+    founded: new Date().toISOString(),
+    lastActivity: "just now",
+    // Creator joins and becomes admin automatically.
+    memberIds: [caller.id],
+    admins: [caller.id],
+  };
+  await kv.set("groups", [newGroup, ...groups]);
+  return c.json(serializeGroup(newGroup, caller.id), 201);
+});
+
+app.post(`${BASE}/groups/:id/join`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const groups = await kv.get("groups") ?? [];
+  const group = groups.find((g: any) => g.id === id);
+  if (!group) return c.json({ error: "Group not found" }, 404);
+  const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
+  const updated = { ...group, memberIds: memberIds.includes(caller.id) ? memberIds : [...memberIds, caller.id] };
+  await kv.set("groups", groups.map((g: any) => g.id === id ? updated : g));
+  return c.json(serializeGroup(updated, caller.id));
+});
+
+app.post(`${BASE}/groups/:id/leave`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const groups = await kv.get("groups") ?? [];
+  const group = groups.find((g: any) => g.id === id);
+  if (!group) return c.json({ error: "Group not found" }, 404);
+  const memberIds = (Array.isArray(group.memberIds) ? group.memberIds : []).filter((uid: string) => uid !== caller.id);
+  const updated = { ...group, memberIds };
+  await kv.set("groups", groups.map((g: any) => g.id === id ? updated : g));
+  return c.json(serializeGroup(updated, caller.id));
+});
+
 app.put(`${BASE}/orgs`, async (c) => {
   const body = await c.req.json();
   await kv.set("orgs", body);

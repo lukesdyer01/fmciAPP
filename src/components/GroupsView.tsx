@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import { useOpenProfile } from './ProfileModal'
 import { useUIStore } from '../store/ui'
+import { api } from '../api-client/server'
 
 interface Group {
   id: string
@@ -18,8 +19,16 @@ interface Group {
   founded: string
 }
 
-const GROUPS: Group[] = []
-
+function GroupThumb({ group, height }: { group: Group; height: string }) {
+  return group.img
+    ? <img src={group.img} alt={group.name} style={{ width: '100%', height, objectFit: 'cover', display: 'block' }} />
+    : (
+      <div style={{
+        width: '100%', height, background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px',
+      }}>👥</div>
+    )
+}
 
 const TYPE_STYLE: Record<Group['type'], { color: string; bg: string }> = {
   'Leadership-Only': { color: '#92700A', bg: '#FBF5E6' },
@@ -28,13 +37,25 @@ const TYPE_STYLE: Record<Group['type'], { color: string; bg: string }> = {
   'Invite-Only':     { color: '#6D28D9', bg: '#F5F3FF' },
 }
 
-function GroupDetail({ group, onBack }: { group: Group; onBack: () => void }) {
+function GroupDetail({ group, onBack, onLeft }: { group: Group; onBack: () => void; onLeft: () => void }) {
   const [tab, setTab] = useState<'posts' | 'members' | 'about'>('posts')
   const [postText, setPostText] = useState('')
   const [localPosts, setLocalPosts] = useState<{ author: string; avatar: string; time: string; content: string }[]>([])
+  const [leaving, setLeaving] = useState(false)
   const openProfile = useOpenProfile()
   const userProfile = useUIStore(s => s.userProfile)
   const ts = TYPE_STYLE[group.type]
+
+  async function handleLeave() {
+    if (!window.confirm(`Leave ${group.name}?`)) return
+    setLeaving(true)
+    try {
+      await api(`/groups/${group.id}/leave`, { method: 'POST' })
+      onLeft()
+    } catch {
+      setLeaving(false)
+    }
+  }
 
   function submitPost() {
     if (!postText.trim()) return
@@ -59,7 +80,7 @@ function GroupDetail({ group, onBack }: { group: Group; onBack: () => void }) {
 
       {/* Cover + header */}
       <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '14px', border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: '14px' }}>
-        <img src={group.img} alt={group.name} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
+        <GroupThumb group={group} height="160px" />
         <div style={{ padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
@@ -72,11 +93,12 @@ function GroupDetail({ group, onBack }: { group: Group; onBack: () => void }) {
                 <strong style={{ color: 'var(--color-text-1)' }}>{group.members}</strong> members · Active {group.lastActivity}
               </div>
             </div>
-            <button style={{
-              padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
+            <button onClick={handleLeave} disabled={leaving} style={{
+              padding: '9px 20px', borderRadius: '8px', cursor: leaving ? 'default' : 'pointer',
               border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
               color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
-            }}>Leave Group</button>
+              opacity: leaving ? 0.6 : 1,
+            }}>{leaving ? 'Leaving…' : 'Leave Group'}</button>
           </div>
         </div>
 
@@ -193,9 +215,9 @@ function GroupDetail({ group, onBack }: { group: Group; onBack: () => void }) {
             <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: '14px' }}>Details</div>
             {[
               { label: 'Access', value: group.type },
-              { label: 'Founded', value: group.founded },
+              { label: 'Founded', value: group.founded ? new Date(group.founded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
               { label: 'Members', value: `${group.members} members` },
-              { label: 'Admins', value: group.admins.join(', ') },
+              { label: 'Admins', value: `${group.admins?.length ?? 0} admin${(group.admins?.length ?? 0) === 1 ? '' : 's'}` },
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--color-border-light)' }}>
                 <div style={{ width: '90px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)' }}>{label}</div>
@@ -209,15 +231,119 @@ function GroupDetail({ group, onBack }: { group: Group; onBack: () => void }) {
   )
 }
 
+function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [about, setAbout] = useState('')
+  const [type, setType] = useState<Group['type']>('Public')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function handleCreate() {
+    if (!name.trim()) { setErr('Group name is required.'); return }
+    setSaving(true); setErr('')
+    try {
+      await api('/groups', { method: 'POST', body: JSON.stringify({ name: name.trim(), description: description.trim(), about: about.trim(), type }) })
+      onCreated()
+    } catch (e: any) {
+      setErr(e.message ?? 'Failed to create group.')
+      setSaving(false)
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box', padding: '9px 12px',
+    border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '14px',
+    fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)', backgroundColor: 'var(--color-surface)', outline: 'none',
+  }
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)',
+    textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '6px',
+  }
+
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 400, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' }}
+    >
+      <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '16px', border: '1px solid var(--color-border)', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Create Group</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
+        </div>
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={labelStyle}>Group Name *</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Young Adults Ministry" style={inputStyle} autoFocus />
+          </div>
+          <div>
+            <label style={labelStyle}>Short Description</label>
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="One line describing this group" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>About</label>
+            <textarea value={about} onChange={e => setAbout(e.target.value)} placeholder="What's this group for?" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+          <div>
+            <label style={labelStyle}>Access</label>
+            <select value={type} onChange={e => setType(e.target.value as Group['type'])} style={{ ...inputStyle, cursor: 'pointer' }}>
+              <option value="Public">Public — anyone can join</option>
+              <option value="Private">Private</option>
+              <option value="Invite-Only">Invite-Only</option>
+              <option value="Leadership-Only">Leadership-Only</option>
+            </select>
+          </div>
+          {err && (
+            <div style={{ padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red)' }}>{err}</div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '10px', padding: '16px 24px', borderTop: '1px solid var(--color-border)' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-2)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Cancel</button>
+          <button onClick={handleCreate} disabled={saving} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)', color: '#fff', fontSize: '14px', fontWeight: 800, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Creating…' : 'Create Group'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function GroupsView() {
   const [tab, setTab] = useState<'my' | 'discover'>('my')
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
+  const [groups, setGroups] = useState<Group[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [joiningId, setJoiningId] = useState<string | null>(null)
 
-  const myGroups = GROUPS.filter(g => g.joined)
-  const discoverGroups = GROUPS.filter(g => !g.joined)
+  async function load() {
+    try {
+      const data = await api<Group[]>('/groups')
+      setGroups(data)
+    } catch {
+      setGroups([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function handleJoin(group: Group) {
+    setJoiningId(group.id)
+    try {
+      await api(`/groups/${group.id}/join`, { method: 'POST' })
+      await load()
+    } finally {
+      setJoiningId(null)
+    }
+  }
+
+  const myGroups = groups.filter(g => g.joined)
+  const discoverGroups = groups.filter(g => !g.joined)
 
   if (selectedGroup) {
-    return <GroupDetail group={selectedGroup} onBack={() => setSelectedGroup(null)} />
+    return <GroupDetail group={selectedGroup} onBack={() => setSelectedGroup(null)} onLeft={() => { setSelectedGroup(null); load() }} />
   }
 
   return (
@@ -227,12 +353,16 @@ export default function GroupsView() {
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-sans)' }}>Groups</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Ministry circles, leadership channels, and prayer networks</p>
         </div>
-        <button style={{
+        <button onClick={() => setShowCreate(true)} style={{
           padding: '10px 20px', borderRadius: '10px', border: 'none',
           backgroundColor: 'var(--color-navy)', color: '#fff',
           fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
         }}>+ Create Group</button>
       </div>
+
+      {showCreate && (
+        <CreateGroupModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load() }} />
+      )}
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
         {(['my', 'discover'] as const).map(t => (
@@ -258,32 +388,38 @@ export default function GroupsView() {
         ))}
       </div>
 
-      {(tab === 'my' ? myGroups : discoverGroups).length === 0 && (
+      {loading && (
+        <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading groups…</div>
+      )}
+
+      {!loading && (tab === 'my' ? myGroups : discoverGroups).length === 0 && (
         <div style={{ textAlign: 'center', padding: '64px 24px', backgroundColor: 'var(--color-card)', borderRadius: '14px', border: '1px solid var(--color-border)' }}>
           <div style={{ fontSize: '40px', marginBottom: '14px' }}>👥</div>
           <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-text-1)', marginBottom: '8px' }}>
             {tab === 'my' ? "You haven't joined any groups yet" : 'No groups available to discover'}
           </div>
           <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
-            {tab === 'my' ? 'Browse Discover Groups to find ministry circles and prayer networks to join.' : 'Groups created by FMCI admins will appear here.'}
+            {tab === 'my' ? 'Browse Discover Groups to find ministry circles and prayer networks to join.' : 'Create the first group for the network.'}
           </div>
         </div>
       )}
+      {!loading && (tab === 'my' ? myGroups : discoverGroups).length > 0 && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
-        {(tab === 'my' ? myGroups : discoverGroups).map((group, i) => {
+        {(tab === 'my' ? myGroups : discoverGroups).map(group => {
           const ts = TYPE_STYLE[group.type]
           return (
-            <div key={i} style={{
+            <div key={group.id} style={{
               backgroundColor: 'var(--color-card)', borderRadius: '12px',
               border: '1px solid var(--color-border)', overflow: 'hidden',
               cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
               display: 'flex', flexDirection: 'column',
             }}
+              onClick={() => { if (group.joined) setSelectedGroup(group) }}
               onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'none' }}
             >
               <div style={{ position: 'relative' }}>
-                <img src={group.img} alt={group.name} style={{ width: '100%', height: '130px', objectFit: 'cover', display: 'block' }} />
+                <GroupThumb group={group} height="130px" />
                 <div style={{
                   position: 'absolute', top: '10px', right: '10px',
                   fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
@@ -300,23 +436,25 @@ export default function GroupsView() {
                   <strong style={{ color: 'var(--color-text-1)' }}>{group.members}</strong> members · Active {group.lastActivity}
                 </div>
                 <button
-                  onClick={e => { e.stopPropagation(); if (group.joined) setSelectedGroup(group) }}
+                  onClick={e => { e.stopPropagation(); if (group.joined) setSelectedGroup(group); else handleJoin(group) }}
+                  disabled={joiningId === group.id}
                   style={{
                     width: '100%', padding: '9px', borderRadius: '8px',
                     border: group.joined ? '1px solid var(--color-border)' : 'none',
                     backgroundColor: group.joined ? 'var(--color-surface)' : 'var(--color-navy)',
                     color: group.joined ? 'var(--color-text-1)' : '#fff',
-                    fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-                    transition: 'all 0.15s',
+                    fontSize: '13px', fontWeight: 700, cursor: joiningId === group.id ? 'default' : 'pointer', fontFamily: 'var(--font-sans)',
+                    transition: 'all 0.15s', opacity: joiningId === group.id ? 0.6 : 1,
                   }}
                 >
-                  {group.joined ? 'View Group →' : 'Request to Join'}
+                  {group.joined ? 'View Group →' : joiningId === group.id ? 'Joining…' : 'Join Group'}
                 </button>
               </div>
             </div>
           )
         })}
       </div>
+      )}
     </div>
   )
 }
