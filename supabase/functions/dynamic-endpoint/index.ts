@@ -101,6 +101,28 @@ const DEFAULT_PROFILE = {
 
 app.get(`${BASE}/health`, (c) => c.json({ status: "ok" }));
 
+app.get(`${BASE}/members`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const users = await listAuthUsers();
+  const members = users
+    .filter((u: any) => {
+      const status = u.user_metadata?.status === "suspended" ? "suspended" : u.confirmed_at ? "active" : "pending";
+      return status === "active";
+    })
+    .map((u: any) => ({
+      id: u.id,
+      name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "",
+      title: u.user_metadata?.title ?? "",
+      church: u.user_metadata?.church ?? "",
+      location: u.user_metadata?.location ?? "",
+      avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
+      badges: u.user_metadata?.verified ? ["verified"] : [],
+      callings: [],
+    }));
+  return c.json(members);
+});
+
 app.get(`${BASE}/posts`, async (c) => c.json(await kv.get("posts") ?? SEED_POSTS));
 
 app.post(`${BASE}/posts`, async (c) => {

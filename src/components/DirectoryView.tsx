@@ -20,7 +20,7 @@ export default function DirectoryView() {
   const [filter, setFilter] = useState('All Members')
   const [region, setRegion] = useState('All Regions')
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [view, setView] = useState<'grid' | 'list'>('list')
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
 
