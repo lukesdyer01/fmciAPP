@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-navy:        #1a2a4a;
+  --color-navy-dark:   #131f38;
+  --color-navy-mid:    #1e3254;
+  --color-gold:        #c89b3c;
+  --color-gold-light:  #d4aa52;
+  --color-gold-bg:     #fdf8ed;
+  --color-gold-border: #e8d38a;
+  --color-surface:     #f0f2f5;
+  --color-card:        #ffffff;
+  --color-border:      #dde1e7;
+  --color-border-light:#eef0f4;
+  --color-hover:       #f0f2f5;
+  --color-text-1:      #1c2b4a;
+  --color-text-2:      #5a6478;
+  --color-text-3:      #9199a8;
+  --color-blue:        #1877f2;
+  --color-blue-bg:     #e7f0fd;
+  --color-green:       #059669;
+  --color-green-bg:    #ecfdf5;
+  --color-purple:      #6d28d9;
+  --color-purple-bg:   #f5f3ff;
+  --color-red:         #dc2626;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: var(--color-text-1);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+/* ── Dark mode semantic token contract ──────────────────────────────────────
+   All colors reference these semantic tokens — never raw hex in components.
+   ThemeProvider sets data-theme="dark" on <html> to activate this layer.
+   The brand palette (navy, gold) stays the same in both themes.            */
+[data-theme="dark"] {
+  --color-surface:      #09090b;
+  --color-card:         #111113;
+  --color-border:       #27272a;
+  --color-border-light: #1c1c1f;
+  --color-hover:        #18181b;
+  --color-text-1:       #fafafa;
+  --color-text-2:       #a1a1aa;
+  --color-text-3:       #71717a;
+  --color-gold-bg:      #151005;
+  --color-gold-border:  #3a2a08;
+  --color-blue-bg:      #0a1628;
+  --color-green-bg:     #041208;
+  --color-purple-bg:    #0f0920;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  background-color: var(--color-surface);
+  color: var(--color-text-1);
+}

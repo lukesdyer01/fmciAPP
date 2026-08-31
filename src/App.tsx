@@ -1,0 +1,108 @@
+import { useEffect, Component, type ReactNode } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './api-client/queryClient'
+import { AuthProvider } from './providers/AuthProvider'
+import { OrgThemeProvider } from './providers/OrgThemeProvider'
+import { useUIStore } from './store/ui'
+import { useSupabaseRole } from './contexts/SupabaseRoleContext'
+import { useAuth } from './providers/AuthProvider'
+import { api } from './api-client/server'
+import type { UserProfile } from './store/ui'
+import Topbar from './components/Topbar'
+import LeftSidebar from './components/LeftSidebar'
+import Feed from './components/Feed'
+import RightSidebar from './components/RightSidebar'
+import AdminShell from './components/admin/AdminShell'
+import ProfileModal from './components/ProfileModal'
+import AuthGate from './components/AuthGate'
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: '40px', fontFamily: 'monospace', backgroundColor: '#0d1117', color: '#f87171', minHeight: '100vh' }}>
+          <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>App Error</div>
+          <div style={{ fontSize: '13px', color: '#fca5a5', whiteSpace: 'pre-wrap' }}>{(this.state.error as Error).message}</div>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '12px', whiteSpace: 'pre-wrap' }}>{(this.state.error as Error).stack}</div>
+          <button onClick={() => this.setState({ error: null })} style={{ marginTop: '20px', padding: '8px 16px', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', color: '#e6edf3', borderRadius: '6px', cursor: 'pointer' }}>Retry</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+export type ActiveView = 'feed' | 'directory' | 'groups' | 'events' | 'resources' | 'orgs'
+
+function AppShell() {
+  const activeView = useUIStore(s => s.activeView)
+  const setActiveView = useUIStore(s => s.setActiveView)
+  const adminMode = useUIStore(s => s.adminMode)
+  const setAdminMode = useUIStore(s => s.setAdminMode)
+  const profileId = useUIStore(s => s.profileId)
+  const updateUserProfile = useUIStore(s => s.updateUserProfile)
+  const { role } = useSupabaseRole()
+  const { currentUser } = useAuth()
+
+  useEffect(() => {
+    // Seed from the real session user first so the UI isn't blank while the API loads
+    if (currentUser) {
+      updateUserProfile({
+        ...(currentUser.displayName ? { name: currentUser.displayName } : {}),
+        ...(currentUser.bio        ? { bio: currentUser.bio }            : {}),
+        ...(currentUser.avatarUrl  ? { avatarUrl: currentUser.avatarUrl } : {}),
+        ...(currentUser.email      ? { email: currentUser.email }         : {}),
+      })
+    }
+    // Then let the profile API override with any richer data
+    api<UserProfile>('/profile').then(updateUserProfile).catch(() => {})
+  }, [currentUser?.id])
+
+  // If adminMode was somehow activated without a qualifying role, reset it
+  useEffect(() => {
+    if (adminMode && role === 'member') setAdminMode(false)
+  }, [adminMode, role])
+
+  if (adminMode && (role === 'superadmin' || role === 'admin')) return <AdminShell />
+
+  return (
+    <div style={{ fontFamily: 'var(--font-sans)', backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+      <Topbar activeView={activeView} setActiveView={setActiveView} />
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '300px 1fr 320px',
+        maxWidth: '1440px',
+        margin: '0 auto',
+        paddingTop: '64px',
+        alignItems: 'start',
+      }}>
+        <LeftSidebar activeView={activeView} setActiveView={setActiveView} />
+        <main style={{ padding: '20px 12px', minHeight: 'calc(100vh - 64px)' }}>
+          <Feed activeView={activeView} />
+        </main>
+        <RightSidebar />
+      </div>
+      {profileId !== null && <ProfileModal />}
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthGate>
+          <AuthProvider>
+            <OrgThemeProvider orgId="org_fmci">
+              <ErrorBoundary>
+                <AppShell />
+              </ErrorBoundary>
+            </OrgThemeProvider>
+          </AuthProvider>
+        </AuthGate>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  )
+}
