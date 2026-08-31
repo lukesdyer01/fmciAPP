@@ -1,5 +1,6 @@
 import { useOpenProfile } from './ProfileModal'
 import { useUIStore } from '../store/ui'
+import { useAuth } from '../providers/AuthProvider'
 import EditProfileModal from './EditProfileModal'
 
 function ProfileCard({ openProfile }: { openProfile: (name: string) => void }) {
@@ -70,6 +71,7 @@ function ProfileCard({ openProfile }: { openProfile: (name: string) => void }) {
 
 export default function RightSidebar() {
   const openProfile = useOpenProfile()
+  const { currentUser } = useAuth()
 
   return (
     <aside className="right-sidebar" style={{
@@ -80,22 +82,24 @@ export default function RightSidebar() {
     }}>
       <ProfileCard openProfile={openProfile} />
 
-      <div style={{
-        background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
-        borderRadius: '12px', padding: '18px',
-        border: '1px solid rgba(255,255,255,0.06)',
-      }}>
-        <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-gold-light)', marginBottom: '6px' }}>✦ Get Verified</div>
-        <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
-          Verified members gain access to leadership groups, exclusive events, and the full FMCI network directory.
-        </p>
-        <button style={{
-          width: '100%', padding: '10px', borderRadius: '8px', border: 'none',
-          background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)',
-          color: '#fff', fontSize: '13px', fontWeight: 800, cursor: 'pointer',
-          fontFamily: 'var(--font-sans)',
-        }}>Apply for Verification →</button>
-      </div>
+      {!currentUser?.verified && (
+        <div style={{
+          background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+          borderRadius: '12px', padding: '18px',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-gold-light)', marginBottom: '6px' }}>✦ Get Verified</div>
+          <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
+            Verified members gain access to leadership groups, exclusive events, and the full FMCI network directory.
+          </p>
+          <button style={{
+            width: '100%', padding: '10px', borderRadius: '8px', border: 'none',
+            background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)',
+            color: '#fff', fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>Apply for Verification →</button>
+        </div>
+      )}
     </aside>
   )
 }

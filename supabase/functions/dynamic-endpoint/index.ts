@@ -194,6 +194,16 @@ app.put(`${BASE}/profile`, async (c) => {
 
 app.get(`${BASE}/orgs`, async (c) => c.json(await kv.get("orgs") ?? SEED_ORGS));
 
+app.get(`${BASE}/orgs/my`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  // "My Organizations" surfaces every active org on the platform, not a
+  // per-user membership list — there's no real per-org membership tracked yet.
+  const active = orgs.filter((o: any) => o.status === "active").map((o: any) => ({ members: [], ...o }));
+  return c.json(active);
+});
+
 app.put(`${BASE}/orgs`, async (c) => {
   const body = await c.req.json();
   await kv.set("orgs", body);
