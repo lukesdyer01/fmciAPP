@@ -210,16 +210,16 @@ export default function EditProfileModal() {
 
           {/* Form fields */}
           <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <Field label="Full Name" value={draft.name} onChange={v => set('name', v)} />
               <Field label="Title / Role" value={draft.title} onChange={v => set('title', v)} placeholder="e.g. Senior Pastor" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <Field label="Church / Organization" value={draft.church} onChange={v => set('church', v)} />
               <Field label="Location" value={draft.location} onChange={v => set('location', v)} placeholder="City, State" />
             </div>
             <Field label="Bio" value={draft.bio} onChange={v => set('bio', v)} multiline placeholder="Tell the network about yourself…" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <Field label="Website" value={draft.website} onChange={v => set('website', v)} placeholder="yoursite.org" />
               <Field label="Email" value={draft.email} onChange={v => set('email', v)} />
             </div>

@@ -39,7 +39,7 @@ export default function VerificationAdmin() {
   const deny    = (id: string) => { setRequests(rs => rs.map(r => r.id === id ? { ...r, status: 'denied' }   : r)); setSelected(null) }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: detail ? '1fr 400px' : '1fr', gap: '20px' }}>
+    <div className={detail ? 'grid-aside-400' : 'grid-1'}>
       {/* List */}
       <div>
         {/* Filters */}

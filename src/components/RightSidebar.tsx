@@ -72,7 +72,7 @@ export default function RightSidebar() {
   const openProfile = useOpenProfile()
 
   return (
-    <aside style={{
+    <aside className="right-sidebar" style={{
       position: 'sticky', top: '64px',
       height: 'calc(100vh - 64px)', overflowY: 'auto',
       padding: '16px 12px 32px',

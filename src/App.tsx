@@ -71,14 +71,7 @@ function AppShell() {
   return (
     <div style={{ fontFamily: 'var(--font-sans)', backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
       <Topbar activeView={activeView} setActiveView={setActiveView} />
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '300px 1fr 320px',
-        maxWidth: '1440px',
-        margin: '0 auto',
-        paddingTop: '64px',
-        alignItems: 'start',
-      }}>
+      <div className="app-grid">
         <LeftSidebar activeView={activeView} setActiveView={setActiveView} />
         <main style={{ padding: '20px 12px', minHeight: 'calc(100vh - 64px)' }}>
           <Feed activeView={activeView} />

@@ -46,11 +46,11 @@ export default function AdminShell() {
       display: 'flex', minHeight: '100vh',
       fontFamily: 'var(--font-sans)', backgroundColor: '#0a0e1a',
     }}>
-      {/* Sidebar */}
-      <aside style={{
+      {/* Sidebar — hidden below 768px in favor of .admin-mobile-nav */}
+      <aside className="admin-sidebar" style={{
         width: '240px', flexShrink: 0,
         backgroundColor: 'var(--color-navy-dark)',
-        display: 'flex', flexDirection: 'column',
+        flexDirection: 'column',
         borderRight: '1px solid rgba(255,255,255,0.06)',
         position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 100,
       }}>
@@ -146,12 +146,12 @@ export default function AdminShell() {
       </aside>
 
       {/* Main content */}
-      <div style={{ marginLeft: '240px', flex: 1, minHeight: '100vh', backgroundColor: '#0d1117' }}>
+      <div className="admin-main" style={{ flex: 1, minHeight: '100vh', backgroundColor: '#0d1117' }}>
         {/* Top bar */}
-        <div style={{
+        <div className="admin-topbar" style={{
           position: 'sticky', top: 0, zIndex: 50,
           backgroundColor: '#0d1117', borderBottom: '1px solid rgba(255,255,255,0.06)',
-          padding: '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px',
         }}>
           <div>
             <div style={{ fontSize: '18px', fontWeight: 800, color: '#e6edf3' }}>
@@ -173,8 +173,29 @@ export default function AdminShell() {
           </div>
         </div>
 
+        {/* Mobile nav — horizontal scroll strip replacing the fixed sidebar below 768px */}
+        <nav className="admin-mobile-nav" style={{
+          overflowX: 'auto', scrollbarWidth: 'none', gap: '6px',
+          padding: '10px 12px', backgroundColor: '#0d1117', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          {NAV.map(item => {
+            const active = activeView === item.id
+            return (
+              <button key={item.id} onClick={() => setActiveView(item.id)} style={{
+                display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+                padding: '7px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: active ? 700 : 500,
+                backgroundColor: active ? 'rgba(200,155,60,0.16)' : 'rgba(255,255,255,0.06)',
+                color: active ? 'var(--color-gold)' : 'rgba(255,255,255,0.6)',
+              }}>
+                <span>{item.icon}</span> {item.label}
+              </button>
+            )
+          })}
+        </nav>
+
         {/* View content */}
-        <div style={{ padding: '28px 32px' }}>
+        <div className="admin-content">
           {view}
         </div>
       </div>

@@ -111,7 +111,7 @@ export default function ContentAdmin() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div className="grid-stats-4" style={{ marginBottom: '24px' }}>
         {[
           { label: 'Pending Review', value: items.filter(i => i.status === 'pending').length, color: '#f59e0b' },
           { label: 'Approved',       value: items.filter(i => i.status === 'approved').length, color: '#22c55e' },

@@ -55,7 +55,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div className="grid-stats-3" style={{ marginBottom: '28px' }}>
         <StatCard
           label="Total Members"
           value={memberValue}
@@ -73,7 +73,7 @@ export default function Dashboard() {
         {STATIC_STATS.map((s, i) => <StatCard key={i} {...s} />)}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px', marginBottom: '20px' }}>
+      <div className="grid-aside-340" style={{ marginBottom: '20px' }}>
         {/* Member count summary */}
         <div style={{ backgroundColor: '#161b22', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', padding: '22px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>

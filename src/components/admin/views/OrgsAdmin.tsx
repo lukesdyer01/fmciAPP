@@ -129,7 +129,7 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
   const parentOptions = allOrgs.filter(o => o.id !== org.id)
 
   return (
-    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '440px', backgroundColor: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.08)', zIndex: 100, overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(0,0,0,0.5)' }}>
+    <div className="admin-manage-panel" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.08)', zIndex: 100, overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(0,0,0,0.5)' }}>
       <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, backgroundColor: '#0d1117', zIndex: 1 }}>
         <div>
           <div style={{ fontSize: '15px', fontWeight: 800, color: '#e6edf3' }}>Edit Organization</div>
@@ -328,7 +328,7 @@ function CreateOrgModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
             <label style={labelStyle()}>Organization Name *</label>
             <input value={form.name} onChange={e => set('name', e.target.value)} style={inputStyle()} placeholder="e.g. Grace Community Church" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="grid-2">
             <div>
               <label style={labelStyle()}>Type</label>
               <select value={form.type} onChange={e => set('type', e.target.value)} style={{ ...inputStyle(), appearance: 'none', cursor: 'pointer' }}>
@@ -408,9 +408,9 @@ export default function OrgsAdmin() {
   }
 
   return (
-    <div style={{ paddingRight: editingId ? '456px' : '0', transition: 'padding-right 0.25s' }}>
+    <div className="admin-view-container" style={{ paddingRight: editingId ? '456px' : '0', transition: 'padding-right 0.25s' }}>
       {/* Summary row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div className="grid-stats-4" style={{ marginBottom: '24px' }}>
         {[
           { label: 'Total Orgs',       value: orgs.length,                                   color: 'var(--color-gold)' },
           { label: 'Networks',         value: orgs.filter(o => o.type === 'network').length,  color: '#60a5fa' },
@@ -456,7 +456,7 @@ export default function OrgsAdmin() {
 
       {/* Org cards grid */}
       {filtered.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: editingId ? '1fr' : 'repeat(2, 1fr)', gap: '14px', transition: 'grid-template-columns 0.25s' }}>
+        <div className={editingId ? 'grid-1' : 'grid-2-auto'} style={{ gap: '14px' }}>
           {filtered.map(org => {
             const ss = STATUS_STYLE[org.status]
             const isEditing = editingId === org.id

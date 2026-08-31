@@ -222,7 +222,7 @@ export default function GroupsView() {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-sans)' }}>Groups</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Ministry circles, leadership channels, and prayer networks</p>

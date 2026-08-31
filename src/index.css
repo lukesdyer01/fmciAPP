@@ -69,3 +69,119 @@ html[data-theme="dark"] #root {
   background-color: var(--color-surface);
   color: var(--color-text-1);
 }
+
+/* ── Responsive layout ─────────────────────────────────────────────────────
+   One breakpoint (768px) covers phones + small tablets. Components keep
+   using inline styles for colors/spacing as everywhere else in this app;
+   only layout properties that need to change per-breakpoint live here,
+   since inline styles can't hold a @media query and always win the
+   cascade over a plain class rule — so these properties are owned
+   entirely by these classes, not set inline on the same element.       */
+
+/* Reusable grid shapes — collapse to a single (or narrower) column on mobile */
+.grid-2         { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-2-lg      { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-stats-3   { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-stats-4   { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.grid-aside-340 { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+.grid-aside-400 { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
+.grid-aside-260 { display: grid; grid-template-columns: 1fr 260px; gap: 16px; }
+.grid-cover-280 { display: grid; grid-template-columns: 280px 1fr; }
+.grid-1         { display: grid; grid-template-columns: 1fr; }
+
+/* App shell: Topbar / LeftSidebar / Feed / RightSidebar */
+.app-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr 320px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-top: 56px;
+  align-items: start;
+}
+
+.mobile-tab-bar { display: none; }
+.admin-mobile-nav { display: none; }
+
+/* Topbar sections that hide/reflow on mobile */
+.topbar-brand       { display: flex; align-items: center; gap: 8px; min-width: 200px; flex-shrink: 0; }
+.topbar-nav-pills   { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.topbar-secondary-icon { display: flex; }
+.notif-panel        { position: fixed; top: 60px; right: 60px; width: 360px; }
+.org-manage-panel   { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; }
+.admin-manage-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; }
+.admin-sidebar      { display: flex; }
+.admin-main         { margin-left: 240px; min-width: 0; }
+.admin-topbar       { padding: 14px 32px; }
+.admin-content      { padding: 28px 32px; }
+.grid-2-auto        { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+@media (max-width: 768px) {
+  .grid-2, .grid-2-lg,
+  .grid-aside-340, .grid-aside-400, .grid-aside-260, .grid-cover-280 {
+    grid-template-columns: 1fr;
+  }
+  .grid-stats-3, .grid-stats-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .app-grid {
+    grid-template-columns: 1fr;
+    padding-bottom: 64px; /* clears the fixed mobile tab bar */
+  }
+  .left-sidebar-desktop,
+  .right-sidebar {
+    display: none;
+  }
+  .mobile-tab-bar {
+    display: flex;
+  }
+
+  .topbar-brand-text,
+  .topbar-nav-pills,
+  .topbar-search,
+  .topbar-secondary-icon {
+    display: none;
+  }
+  .topbar-brand {
+    min-width: 0;
+  }
+  .notif-panel {
+    right: 10px;
+    left: 10px;
+    width: auto;
+  }
+
+  .org-manage-panel,
+  .admin-manage-panel {
+    width: 100%;
+  }
+  .org-view-container,
+  .admin-view-container {
+    padding-right: 0 !important; /* overrides a dynamic inline value driven by React state */
+  }
+  .grid-2-auto {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    display: none;
+  }
+  .admin-main {
+    margin-left: 0;
+  }
+  .admin-mobile-nav {
+    display: flex;
+  }
+  .admin-topbar {
+    padding: 12px 16px;
+  }
+  .admin-content {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 460px) {
+  .grid-stats-3, .grid-stats-4 {
+    grid-template-columns: 1fr;
+  }
+}

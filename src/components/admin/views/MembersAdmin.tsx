@@ -174,7 +174,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <span style={{ display: 'inline-block', width: '16px', height: '1px', backgroundColor: 'var(--color-gold)', opacity: 0.5 }} />
               Identity
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Full Name *</label>
                 <input ref={firstRef} value={form.fullName} onChange={e => set('fullName', e.target.value)} placeholder="e.g. Pastor James Wilson" style={inputStyle}
@@ -196,7 +196,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <span style={{ display: 'inline-block', width: '16px', height: '1px', backgroundColor: 'var(--color-gold)', opacity: 0.5 }} />
               Credentials
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <div style={{ position: 'relative' }}>
                 <label style={labelStyle}>Password *</label>
                 <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={e => set('password', e.target.value)} placeholder="Min. 8 characters" style={{ ...inputStyle, paddingRight: '40px' }}
@@ -255,7 +255,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <span style={{ display: 'inline-block', width: '16px', height: '1px', backgroundColor: 'var(--color-gold)', opacity: 0.5 }} />
               Profile Details <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.2)', textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <div>
                 <label style={labelStyle}>Title / Role</label>
                 <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Senior Pastor" style={inputStyle}
@@ -468,7 +468,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
           {/* Identity */}
           <div>
             {sectionLabel('Identity')}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Full Name *</label>
                 <input value={draft.name} onChange={e => set('name', e.target.value)} placeholder="Full name" style={inputStyle}
@@ -505,7 +505,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
           {/* Account */}
           <div>
             {sectionLabel('Account')}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-2">
               <div>
                 <label style={labelStyle}>Platform Role</label>
                 <select value={draft.role} onChange={e => set('role', e.target.value as PlatformRole)}
@@ -857,7 +857,8 @@ function CommunityMembersTab() {
       {error && <CommunityMembersError error={error} onRetry={loadMembers} />}
 
       <div style={{ backgroundColor: '#161b22', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               {['Member', 'Church / Location', 'Role', 'Status', 'Joined', 'Last Active', 'Actions'].map((h, i) => (
@@ -952,6 +953,7 @@ function CommunityMembersTab() {
             })}
           </tbody>
         </table>
+        </div>
         {filtered.length === 0 && !loading && (
           <div style={{ padding: '48px', textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '14px' }}>
             {error ? 'Failed to load.' : members.length === 0 ? 'No members yet.' : 'No members match your search.'}
@@ -1083,7 +1085,8 @@ function PlatformUsersTab() {
       )}
 
       <div style={{ backgroundColor: '#161b22', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               {['User', 'Email', 'Platform Role', 'Joined', 'Last Sign In', 'Status'].map((h, i) => (
@@ -1153,6 +1156,7 @@ function PlatformUsersTab() {
             })}
           </tbody>
         </table>
+        </div>
         {users.length === 0 && !error && (
           <div style={{ padding: '48px', textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '14px' }}>No users found.</div>
         )}

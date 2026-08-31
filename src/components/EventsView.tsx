@@ -20,7 +20,7 @@ export default function EventsView() {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Events</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Conferences, prayer calls, leadership meetings, and training sessions</p>
@@ -56,12 +56,11 @@ export default function EventsView() {
         {EVENTS.filter(e => filter === 'All' || e.type === filter).map((event, i) => {
           const ts = TYPE_COLOR[event.type] ?? { color: '#374151', bg: '#F9FAFB' }
           return (
-            <div key={i} style={{
+            <div key={i} className="grid-cover-280" style={{
               backgroundColor: 'var(--color-card)', borderRadius: '12px',
               border: `1px solid ${event.official ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
               boxShadow: event.official ? '0 2px 12px rgba(184,145,42,0.1)' : '0 1px 4px rgba(0,0,0,0.05)',
               overflow: 'hidden',
-              display: 'grid', gridTemplateColumns: '280px 1fr',
             }}>
               <div style={{ position: 'relative', overflow: 'hidden', minHeight: '200px' }}>
                 <img src={event.img} alt={event.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />

@@ -85,7 +85,7 @@ export default function KingdomGraphView() {
           <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>Connected scripture, people, events, and resources will appear here once data is added.</div>
         </div>
       )}
-      {!isEmpty && <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '16px', flex: 1, minHeight: 0 }}>
+      {!isEmpty && <div className="grid-aside-260" style={{ flex: 1, minHeight: 0 }}>
         {/* Graph canvas */}
         <div style={{
           backgroundColor: 'var(--color-surface)',

@@ -86,7 +86,7 @@ function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '24px', marginBottom: '20px' }}>
       <h2 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)', fontFamily: 'var(--font-serif)' }}>Create New Organization</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+      <div className="grid-2-lg" style={{ marginBottom: '16px' }}>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={label()}>Organization Name *</label>
           <input value={form.name} onChange={e => set('name', e.target.value)} style={input()} placeholder="e.g. Grace Community Church" />
@@ -184,8 +184,7 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
   }
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, right: 0, bottom: 0, width: '420px',
+    <div className="org-manage-panel" style={{
       backgroundColor: 'var(--color-card)', borderLeft: '1px solid var(--color-border)',
       zIndex: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column',
       boxShadow: '-8px 0 32px rgba(0,0,0,0.15)',
@@ -394,9 +393,9 @@ export default function OrgView() {
   }, [orgs])
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', paddingRight: managingOrg ? '440px' : '0', transition: 'padding-right 0.25s' }}>
+    <div className="org-view-container" style={{ maxWidth: '960px', margin: '0 auto', paddingRight: managingOrg ? '440px' : '0', transition: 'padding-right 0.25s' }}>
       {/* Header */}
-      <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '20px 24px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '20px 24px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>My Organizations</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Manage your churches, ministries, and networks</p>

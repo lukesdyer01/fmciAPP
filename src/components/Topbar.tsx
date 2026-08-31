@@ -33,13 +33,13 @@ export default function Topbar({ activeView, setActiveView }: Props) {
       boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
     }}>
       {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '200px', flexShrink: 0 }}>
+      <div className="topbar-brand">
         <img
           src={fmciLogo}
           alt="FMCI"
           style={{ height: '32px', width: '32px', objectFit: 'contain', display: 'block', flexShrink: 0 }}
         />
-        <div>
+        <div className="topbar-brand-text">
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', lineHeight: 1.1, letterSpacing: '0.5px' }}>FMCI</div>
           <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
             THE FEDERATION OF<br />MINISTERS &amp; CHURCHES INTERNATIONAL
@@ -48,7 +48,7 @@ export default function Topbar({ activeView, setActiveView }: Props) {
       </div>
 
       {/* Nav pills */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+      <div className="topbar-nav-pills">
         <button
           onClick={() => setActiveView('feed')}
           style={{
@@ -77,7 +77,7 @@ export default function Topbar({ activeView, setActiveView }: Props) {
       </div>
 
       {/* Search */}
-      <div style={{ flex: 1, maxWidth: '480px', margin: '0 auto', position: 'relative' }}>
+      <div className="topbar-search" style={{ flex: 1, maxWidth: '480px', margin: '0 auto', position: 'relative' }}>
         <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>🔍</span>
         <input
           value={search}
@@ -99,7 +99,7 @@ export default function Topbar({ activeView, setActiveView }: Props) {
       {/* Right icons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
         {/* Add friend */}
-        <button style={iconBtn}>
+        <button className="topbar-secondary-icon" style={{ ...iconBtn, display: undefined }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -108,7 +108,7 @@ export default function Topbar({ activeView, setActiveView }: Props) {
           </svg>
         </button>
         {/* Messages */}
-        <button style={{ ...iconBtn, position: 'relative' }}>
+        <button className="topbar-secondary-icon" style={{ ...iconBtn, position: 'relative', display: undefined }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
@@ -164,8 +164,7 @@ export default function Topbar({ activeView, setActiveView }: Props) {
 
       {/* Notification dropdown */}
       {notifOpen && (
-        <div style={{
-          position: 'fixed', top: '60px', right: '60px', width: '360px',
+        <div className="notif-panel" style={{
           backgroundColor: 'var(--color-card)', borderRadius: '12px',
           border: '1px solid var(--color-border)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.18)', zIndex: 300, overflow: 'hidden',

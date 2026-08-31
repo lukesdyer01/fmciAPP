@@ -163,11 +163,10 @@ export default function ProfileModal() {
           </div>
 
           {/* Stats row */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+          <div className="grid-stats-4" style={{
+            gap: 0,
             borderTop: '1px solid var(--color-border)',
             borderBottom: '1px solid var(--color-border)',
-            margin: '0 0 0 0',
           }}>
             {[
               { value: (p.stats?.connections ?? 0).toLocaleString(), label: 'Connections' },
