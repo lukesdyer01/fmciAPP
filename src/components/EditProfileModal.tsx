@@ -47,10 +47,12 @@ export default function EditProfileModal() {
   const userProfile = useUIStore(s => s.userProfile)
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
-  const { updateCurrentUser } = useAuth()
+  const { currentUser, updateCurrentUser } = useAuth()
 
   const [draft, setDraft] = useState<UserProfile>({ ...userProfile })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [uploading, setUploading] = useState<'avatarUrl' | 'coverUrl' | null>(null)
+  const [uploadError, setUploadError] = useState('')
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
 
@@ -58,12 +60,30 @@ export default function EditProfileModal() {
     setDraft(d => ({ ...d, [key]: value }))
   }
 
-  function handleImageFile(key: 'avatarUrl' | 'coverUrl', file: File) {
-    const reader = new FileReader()
-    reader.onload = e => {
-      if (e.target?.result) set(key, e.target.result as string)
+  async function handleImageFile(key: 'avatarUrl' | 'coverUrl', file: File) {
+    if (!currentUser) return
+    setUploading(key)
+    setUploadError('')
+    try {
+      // Uploaded to Supabase Storage rather than kept as a base64 data URI — a data
+      // URI here would get saved into the user's own auth metadata, which is
+      // embedded in every JWT they're issued; a multi-hundred-KB image blows the
+      // token past what Cloudflare/most proxies allow in a request header,
+      // breaking every authenticated call the user makes (posting included).
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/${key === 'avatarUrl' ? 'avatar' : 'cover'}-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true,
+        contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      set(key, data.publicUrl)
+    } catch (e: any) {
+      setUploadError(e.message ?? 'Failed to upload image.')
+    } finally {
+      setUploading(null)
     }
-    reader.readAsDataURL(file)
   }
 
   async function handleSave() {
@@ -157,7 +177,7 @@ export default function EditProfileModal() {
                 onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
               >
                 <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, backgroundColor: 'rgba(0,0,0,0.45)', padding: '6px 14px', borderRadius: '20px' }}>
-                  📷 Change Cover
+                  {uploading === 'coverUrl' ? 'Uploading…' : '📷 Change Cover'}
                 </span>
               </div>
             </div>
@@ -186,7 +206,9 @@ export default function EditProfileModal() {
                   onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
                 >
-                  <span style={{ color: '#fff', fontSize: '18px' }}>📷</span>
+                  <span style={{ color: '#fff', fontSize: uploading === 'avatarUrl' ? '11px' : '18px', fontWeight: 700, textAlign: 'center' }}>
+                    {uploading === 'avatarUrl' ? 'Uploading…' : '📷'}
+                  </span>
                 </div>
               </div>
               <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }}
@@ -207,6 +229,12 @@ export default function EditProfileModal() {
               />
             </div>
           </div>
+
+          {uploadError && (
+            <div style={{ margin: '0 24px 16px', padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red)' }}>
+              {uploadError}
+            </div>
+          )}
 
           {/* Form fields */}
           <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -238,7 +266,7 @@ export default function EditProfileModal() {
             border: '1px solid var(--color-border)', backgroundColor: 'transparent',
             color: 'var(--color-text-2)', fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-sans)',
           }}>Cancel</button>
-          <button onClick={handleSave} disabled={status === 'saving'} style={{
+          <button onClick={handleSave} disabled={status === 'saving' || uploading !== null} style={{
             flex: 2, padding: '10px', borderRadius: '8px', cursor: status === 'saving' ? 'default' : 'pointer', border: 'none',
             background: status === 'saved'
               ? 'linear-gradient(135deg,#22c55e,#16a34a)'

@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import { useOpenProfile } from './ProfileModal'
+import { useEditPost, useDeletePost } from '../api-client/posts'
+import { useAuth } from '../providers/AuthProvider'
+import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 
 export interface Post {
-  id: number
+  id: string
+  authorId?: string
   author: string
   title: string
   church: string
@@ -22,6 +26,7 @@ export interface Post {
   pinned?: boolean
   orgId?: string
   orgName?: string
+  editedAt?: string
 }
 
 
@@ -38,7 +43,19 @@ export default function PostCard({ post }: { post: Post }) {
   const [active, setActive] = useState<'amen' | 'pray' | 'heart' | null>(null)
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState(post.content ?? '')
   const openProfile = useOpenProfile()
+  const { currentUser } = useAuth()
+  const { role } = useSupabaseRole()
+  const editPost = useEditPost()
+  const deletePost = useDeletePost()
+
+  const isOwner = !!currentUser && (
+    post.authorId ? post.authorId === currentUser.id : post.author === currentUser.displayName
+  )
+  const canModify = isOwner || role === 'admin' || role === 'superadmin'
 
   const handleReaction = (type: 'amen' | 'pray' | 'heart') => {
     setReactions(r => {
@@ -47,6 +64,25 @@ export default function PostCard({ post }: { post: Post }) {
       else { if (active) next[active]--; next[type]++; setActive(type) }
       return next
     })
+  }
+
+  function startEdit() {
+    setEditText(post.content ?? '')
+    setEditing(true)
+    setMenuOpen(false)
+  }
+
+  function saveEdit() {
+    if (!editText.trim()) return
+    editPost.mutate({ postId: post.id, content: editText.trim() }, {
+      onSuccess: () => setEditing(false),
+    })
+  }
+
+  function handleDelete() {
+    setMenuOpen(false)
+    if (!window.confirm('Delete this post? This cannot be undone.')) return
+    deletePost.mutate(post.id)
   }
 
   const ts = TYPE_STYLE[post.type] ?? TYPE_STYLE['post']
@@ -98,13 +134,45 @@ export default function PostCard({ post }: { post: Post }) {
               )}
               <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '2px' }}>{post.time}</div>
             </div>
-            {post.type !== 'post' && (
-              <span style={{
-                fontSize: '11px', fontWeight: 700, padding: '3px 10px',
-                borderRadius: '20px', backgroundColor: ts.bg, color: ts.color,
-                flexShrink: 0, border: `1px solid ${ts.color}22`,
-              }}>{ts.label}</span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {post.type !== 'post' && (
+                <span style={{
+                  fontSize: '11px', fontWeight: 700, padding: '3px 10px',
+                  borderRadius: '20px', backgroundColor: ts.bg, color: ts.color,
+                  border: `1px solid ${ts.color}22`,
+                }}>{ts.label}</span>
+              )}
+              {canModify && (
+                <div style={{ position: 'relative' }}>
+                  <button onClick={() => setMenuOpen(o => !o)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px',
+                    color: 'var(--color-text-3)', fontSize: '16px', lineHeight: 1, borderRadius: '6px',
+                  }}>⋯</button>
+                  {menuOpen && (
+                    <>
+                      <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />
+                      <div style={{
+                        position: 'absolute', top: '26px', right: 0, zIndex: 10,
+                        backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)',
+                        borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden',
+                        minWidth: '120px',
+                      }}>
+                        <button onClick={startEdit} style={{
+                          display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
+                          cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)',
+                          textAlign: 'left', fontFamily: 'var(--font-sans)',
+                        }}>✏️ Edit</button>
+                        <button onClick={handleDelete} disabled={deletePost.isPending} style={{
+                          display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
+                          cursor: deletePost.isPending ? 'default' : 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-red)',
+                          textAlign: 'left', fontFamily: 'var(--font-sans)', opacity: deletePost.isPending ? 0.5 : 1,
+                        }}>{deletePost.isPending ? 'Deleting…' : '🗑 Delete'}</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -123,9 +191,50 @@ export default function PostCard({ post }: { post: Post }) {
 
       {/* Content */}
       <div style={{ padding: '12px 16px' }}>
-        {(post.content ?? '').split('\n').map((line, i) => (
-          <p key={i} style={{ margin: i === 0 ? '0 0 8px' : '8px 0 0', fontSize: '15px', lineHeight: 1.7, color: 'var(--color-text-1)' }}>{line}</p>
-        ))}
+        {editing ? (
+          <div>
+            <textarea
+              value={editText}
+              onChange={e => setEditText(e.target.value)}
+              rows={4}
+              autoFocus
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '10px 12px', resize: 'vertical',
+                border: '1px solid var(--color-border)', borderRadius: '8px',
+                fontSize: '15px', fontFamily: 'var(--font-sans)', lineHeight: 1.6,
+                color: 'var(--color-text-1)', backgroundColor: 'var(--color-surface)', outline: 'none',
+              }}
+            />
+            {editPost.isError && (
+              <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-red)' }}>
+                {(editPost.error as any)?.message ?? 'Failed to save changes.'}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+              <button onClick={() => setEditing(false)} style={{
+                padding: '7px 16px', borderRadius: '8px', border: '1px solid var(--color-border)',
+                background: 'none', color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              }}>Cancel</button>
+              <button onClick={saveEdit} disabled={!editText.trim() || editPost.isPending} style={{
+                padding: '7px 18px', borderRadius: '8px', border: 'none',
+                backgroundColor: editText.trim() ? 'var(--color-navy)' : 'var(--color-border)',
+                color: editText.trim() ? '#fff' : 'var(--color-text-3)',
+                fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                cursor: editText.trim() && !editPost.isPending ? 'pointer' : 'default',
+              }}>{editPost.isPending ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {(post.content ?? '').split('\n').map((line, i) => (
+              <p key={i} style={{ margin: i === 0 ? '0 0 8px' : '8px 0 0', fontSize: '15px', lineHeight: 1.7, color: 'var(--color-text-1)' }}>{line}</p>
+            ))}
+            {post.editedAt && (
+              <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '4px' }}>(edited)</div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Image */}

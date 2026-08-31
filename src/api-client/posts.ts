@@ -4,7 +4,8 @@ import { api } from './server'
 import type { BadgeVariant } from '../components/Badge'
 
 export interface FeedPost {
-  id: number
+  id: string
+  authorId?: string
   author: string
   title: string
   church: string
@@ -25,12 +26,13 @@ export interface FeedPost {
   isFollowing?: boolean
   orgId?: string
   orgName?: string
+  editedAt?: string
 }
 
 function adaptPost(raw: any, index: number): FeedPost {
   if (!raw || typeof raw !== 'object') {
     return {
-      id: index, author: 'Unknown', title: '', church: '', location: '', avatar: '',
+      id: String(index), author: 'Unknown', title: '', church: '', location: '', avatar: '',
       badges: [], time: '', recencyHours: 0, type: 'post', content: '',
       image: null, imageAlt: null, reactions: { amen: 0, pray: 0, heart: 0 },
       comments: 0, shares: 0, pinned: false, isFollowing: false,
@@ -41,7 +43,8 @@ function adaptPost(raw: any, index: number): FeedPost {
   const authorObj = typeof raw.author === 'object' && raw.author !== null ? raw.author : {}
   const rxn = raw.reactions && typeof raw.reactions === 'object' ? raw.reactions : {}
   return {
-    id: typeof raw.id === 'number' ? raw.id : index,
+    id: raw.id != null ? String(raw.id) : String(index),
+    authorId: raw.authorId,
     author: typeof raw.author === 'string' ? raw.author
       : (authorObj.name ?? authorObj.full_name ?? authorObj.displayName ?? authorObj.username ?? authorObj.email ?? ''),
     title: raw.title ?? authorObj.title ?? '',
@@ -67,6 +70,7 @@ function adaptPost(raw: any, index: number): FeedPost {
     isFollowing: raw.isFollowing ?? false,
     orgId: raw.orgId,
     orgName: raw.orgName,
+    editedAt: raw.editedAt,
   }
 }
 
@@ -111,10 +115,46 @@ export function useCreatePost() {
   })
 }
 
+export function useEditPost() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ postId, content }: { postId: string; content: string }) =>
+      api<FeedPost>(`/posts/${postId}`, { method: 'PUT', body: JSON.stringify({ content }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: feedKeys.all })
+    },
+  })
+}
+
+export function useDeletePost() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (postId: string) => api(`/posts/${postId}`, { method: 'DELETE' }),
+    onMutate: async (postId) => {
+      await qc.cancelQueries({ queryKey: feedKeys.all })
+      const prev = {
+        network: qc.getQueryData<FeedPost[]>(feedKeys.posts('network')),
+        following: qc.getQueryData<FeedPost[]>(feedKeys.posts('following')),
+      }
+      for (const filter of ['network', 'following'] as const) {
+        qc.setQueryData<FeedPost[]>(feedKeys.posts(filter), old => old?.filter(p => p.id !== postId) ?? [])
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev.network) qc.setQueryData(feedKeys.posts('network'), ctx.prev.network)
+      if (ctx?.prev.following) qc.setQueryData(feedKeys.posts('following'), ctx.prev.following)
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: feedKeys.all })
+    },
+  })
+}
+
 export function useReactToPost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ postId, reaction, delta }: { postId: number; reaction: 'amen' | 'pray' | 'heart'; delta: 1 | -1 }) =>
+    mutationFn: ({ postId, reaction, delta }: { postId: string; reaction: 'amen' | 'pray' | 'heart'; delta: 1 | -1 }) =>
       api(`/posts/${postId}/react`, { method: 'POST', body: JSON.stringify({ reaction, delta }) }),
     onMutate: async ({ postId, reaction, delta }) => {
       await qc.cancelQueries({ queryKey: feedKeys.all })

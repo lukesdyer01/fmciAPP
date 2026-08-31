@@ -104,11 +104,51 @@ app.get(`${BASE}/health`, (c) => c.json({ status: "ok" }));
 app.get(`${BASE}/posts`, async (c) => c.json(await kv.get("posts") ?? SEED_POSTS));
 
 app.post(`${BASE}/posts`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const body = await c.req.json();
   const posts = await kv.get("posts") ?? SEED_POSTS;
-  const newPost = { id: `p${Date.now()}`, reactions: {}, commentCount: 0, createdAt: new Date().toISOString(), isFollowing: false, ...body };
+  // authorId is stamped from the verified caller, never trusted from the client —
+  // it's what edit/delete ownership checks below rely on.
+  const newPost = { id: `p${Date.now()}`, reactions: {}, commentCount: 0, createdAt: new Date().toISOString(), isFollowing: false, ...body, authorId: caller.id };
   await kv.set("posts", [newPost, ...posts]);
   return c.json(newPost, 201);
+});
+
+function canModifyPost(post: any, caller: any): boolean {
+  if (!caller) return false;
+  if (["superadmin", "admin"].includes(callerRole(caller))) return true;
+  if (post.authorId) return post.authorId === caller.id;
+  // Legacy posts created before authorId was stamped — fall back to name match.
+  const callerName = (caller.user_metadata?.full_name ?? caller.user_metadata?.name ?? "").trim().toLowerCase();
+  const postAuthor = (typeof post.author === "string" ? post.author : (post.author?.name ?? "")).trim().toLowerCase();
+  return !!callerName && callerName === postAuthor;
+}
+
+app.put(`${BASE}/posts/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const body = await c.req.json();
+  const posts = await kv.get("posts") ?? SEED_POSTS;
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  if (!canModifyPost(post, caller)) return c.json({ error: "Forbidden" }, 403);
+  const updated = { ...post, content: body.content ?? post.content, editedAt: new Date().toISOString() };
+  await kv.set("posts", posts.map((p: any) => p.id === id ? updated : p));
+  return c.json(updated);
+});
+
+app.delete(`${BASE}/posts/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const posts = await kv.get("posts") ?? SEED_POSTS;
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  if (!canModifyPost(post, caller)) return c.json({ error: "Forbidden" }, 403);
+  await kv.set("posts", posts.filter((p: any) => p.id !== id));
+  return c.json({ ok: true });
 });
 
 app.post(`${BASE}/posts/:id/react`, async (c) => {

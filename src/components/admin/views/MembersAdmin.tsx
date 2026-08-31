@@ -327,6 +327,7 @@ interface EditMemberDraft {
 }
 
 function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose: () => void; onSaved: (updated: Member) => void }) {
+  const { userId: adminId } = useSupabaseRole()
   const [draft, setDraft] = useState<EditMemberDraft>({
     name: member.name,
     email: member.email,
@@ -340,16 +341,38 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
   })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [uploading, setUploading] = useState(false)
   const avatarRef = useRef<HTMLInputElement>(null)
 
   function set<K extends keyof EditMemberDraft>(key: K, value: EditMemberDraft[K]) {
     setDraft(d => ({ ...d, [key]: value }))
   }
 
-  function handleImageFile(file: File) {
-    const reader = new FileReader()
-    reader.onload = e => { if (e.target?.result) set('avatarUrl', e.target.result as string) }
-    reader.readAsDataURL(file)
+  async function handleImageFile(file: File) {
+    setUploading(true)
+    setErrorMsg('')
+    try {
+      // Uploaded to Storage, not kept as base64 — a base64 image saved into a
+      // user's auth metadata gets embedded in every JWT they're issued, which
+      // is large enough to break authenticated requests (see avatar_url on
+      // EditProfileModal for the full story).
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      // Stored under the admin's own folder (Storage RLS scopes uploads to the
+      // uploader's own auth.uid(), not the member being edited).
+      const path = `${adminId}/member-${member.id}-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true,
+        contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      set('avatarUrl', data.publicUrl)
+    } catch (e: any) {
+      setErrorMsg(e.message ?? 'Failed to upload image.')
+      setStatus('error')
+    } finally {
+      setUploading(false)
+    }
   }
 
   async function handleSave() {
@@ -455,7 +478,8 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
                 <input
                   value={draft.avatarUrl.startsWith('data:') ? '' : draft.avatarUrl}
                   onChange={e => set('avatarUrl', e.target.value)}
-                  placeholder="Paste photo URL…"
+                  placeholder={uploading ? 'Uploading…' : 'Paste photo URL…'}
+                  disabled={uploading}
                   style={{ ...inputStyle }}
                   onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(200,155,60,0.5)' }}
                   onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.1)' }}
@@ -551,7 +575,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.4)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)' }}>
             Cancel
           </button>
-          <button onClick={handleSave} disabled={status === 'saving' || status === 'saved'}
+          <button onClick={handleSave} disabled={status === 'saving' || status === 'saved' || uploading}
             style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 800, cursor: status === 'idle' || status === 'error' ? 'pointer' : 'default', transition: 'all 0.2s',
               background: status === 'saved' ? 'linear-gradient(135deg,#22c55e,#16a34a)' : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
               color: '#fff', opacity: status === 'saving' ? 0.7 : 1 }}>
