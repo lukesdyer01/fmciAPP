@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useUIStore, type UserProfile } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
-import { api } from '../api-client/server'
+import { supabase } from '../lib/supabase'
 
 function Field({ label, value, onChange, multiline = false, placeholder = '' }: {
   label: string
@@ -69,9 +69,33 @@ export default function EditProfileModal() {
   async function handleSave() {
     setStatus('saving')
     try {
-      await api('/profile', { method: 'PUT', body: JSON.stringify(draft) })
+      // Profile fields live on the user's own Supabase Auth record — this is the
+      // only per-user store for them, unlike the old shared/global profile endpoint.
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: draft.name,
+          avatar_url: draft.avatarUrl,
+          cover_url: draft.coverUrl,
+          bio: draft.bio,
+          title: draft.title,
+          church: draft.church,
+          location: draft.location,
+          website: draft.website,
+        },
+      })
+      if (error) throw error
       updateUserProfile(draft)
-      updateCurrentUser({ displayName: draft.name, avatarUrl: draft.avatarUrl, bio: draft.bio, email: draft.email })
+      updateCurrentUser({
+        displayName: draft.name,
+        avatarUrl: draft.avatarUrl,
+        coverUrl: draft.coverUrl,
+        bio: draft.bio,
+        title: draft.title,
+        church: draft.church,
+        location: draft.location,
+        website: draft.website,
+        email: draft.email,
+      })
       setStatus('saved')
       setTimeout(() => {
         setStatus('idle')

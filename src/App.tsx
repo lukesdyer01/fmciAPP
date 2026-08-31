@@ -6,8 +6,6 @@ import { OrgThemeProvider } from './providers/OrgThemeProvider'
 import { useUIStore } from './store/ui'
 import { useSupabaseRole } from './contexts/SupabaseRoleContext'
 import { useAuth } from './providers/AuthProvider'
-import { api } from './api-client/server'
-import type { UserProfile } from './store/ui'
 import Topbar from './components/Topbar'
 import LeftSidebar from './components/LeftSidebar'
 import Feed from './components/Feed'
@@ -47,18 +45,21 @@ function AppShell() {
   const { currentUser } = useAuth()
 
   useEffect(() => {
-    // Seed from the real session user first so the UI isn't blank while the API loads
-    if (currentUser) {
-      updateUserProfile({
-        ...(currentUser.displayName ? { name: currentUser.displayName } : {}),
-        ...(currentUser.bio        ? { bio: currentUser.bio }            : {}),
-        ...(currentUser.avatarUrl  ? { avatarUrl: currentUser.avatarUrl } : {}),
-        ...(currentUser.email      ? { email: currentUser.email }         : {}),
-      })
-    }
-    // Then let the profile API override with any richer data
-    api<UserProfile>('/profile').then(updateUserProfile).catch(() => {})
-  }, [currentUser?.id])
+    // The signed-in user's Supabase Auth record is the single source of truth for
+    // profile display — there is no shared/global profile to merge in.
+    if (!currentUser) return
+    updateUserProfile({
+      name: currentUser.displayName ?? '',
+      bio: currentUser.bio ?? '',
+      avatarUrl: currentUser.avatarUrl ?? '',
+      coverUrl: currentUser.coverUrl ?? '',
+      title: currentUser.title ?? '',
+      church: currentUser.church ?? '',
+      location: currentUser.location ?? '',
+      website: currentUser.website ?? '',
+      email: currentUser.email ?? '',
+    })
+  }, [currentUser])
 
   // If adminMode was somehow activated without a qualifying role, reset it
   useEffect(() => {

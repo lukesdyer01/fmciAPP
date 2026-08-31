@@ -9,7 +9,12 @@ export interface User {
   displayName: string
   email: string
   avatarUrl: string | null
+  coverUrl: string | null
   bio: string | null
+  title: string | null
+  church: string | null
+  location: string | null
+  website: string | null
   platformRole: PlatformRole
   verified: boolean
   createdAt: string

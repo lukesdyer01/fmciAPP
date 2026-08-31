@@ -24,7 +24,12 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
     displayName: meta.full_name ?? meta.name ?? su.email ?? '',
     email: su.email ?? '',
     avatarUrl: meta.avatar_url ?? null,
+    coverUrl: meta.cover_url ?? null,
     bio: meta.bio ?? null,
+    title: meta.title ?? null,
+    church: meta.church ?? null,
+    location: meta.location ?? null,
+    website: meta.website ?? null,
     platformRole: role as User['platformRole'],
     verified: meta.verified ?? false,
     createdAt: su.created_at ?? new Date().toISOString(),
@@ -59,7 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...fresh,
         displayName: prev.displayName || fresh.displayName,
         avatarUrl: prev.avatarUrl || fresh.avatarUrl,
+        coverUrl: prev.coverUrl || fresh.coverUrl,
         bio: prev.bio || fresh.bio,
+        title: prev.title || fresh.title,
+        church: prev.church || fresh.church,
+        location: prev.location || fresh.location,
+        website: prev.website || fresh.website,
       }
     })
   }, [session.user.id, role])
