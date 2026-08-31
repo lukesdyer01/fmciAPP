@@ -62,18 +62,6 @@ export default function Topbar({ activeView, setActiveView }: Props) {
         >
           <span style={{ fontSize: '15px' }}>🏠</span> Home
         </button>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '7px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer',
-          backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)',
-          fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-sans)',
-          transition: 'all 0.15s',
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(255,255,255,0.18)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(255,255,255,0.1)' }}
-        >
-          <span style={{ fontSize: '15px' }}>＋</span> Create
-        </button>
       </div>
 
       {/* Search */}
@@ -98,15 +86,6 @@ export default function Topbar({ activeView, setActiveView }: Props) {
 
       {/* Right icons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
-        {/* Add friend */}
-        <button className="topbar-secondary-icon" style={{ ...iconBtn, display: undefined }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <line x1="19" y1="8" x2="19" y2="14"/>
-            <line x1="22" y1="11" x2="16" y2="11"/>
-          </svg>
-        </button>
         {/* Messages */}
         <button className="topbar-secondary-icon" style={{ ...iconBtn, position: 'relative', display: undefined }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
