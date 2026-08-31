@@ -106,6 +106,7 @@ app.get(`${BASE}/members`, async (c) => {
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const users = await listAuthUsers();
   const members = users
+    .filter((u: any) => u.id !== caller.id)
     .filter((u: any) => {
       const status = u.user_metadata?.status === "suspended" ? "suspended" : u.confirmed_at ? "active" : "pending";
       return status === "active";
