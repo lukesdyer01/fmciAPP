@@ -18,7 +18,12 @@ const POST_TYPES = [
   { icon: '😊', label: 'Feeling',        color: '#FF9800' },
 ]
 
-export default function PostComposer() {
+interface Props {
+  type?: 'post' | 'prayer'
+  placeholder?: string
+}
+
+export default function PostComposer({ type = 'post', placeholder }: Props) {
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [myOrgs, setMyOrgs] = useState<MyOrg[]>([])
@@ -49,11 +54,12 @@ export default function PostComposer() {
       church: userProfile.church,
       location: userProfile.location,
       badges: [],
-      type: 'post',
+      type,
       content: text.trim(),
       isFollowing: false,
       orgId: selectedOrg?.id,
       orgName: selectedOrg?.name,
+      ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
       onSuccess: () => setText(''),
     })
@@ -139,7 +145,7 @@ export default function PostComposer() {
             <textarea
               placeholder={selectedOrg
                 ? `Share something on behalf of ${selectedOrg.name}…`
-                : 'Share a post, testimony, teaching, or prayer request with the network…'
+                : placeholder ?? 'Share a post, testimony, teaching, or prayer request with the network…'
               }
               value={text}
               onChange={e => setText(e.target.value)}
@@ -159,7 +165,7 @@ export default function PostComposer() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
-        {POST_TYPES.map((t, i) => (
+        {type === 'post' && POST_TYPES.map((t, i) => (
           <button key={i} style={{
             display: 'flex', alignItems: 'center', gap: '5px',
             padding: '7px 12px', borderRadius: '8px', border: 'none',

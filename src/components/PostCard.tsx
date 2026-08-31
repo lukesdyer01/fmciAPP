@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import { useOpenProfile } from './ProfileModal'
-import { useEditPost, useDeletePost } from '../api-client/posts'
+import { useEditPost, useDeletePost, useSetPrayerStatus } from '../api-client/posts'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 
@@ -27,6 +27,7 @@ export interface Post {
   orgId?: string
   orgName?: string
   editedAt?: string
+  prayerStatus?: 'unanswered' | 'answered'
 }
 
 
@@ -51,6 +52,7 @@ export default function PostCard({ post }: { post: Post }) {
   const { role } = useSupabaseRole()
   const editPost = useEditPost()
   const deletePost = useDeletePost()
+  const setPrayerStatus = useSetPrayerStatus()
 
   const isOwner = !!currentUser && (
     post.authorId ? post.authorId === currentUser.id : post.author === currentUser.displayName
@@ -83,6 +85,11 @@ export default function PostCard({ post }: { post: Post }) {
     setMenuOpen(false)
     if (!window.confirm('Delete this post? This cannot be undone.')) return
     deletePost.mutate(post.id)
+  }
+
+  function togglePrayerStatus() {
+    const next = post.prayerStatus === 'answered' ? 'unanswered' : 'answered'
+    setPrayerStatus.mutate({ postId: post.id, status: next })
   }
 
   const ts = TYPE_STYLE[post.type] ?? TYPE_STYLE['post']
@@ -141,6 +148,30 @@ export default function PostCard({ post }: { post: Post }) {
                   borderRadius: '20px', backgroundColor: ts.bg, color: ts.color,
                   border: `1px solid ${ts.color}22`,
                 }}>{ts.label}</span>
+              )}
+              {post.type === 'prayer' && (
+                canModify ? (
+                  <button
+                    onClick={togglePrayerStatus}
+                    disabled={setPrayerStatus.isPending}
+                    title={post.prayerStatus === 'answered' ? 'Mark as unanswered' : 'Mark as answered'}
+                    style={{
+                      fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
+                      border: `1px solid ${post.prayerStatus === 'answered' ? '#05966922' : '#f59e0b22'}`,
+                      backgroundColor: post.prayerStatus === 'answered' ? '#ECFDF5' : '#FFFBEB',
+                      color: post.prayerStatus === 'answered' ? '#047857' : '#b45309',
+                      cursor: setPrayerStatus.isPending ? 'default' : 'pointer', fontFamily: 'var(--font-sans)',
+                      opacity: setPrayerStatus.isPending ? 0.6 : 1,
+                    }}
+                  >{post.prayerStatus === 'answered' ? '✓ Answered' : '○ Unanswered'}</button>
+                ) : (
+                  <span style={{
+                    fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
+                    border: `1px solid ${post.prayerStatus === 'answered' ? '#05966922' : '#f59e0b22'}`,
+                    backgroundColor: post.prayerStatus === 'answered' ? '#ECFDF5' : '#FFFBEB',
+                    color: post.prayerStatus === 'answered' ? '#047857' : '#b45309',
+                  }}>{post.prayerStatus === 'answered' ? '✓ Answered' : '○ Unanswered'}</span>
+                )
               )}
               {canModify && (
                 <div style={{ position: 'relative' }}>

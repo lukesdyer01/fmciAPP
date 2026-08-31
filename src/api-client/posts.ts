@@ -27,6 +27,7 @@ export interface FeedPost {
   orgId?: string
   orgName?: string
   editedAt?: string
+  prayerStatus?: 'unanswered' | 'answered'
 }
 
 function adaptPost(raw: any, index: number): FeedPost {
@@ -71,6 +72,7 @@ function adaptPost(raw: any, index: number): FeedPost {
     orgId: raw.orgId,
     orgName: raw.orgName,
     editedAt: raw.editedAt,
+    prayerStatus: raw.prayerStatus,
   }
 }
 
@@ -107,7 +109,7 @@ export function useFeedPosts(filter: 'network' | 'following' = 'network') {
 export function useCreatePost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string }) =>
+    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; prayerStatus?: 'unanswered' | 'answered' }) =>
       api<FeedPost>('/posts', { method: 'POST', body: JSON.stringify(post) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
@@ -120,6 +122,17 @@ export function useEditPost() {
   return useMutation({
     mutationFn: ({ postId, content }: { postId: string; content: string }) =>
       api<FeedPost>(`/posts/${postId}`, { method: 'PUT', body: JSON.stringify({ content }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: feedKeys.all })
+    },
+  })
+}
+
+export function useSetPrayerStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ postId, status }: { postId: string; status: 'unanswered' | 'answered' }) =>
+      api<FeedPost>(`/posts/${postId}`, { method: 'PUT', body: JSON.stringify({ prayerStatus: status }) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
     },

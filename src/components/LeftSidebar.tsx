@@ -10,6 +10,7 @@ const NAV: { id: ActiveView; icon: string; label: string }[] = [
   { id: 'directory', icon: '👤', label: 'Member Directory' },
   { id: 'orgs',      icon: '🏛', label: 'My Organizations' },
   { id: 'groups',    icon: '👥', label: 'Groups' },
+  { id: 'prayer',    icon: '🙏', label: 'Prayer Requests' },
   { id: 'events',    icon: '📅', label: 'Events' },
   { id: 'resources', icon: '📚', label: 'Resources' },
 ]

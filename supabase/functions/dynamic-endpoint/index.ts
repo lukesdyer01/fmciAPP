@@ -133,7 +133,11 @@ app.post(`${BASE}/posts`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   // authorId is stamped from the verified caller, never trusted from the client —
   // it's what edit/delete ownership checks below rely on.
-  const newPost = { id: `p${Date.now()}`, reactions: {}, commentCount: 0, createdAt: new Date().toISOString(), isFollowing: false, ...body, authorId: caller.id };
+  const newPost = {
+    id: `p${Date.now()}`, reactions: {}, commentCount: 0, createdAt: new Date().toISOString(), isFollowing: false,
+    ...(body.type === "prayer" ? { prayerStatus: "unanswered" } : {}),
+    ...body, authorId: caller.id,
+  };
   await kv.set("posts", [newPost, ...posts]);
   return c.json(newPost, 201);
 });
@@ -157,7 +161,13 @@ app.put(`${BASE}/posts/:id`, async (c) => {
   const post = posts.find((p: any) => p.id === id);
   if (!post) return c.json({ error: "Post not found" }, 404);
   if (!canModifyPost(post, caller)) return c.json({ error: "Forbidden" }, 403);
-  const updated = { ...post, content: body.content ?? post.content, editedAt: new Date().toISOString() };
+  const updated = {
+    ...post,
+    // Only stamp editedAt when the actual content changed — a pure status
+    // toggle (e.g. marking a prayer request answered) isn't an edit.
+    ...(body.content !== undefined ? { content: body.content, editedAt: new Date().toISOString() } : {}),
+    ...(body.prayerStatus !== undefined ? { prayerStatus: body.prayerStatus } : {}),
+  };
   await kv.set("posts", posts.map((p: any) => p.id === id ? updated : p));
   return c.json(updated);
 });

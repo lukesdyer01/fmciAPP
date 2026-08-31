@@ -32,7 +32,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-export type ActiveView = 'feed' | 'directory' | 'groups' | 'events' | 'resources' | 'orgs'
+export type ActiveView = 'feed' | 'directory' | 'groups' | 'prayer' | 'events' | 'resources' | 'orgs'
 
 function AppShell() {
   const activeView = useUIStore(s => s.activeView)
