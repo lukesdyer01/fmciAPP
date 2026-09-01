@@ -11,11 +11,9 @@ interface MyOrg {
 }
 
 const POST_TYPES = [
-  { icon: '🎥', label: 'Live Video',     color: '#E05D5D' },
   { icon: '🖼️', label: 'Photo/Video',    color: '#4CAF50' },
   { icon: '📖', label: 'Scripture',      color: 'var(--color-gold)' },
   { icon: '🙏', label: 'Prayer Request', color: '#7C3AED' },
-  { icon: '😊', label: 'Feeling',        color: '#FF9800' },
 ]
 
 interface Props {

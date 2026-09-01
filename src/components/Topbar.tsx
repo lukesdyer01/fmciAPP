@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
-import type { ActiveView } from '../App'
 import { useColorScheme } from '../providers/ThemeProvider'
 import { useUIStore } from '../store/ui'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import EditProfileModal from './EditProfileModal'
 import { supabase } from '../lib/supabase'
 
-interface Props {
-  activeView: ActiveView
-  setActiveView: (v: ActiveView) => void
-}
-
-export default function Topbar({ activeView, setActiveView }: Props) {
+export default function Topbar() {
   const { colorScheme, toggleColorScheme } = useColorScheme()
   const notifOpen = useUIStore(s => s.notifOpen)
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
@@ -45,23 +39,6 @@ export default function Topbar({ activeView, setActiveView }: Props) {
             THE FEDERATION OF<br />MINISTERS &amp; CHURCHES INTERNATIONAL
           </div>
         </div>
-      </div>
-
-      {/* Nav pills */}
-      <div className="topbar-nav-pills">
-        <button
-          onClick={() => setActiveView('feed')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer',
-            backgroundColor: activeView === 'feed' ? 'var(--color-gold)' : 'rgba(255,255,255,0.1)',
-            color: activeView === 'feed' ? '#fff' : 'rgba(255,255,255,0.8)',
-            fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-sans)',
-            transition: 'all 0.15s',
-          }}
-        >
-          <span style={{ fontSize: '15px' }}>🏠</span> Home
-        </button>
       </div>
 
       {/* Search */}

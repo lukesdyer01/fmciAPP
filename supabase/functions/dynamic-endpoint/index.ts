@@ -367,4 +367,20 @@ app.post(`${BASE}/admin/bootstrap`, async (c) => {
   return c.json({ ok: true, message: "You are now a super administrator. Sign out and sign back in to activate your access." });
 });
 
+const DEFAULT_SETTINGS = { openRegistration: true };
+
+// Unauthenticated-readable (behind the anon key only) — AuthGate needs this
+// before a visitor has an account, to decide whether to allow signup at all.
+app.get(`${BASE}/settings`, async (c) => c.json(await kv.get("settings") ?? DEFAULT_SETTINGS));
+
+app.put(`${BASE}/settings`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  const current = await kv.get("settings") ?? DEFAULT_SETTINGS;
+  const updated = { ...current, ...body };
+  await kv.set("settings", updated);
+  return c.json(updated);
+});
+
 Deno.serve(app.fetch);

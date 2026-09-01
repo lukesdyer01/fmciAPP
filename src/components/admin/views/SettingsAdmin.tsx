@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { api } from '../../../api-client/server'
 
 function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
@@ -53,6 +54,27 @@ export default function SettingsAdmin() {
   const [supportEmail, setSupportEmail] = useState('support@fmci.global')
 
   const [openReg, setOpenReg] = useState(false)
+  const [openRegSaving, setOpenRegSaving] = useState(false)
+
+  useEffect(() => {
+    api<{ openRegistration: boolean }>('/settings')
+      .then(s => setOpenReg(s.openRegistration))
+      .catch(() => {})
+  }, [])
+
+  async function handleOpenRegChange(next: boolean) {
+    const prev = openReg
+    setOpenReg(next) // optimistic
+    setOpenRegSaving(true)
+    try {
+      await api('/settings', { method: 'PUT', body: JSON.stringify({ openRegistration: next }) })
+    } catch {
+      setOpenReg(prev) // revert on failure
+    } finally {
+      setOpenRegSaving(false)
+    }
+  }
+
   const [requireVerif, setRequireVerif] = useState(true)
   const [maintenanceMode, setMaintenanceMode] = useState(false)
   const [autoVerifRefer, setAutoVerifRefer] = useState(false)
@@ -73,7 +95,12 @@ export default function SettingsAdmin() {
       </Section>
 
       <Section title="Registration & Access" description="Control how new members join the platform and what verification is required.">
-        <Toggle label="Open Registration" description="Allow anyone to create an account without an invitation" value={openReg} onChange={setOpenReg} />
+        <Toggle
+          label={`Open Registration${openRegSaving ? ' (saving…)' : ''}`}
+          description="Allow anyone to create an account without an invitation — takes effect immediately"
+          value={openReg}
+          onChange={handleOpenRegChange}
+        />
         <Toggle label="Require Verification for Posting" description="Unverified members can browse but cannot post or comment" value={requireVerif} onChange={setRequireVerif} />
         <Toggle label="Auto-Verify Referred Members" description="Members referred by a verified leader are auto-verified at signup" value={autoVerifRefer} onChange={setAutoVerifRefer} />
       </Section>

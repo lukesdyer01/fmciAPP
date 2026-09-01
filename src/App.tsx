@@ -70,7 +70,7 @@ function AppShell() {
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
-      <Topbar activeView={activeView} setActiveView={setActiveView} />
+      <Topbar />
       <div className="app-grid">
         <LeftSidebar activeView={activeView} setActiveView={setActiveView} />
         <main style={{ padding: '20px 12px', minHeight: 'calc(100vh - 64px)' }}>

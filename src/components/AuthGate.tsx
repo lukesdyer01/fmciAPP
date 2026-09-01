@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { SupabaseRoleProvider } from '../contexts/SupabaseRoleContext'
+import { api } from '../api-client/server'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 
 type AuthMode = 'login' | 'signup' | 'forgot'
@@ -27,6 +28,12 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         if (error) throw error
         if (data.session) onSession(data.session)
       } else if (mode === 'signup') {
+        const settings = await api<{ openRegistration: boolean }>('/settings').catch(() => ({ openRegistration: true }))
+        if (!settings.openRegistration) {
+          setError('Registration is currently closed. Contact an administrator for an invitation.')
+          setLoading(false)
+          return
+        }
         const { data, error } = await supabase.auth.signUp({
           email, password,
           options: { data: { full_name: name } },
