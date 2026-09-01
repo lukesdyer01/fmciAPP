@@ -138,7 +138,7 @@ html[data-theme="dark"] #root {
     display: flex;
   }
 
-  .topbar-brand-text,
+  .topbar-brand-subtitle,
   .topbar-nav-pills,
   .topbar-search,
   .topbar-secondary-icon {

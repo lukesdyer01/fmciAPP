@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { NAV } from './LeftSidebar'
 import { useUIStore } from '../store/ui'
+import { useColorScheme } from '../providers/ThemeProvider'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 
 export default function MobileNavDrawer() {
   const activeView = useUIStore(s => s.activeView)
   const setActiveView = useUIStore(s => s.setActiveView)
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
+  const { colorScheme, toggleColorScheme } = useColorScheme()
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -71,6 +73,32 @@ export default function MobileNavDrawer() {
             )
           })}
         </nav>
+
+        <div style={{ borderTop: '1px solid var(--color-border)', padding: '10px' }}>
+          <button onClick={toggleColorScheme} style={{
+            display: 'flex', alignItems: 'center', gap: '12px',
+            width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
+            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
+            backgroundColor: 'transparent', color: 'var(--color-text-1)',
+            fontSize: '15px', fontWeight: 500,
+          }}>
+            <span style={{
+              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+              backgroundColor: 'var(--color-surface)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
+            }}>{colorScheme === 'dark' ? '☀' : '🌙'}</span>
+            <span style={{ flex: 1 }}>{colorScheme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            <span style={{
+              width: '36px', height: '20px', borderRadius: '10px', flexShrink: 0, position: 'relative',
+              backgroundColor: colorScheme === 'dark' ? 'var(--color-navy)' : 'var(--color-border)', transition: 'background 0.15s',
+            }}>
+              <span style={{
+                position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '50%',
+                backgroundColor: '#fff', transition: 'left 0.15s', left: colorScheme === 'dark' ? '18px' : '2px',
+              }} />
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   )

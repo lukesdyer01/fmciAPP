@@ -203,9 +203,9 @@ export default function Topbar() {
           alt="FMCI"
           style={{ height: '32px', width: '32px', objectFit: 'contain', display: 'block', flexShrink: 0 }}
         />
-        <div className="topbar-brand-text">
+        <div>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', lineHeight: 1.1, letterSpacing: '0.5px' }}>FMCI</div>
-          <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
+          <div className="topbar-brand-subtitle" style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
             THE FEDERATION OF<br />MINISTERS &amp; CHURCHES INTERNATIONAL
           </div>
         </div>
