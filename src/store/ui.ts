@@ -67,6 +67,12 @@ interface UIState {
   updateUserProfile: (patch: Partial<UserProfile>) => void
   editProfileOpen: boolean
   setEditProfileOpen: (open: boolean) => void
+
+  // Clicking a #hashtag anywhere jumps to the home feed filtered to it —
+  // global so it works the same from a post on any page, not just the feed.
+  activeHashtag: string | null
+  viewHashtag: (tag: string) => void
+  clearHashtag: () => void
 }
 
 export const useUIStore = create<UIState>(set => ({
@@ -103,4 +109,8 @@ export const useUIStore = create<UIState>(set => ({
   updateUserProfile: patch => set(s => ({ userProfile: { ...s.userProfile, ...patch } })),
   editProfileOpen: false,
   setEditProfileOpen: open => set({ editProfileOpen: open }),
+
+  activeHashtag: null,
+  viewHashtag: tag => set({ activeHashtag: tag, activeView: 'feed', profileId: null, notifOpen: false, mobileNavOpen: false }),
+  clearHashtag: () => set({ activeHashtag: null }),
 }))

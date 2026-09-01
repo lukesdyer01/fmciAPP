@@ -51,7 +51,10 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
   }, [userId])
 
   const { data: allPosts, isLoading: postsLoading } = useFeedPosts('network')
-  const wallPosts = (allPosts ?? []).filter(p => (p.wallUserId ?? p.authorId) === userId && p.author && p.author.trim() !== '')
+  const wallPosts = (allPosts ?? []).filter(p =>
+    p.author && p.author.trim() !== '' &&
+    ((p.wallUserId ?? p.authorId) === userId || (p.taggedUsers ?? []).some(t => t.id === userId))
+  )
 
   if (loading) {
     return <div style={{ padding: '48px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading profile…</div>

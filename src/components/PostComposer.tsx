@@ -12,6 +12,12 @@ interface MyOrg {
   members: { userId: string; role: string }[]
 }
 
+interface TaggableMember {
+  id: string
+  name: string
+  avatarUrl: string
+}
+
 const POST_TYPES = [
   { icon: '🙏', label: 'Prayer Request', color: '#7C3AED' },
 ]
@@ -61,6 +67,10 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
   const [composerError, setComposerError] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [testimonyCategory, setTestimonyCategory] = useState('')
+  const [taggedUsers, setTaggedUsers] = useState<{ id: string; name: string }[]>([])
+  const [showTagPicker, setShowTagPicker] = useState(false)
+  const [tagQuery, setTagQuery] = useState('')
+  const [taggableMembers, setTaggableMembers] = useState<TaggableMember[] | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const userProfile = useUIStore(s => s.userProfile)
   const { mutate: createPost, isPending } = useCreatePost()
@@ -99,6 +109,21 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
     }
   }
 
+  function openTagPicker() {
+    setShowTagPicker(v => !v)
+    if (taggableMembers === null) {
+      api<TaggableMember[]>('/members').then(setTaggableMembers).catch(() => setTaggableMembers([]))
+    }
+  }
+
+  function toggleTag(member: TaggableMember) {
+    setTaggedUsers(prev =>
+      prev.some(t => t.id === member.id)
+        ? prev.filter(t => t.id !== member.id)
+        : [...prev, { id: member.id, name: member.name }]
+    )
+  }
+
   function confirmVideo() {
     const id = extractYouTubeId(videoUrlDraft.trim())
     if (!id) { setComposerError('Enter a valid YouTube video URL.'); return }
@@ -134,9 +159,13 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       videoId: videoId || undefined,
       isAnonymous: anonymous || undefined,
       testimonyCategory: type === 'testimony' ? testimonyCategory : undefined,
+      taggedUsers: !anonymous && taggedUsers.length > 0 ? taggedUsers : undefined,
       ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
-      onSuccess: () => { setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false); setAnonymous(false); setTestimonyCategory('') },
+      onSuccess: () => {
+        setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false)
+        setAnonymous(false); setTestimonyCategory(''); setTaggedUsers([]); setShowTagPicker(false); setTagQuery('')
+      },
     })
   }
 
@@ -349,6 +378,74 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
           </div>
         )}
 
+        {/* Tagged people chips */}
+        {taggedUsers.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
+            {taggedUsers.map(t => (
+              <span key={t.id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                padding: '4px 6px 4px 10px', borderRadius: '20px',
+                backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)',
+                fontSize: '12px', fontWeight: 600, color: 'var(--color-gold)',
+              }}>
+                {t.name}
+                <button
+                  onClick={() => setTaggedUsers(prev => prev.filter(x => x.id !== t.id))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--color-gold)', fontSize: '12px', lineHeight: 1, display: 'flex' }}
+                >✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Tag people picker */}
+        {showTagPicker && (
+          <div style={{ marginTop: '12px', border: '1px solid var(--color-border)', borderRadius: '10px', overflow: 'hidden' }}>
+            <input
+              autoFocus
+              value={tagQuery}
+              onChange={e => setTagQuery(e.target.value)}
+              placeholder="Search people to tag…"
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: 'none', borderBottom: '1px solid var(--color-border)',
+                fontSize: '13px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)',
+                backgroundColor: 'var(--color-surface)', outline: 'none',
+              }}
+            />
+            <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+              {taggableMembers === null && (
+                <div style={{ padding: '14px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-3)' }}>Loading…</div>
+              )}
+              {taggableMembers !== null && taggableMembers
+                .filter(m => m.name.toLowerCase().includes(tagQuery.trim().toLowerCase()))
+                .slice(0, 8)
+                .map(m => {
+                  const selected = taggedUsers.some(t => t.id === m.id)
+                  return (
+                    <button key={m.id} onClick={() => toggleTag(m)} style={{
+                      display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 12px',
+                      border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
+                      backgroundColor: selected ? 'var(--color-gold-bg)' : 'transparent',
+                    }}
+                      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
+                      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
+                    >
+                      {m.avatarUrl
+                        ? <img src={m.avatarUrl} alt="" style={{ width: '26px', height: '26px', borderRadius: '7px', objectFit: 'cover', flexShrink: 0 }} />
+                        : <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '10px' }}>{(m.name || '?').slice(0, 2).toUpperCase()}</div>
+                      }
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                      {selected && <span style={{ color: 'var(--color-gold)', fontSize: '13px' }}>✓</span>}
+                    </button>
+                  )
+                })}
+              {taggableMembers !== null && taggableMembers.filter(m => m.name.toLowerCase().includes(tagQuery.trim().toLowerCase())).length === 0 && (
+                <div style={{ padding: '14px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-3)' }}>No matches</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {composerError && (
           <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-red)' }}>{composerError}</div>
         )}
@@ -391,6 +488,23 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
               Video
             </button>
           </>
+        )}
+        {!anonymous && (
+          <button
+            onClick={openTagPicker}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '7px 12px', borderRadius: '8px', border: 'none',
+              background: showTagPicker ? 'var(--color-hover)' : 'none', cursor: 'pointer',
+              fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)',
+              fontFamily: 'var(--font-sans)', transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = showTagPicker ? 'var(--color-hover)' : 'transparent' }}
+          >
+            <span style={{ fontSize: '16px' }}>🏷️</span>
+            {taggedUsers.length > 0 ? `Tagged (${taggedUsers.length})` : 'Tag People'}
+          </button>
         )}
         {type === 'post' && POST_TYPES.map((t, i) => (
           <button key={i} style={{

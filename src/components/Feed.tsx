@@ -15,6 +15,7 @@ import CreateEventModal from './CreateEventModal'
 import type { ActiveView } from '../App'
 import { useFeedPosts, type FeedPost } from '../api-client/posts'
 import { api } from '../api-client/server'
+import { useUIStore } from '../store/ui'
 
 type FeedEntry =
   | { kind: 'post'; ts: number; post: FeedPost }
@@ -87,6 +88,8 @@ function MainFeed() {
   const { data: allPosts, isLoading, isError } = useFeedPosts(filter)
   const [events, setEvents] = useState<EventItem[]>([])
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
+  const activeHashtag = useUIStore(s => s.activeHashtag)
+  const clearHashtag = useUIStore(s => s.clearHashtag)
 
   // Filter out truly orphaned posts (completely missing author)
   const posts = allPosts?.filter(p => p.author && p.author.trim() !== '')
@@ -99,14 +102,34 @@ function MainFeed() {
   // Posts and events interleaved by when they were posted/created — a plain
   // chronological feed rather than a separate pinned events section.
   const now = Date.now()
-  const merged: FeedEntry[] = [
+  let merged: FeedEntry[] = [
     ...(posts ?? []).map((post): FeedEntry => ({ kind: 'post', ts: now - post.recencyHours * 3_600_000, post })),
     ...events.map((event): FeedEntry => ({ kind: 'event', ts: event.createdAt ? new Date(event.createdAt).getTime() : 0, event })),
   ].sort((a, b) => b.ts - a.ts)
 
+  if (activeHashtag) {
+    const needle = new RegExp(`#${activeHashtag}\\b`, 'i')
+    merged = merged.filter(entry => entry.kind === 'post' && needle.test(entry.post.content ?? ''))
+  }
+
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
       <FeedToggle filter={filter} setFilter={setFilter} />
+      {activeHashtag && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
+          padding: '8px 14px', borderRadius: '10px',
+          backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)',
+        }}>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-gold)', flex: 1 }}>
+            Filtering by #{activeHashtag}
+          </span>
+          <button onClick={clearHashtag} style={{
+            background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+            color: 'var(--color-gold)', fontFamily: 'var(--font-sans)', padding: '2px 4px',
+          }}>✕</button>
+        </div>
+      )}
       <PostComposer hidePostAs />
       {editingEvent && (
         <CreateEventModal

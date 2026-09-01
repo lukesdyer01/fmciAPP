@@ -33,6 +33,7 @@ export interface FeedPost {
   prayerStatus?: 'unanswered' | 'answered'
   isAnonymous?: boolean
   testimonyCategory?: 'healing' | 'provision' | 'salvation' | 'deliverance' | 'other'
+  taggedUsers?: { id: string; name: string }[]
 }
 
 function adaptPost(raw: any, index: number): FeedPost {
@@ -83,6 +84,7 @@ function adaptPost(raw: any, index: number): FeedPost {
     prayerStatus: raw.prayerStatus,
     isAnonymous: raw.isAnonymous,
     testimonyCategory: raw.testimonyCategory,
+    taggedUsers: Array.isArray(raw.taggedUsers) ? raw.taggedUsers : [],
   }
 }
 
@@ -119,7 +121,7 @@ export function useFeedPosts(filter: 'network' | 'following' = 'network') {
 export function useCreatePost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; wallUserId?: string; wallUserName?: string; image?: string; imageAlt?: string; videoId?: string; isAnonymous?: boolean; testimonyCategory?: string; prayerStatus?: 'unanswered' | 'answered' }) =>
+    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; wallUserId?: string; wallUserName?: string; image?: string; imageAlt?: string; videoId?: string; isAnonymous?: boolean; testimonyCategory?: string; prayerStatus?: 'unanswered' | 'answered'; taggedUsers?: { id: string; name: string }[] }) =>
       api<FeedPost>('/posts', { method: 'POST', body: JSON.stringify(post) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })

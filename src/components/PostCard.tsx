@@ -5,6 +5,7 @@ import { useOpenProfile } from './ProfileView'
 import { useEditPost, useDeletePost, useSetPrayerStatus } from '../api-client/posts'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
+import { useUIStore } from '../store/ui'
 
 export interface Post {
   id: string
@@ -34,6 +35,7 @@ export interface Post {
   prayerStatus?: 'unanswered' | 'answered'
   isAnonymous?: boolean
   testimonyCategory?: 'healing' | 'provision' | 'salvation' | 'deliverance' | 'other'
+  taggedUsers?: { id: string; name: string }[]
 }
 
 
@@ -62,6 +64,7 @@ export default function PostCard({ post }: { post: Post }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(post.content ?? '')
   const openProfile = useOpenProfile()
+  const viewHashtag = useUIStore(s => s.viewHashtag)
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
   const editPost = useEditPost()
@@ -169,6 +172,17 @@ export default function PostCard({ post }: { post: Post }) {
                 >
                   <span style={{ fontSize: '11px' }}>📝</span>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-2)' }}>Wrote on {post.wallUserName}'s page</span>
+                </div>
+              )}
+              {(post.taggedUsers ?? []).length > 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--color-text-3)', marginTop: '3px' }}>
+                  with{' '}
+                  {(post.taggedUsers ?? []).map((t, i, arr) => (
+                    <span key={t.id}>
+                      <span onClick={() => openProfile(t.id)} style={{ fontWeight: 700, color: 'var(--color-text-2)', cursor: 'pointer' }}>{t.name}</span>
+                      {i < arr.length - 1 && (i === arr.length - 2 ? ' and ' : ', ')}
+                    </span>
+                  ))}
                 </div>
               )}
               <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '2px' }}>{post.time}</div>
@@ -303,7 +317,13 @@ export default function PostCard({ post }: { post: Post }) {
         ) : (
           <>
             {(post.content ?? '').split('\n').map((line, i) => (
-              <p key={i} style={{ margin: i === 0 ? '0 0 8px' : '8px 0 0', fontSize: '15px', lineHeight: 1.7, color: 'var(--color-text-1)' }}>{line}</p>
+              <p key={i} style={{ margin: i === 0 ? '0 0 8px' : '8px 0 0', fontSize: '15px', lineHeight: 1.7, color: 'var(--color-text-1)' }}>
+                {line.split(/(#[\p{L}\d_]+)/gu).map((part, j) =>
+                  part.startsWith('#') && part.length > 1
+                    ? <span key={j} onClick={() => viewHashtag(part.slice(1).toLowerCase())} style={{ color: 'var(--color-gold)', fontWeight: 700, cursor: 'pointer' }}>{part}</span>
+                    : <span key={j}>{part}</span>
+                )}
+              </p>
             ))}
             {post.editedAt && (
               <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '4px' }}>(edited)</div>
