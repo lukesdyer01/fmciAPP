@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUIStore } from '../store/ui'
 import { useCreatePost } from '../api-client/posts'
 import { api } from '../api-client/server'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../providers/AuthProvider'
 
 interface MyOrg {
   id: string
@@ -11,10 +13,14 @@ interface MyOrg {
 }
 
 const POST_TYPES = [
-  { icon: '🖼️', label: 'Photo/Video',    color: '#4CAF50' },
   { icon: '📖', label: 'Scripture',      color: 'var(--color-gold)' },
   { icon: '🙏', label: 'Prayer Request', color: '#7C3AED' },
 ]
+
+function extractYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+}
 
 interface Props {
   type?: 'post' | 'prayer'
@@ -35,10 +41,18 @@ interface Props {
 }
 
 export default function PostComposer({ type = 'post', placeholder, fixedOrgId, fixedOrgName, wallUserId, wallUserName, hidePostAs }: Props) {
+  const { currentUser } = useAuth()
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [myOrgs, setMyOrgs] = useState<MyOrg[]>([])
   const [postAs, setPostAs] = useState<'self' | string>('self')
+  const [image, setImage] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [videoId, setVideoId] = useState('')
+  const [showVideoInput, setShowVideoInput] = useState(false)
+  const [videoUrlDraft, setVideoUrlDraft] = useState('')
+  const [mediaError, setMediaError] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
   const userProfile = useUIStore(s => s.userProfile)
   const { mutate: createPost, isPending } = useCreatePost()
 
@@ -55,6 +69,35 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       })
       .catch(() => {})
   }, [fixedOrgId, wallUserId, hidePostAs])
+
+  async function handleImageFile(file: File) {
+    if (!currentUser) return
+    setUploadingImage(true); setMediaError('')
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/post-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      setImage(data.publicUrl)
+      setVideoId(''); setShowVideoInput(false)
+    } catch (e: any) {
+      setMediaError(e.message ?? 'Failed to upload image.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  function confirmVideo() {
+    const id = extractYouTubeId(videoUrlDraft.trim())
+    if (!id) { setMediaError('Enter a valid YouTube video URL.'); return }
+    setVideoId(id)
+    setImage('')
+    setShowVideoInput(false)
+    setMediaError('')
+  }
 
   function handlePost() {
     if (!text.trim() || isPending) return
@@ -73,9 +116,12 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       orgName: fixedOrgName ?? selectedOrg?.name,
       wallUserId,
       wallUserName,
+      image: image || undefined,
+      imageAlt: image ? 'Post photo' : undefined,
+      videoId: videoId || undefined,
       ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
-      onSuccess: () => setText(''),
+      onSuccess: () => { setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false) },
     })
   }
 
@@ -176,9 +222,107 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
             />
           </div>
         </div>
+
+        {/* Image preview */}
+        {image && (
+          <div style={{ position: 'relative', marginTop: '12px', borderRadius: '10px', overflow: 'hidden' }}>
+            <img src={image} alt="" style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', display: 'block' }} />
+            <button onClick={() => setImage('')} style={{
+              position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%',
+              border: 'none', backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer',
+              fontSize: '14px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>✕</button>
+          </div>
+        )}
+
+        {/* Video preview */}
+        {videoId && (
+          <div style={{ position: 'relative', marginTop: '12px', borderRadius: '10px', overflow: 'hidden', backgroundColor: '#000' }}>
+            <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                title="YouTube video"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <button onClick={() => setVideoId('')} style={{
+              position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%',
+              border: 'none', backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer',
+              fontSize: '14px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1,
+            }}>✕</button>
+          </div>
+        )}
+
+        {/* Video URL input */}
+        {showVideoInput && !videoId && (
+          <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+            <input
+              value={videoUrlDraft}
+              onChange={e => setVideoUrlDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') confirmVideo() }}
+              placeholder="Paste a YouTube video URL…"
+              autoFocus
+              style={{
+                flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)',
+                fontSize: '13px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)',
+                backgroundColor: 'var(--color-surface)', outline: 'none',
+              }}
+            />
+            <button onClick={confirmVideo} style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)',
+              color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+            }}>Add</button>
+            <button onClick={() => { setShowVideoInput(false); setVideoUrlDraft(''); setMediaError('') }} style={{
+              padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'none',
+              color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+            }}>Cancel</button>
+          </div>
+        )}
+        {mediaError && (
+          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-red)' }}>{mediaError}</div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
+        {type === 'post' && (
+          <>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploadingImage}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '7px 12px', borderRadius: '8px', border: 'none',
+                background: 'none', cursor: uploadingImage ? 'default' : 'pointer',
+                fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)',
+                fontFamily: 'var(--font-sans)', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
+            >
+              <span style={{ fontSize: '16px' }}>🖼️</span>
+              {uploadingImage ? 'Uploading…' : 'Photo'}
+            </button>
+            <button
+              onClick={() => { setShowVideoInput(v => !v); setMediaError('') }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '7px 12px', borderRadius: '8px', border: 'none',
+                background: 'none', cursor: 'pointer',
+                fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)',
+                fontFamily: 'var(--font-sans)', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
+            >
+              <span style={{ fontSize: '16px' }}>▶️</span>
+              Video
+            </button>
+          </>
+        )}
         {type === 'post' && POST_TYPES.map((t, i) => (
           <button key={i} style={{
             display: 'flex', alignItems: 'center', gap: '5px',

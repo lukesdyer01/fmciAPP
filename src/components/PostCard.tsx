@@ -19,6 +19,7 @@ export interface Post {
   content: string
   image: string | null
   imageAlt: string | null
+  videoId?: string
   reactions: { amen: number; pray: number; heart: number }
   comments: number
   shares: number
@@ -291,6 +292,18 @@ export default function PostCard({ post }: { post: Post }) {
       {post.image && (
         <div style={{ overflow: 'hidden', backgroundColor: '#E2E8F0' }}>
           <img src={post.image} alt={post.imageAlt ?? ''} style={{ width: '100%', display: 'block', maxHeight: '420px', objectFit: 'cover' }} />
+        </div>
+      )}
+
+      {post.videoId && (
+        <div style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
+          <iframe
+            src={`https://www.youtube.com/embed/${post.videoId}`}
+            title="YouTube video"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
         </div>
       )}
 

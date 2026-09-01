@@ -18,6 +18,7 @@ export interface FeedPost {
   content: string
   image: string | null
   imageAlt: string | null
+  videoId?: string
   reactions: { amen: number; pray: number; heart: number }
   comments: number
   shares: number
@@ -61,6 +62,7 @@ function adaptPost(raw: any, index: number): FeedPost {
     content: typeof raw.content === 'string' ? raw.content : (typeof raw.body === 'string' ? raw.body : ''),
     image: raw.image ?? null,
     imageAlt: raw.imageAlt ?? null,
+    videoId: raw.videoId,
     reactions: {
       amen: Number(rxn.amen ?? rxn['🙏'] ?? 0) || 0,
       pray: Number(rxn.pray ?? rxn['🙏'] ?? 0) || 0,
@@ -113,7 +115,7 @@ export function useFeedPosts(filter: 'network' | 'following' = 'network') {
 export function useCreatePost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; wallUserId?: string; wallUserName?: string; prayerStatus?: 'unanswered' | 'answered' }) =>
+    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; wallUserId?: string; wallUserName?: string; image?: string; imageAlt?: string; videoId?: string; prayerStatus?: 'unanswered' | 'answered' }) =>
       api<FeedPost>('/posts', { method: 'POST', body: JSON.stringify(post) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
