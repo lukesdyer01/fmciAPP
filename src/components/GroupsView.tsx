@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import { useUIStore } from '../store/ui'
+import { useOpenProfile } from './ProfileView'
 import { api } from '../api-client/server'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
@@ -32,6 +33,15 @@ function GroupThumb({ group, height }: { group: Group; height: string }) {
     )
 }
 
+interface GroupMember {
+  id: string
+  name: string
+  title: string
+  church: string
+  avatarUrl: string
+  isAdmin: boolean
+}
+
 const TYPE_STYLE: Record<Group['type'], { color: string; bg: string }> = {
   'Leadership-Only': { color: '#92700A', bg: '#FBF5E6' },
   'Private':         { color: '#1D4ED8', bg: '#EFF6FF' },
@@ -42,14 +52,23 @@ const TYPE_STYLE: Record<Group['type'], { color: string; bg: string }> = {
 function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBack: () => void; onLeft: () => void; onUpdated: () => void }) {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
+  const openProfile = useOpenProfile()
   const [tab, setTab] = useState<'posts' | 'members' | 'about'>('posts')
   const [postText, setPostText] = useState('')
   const [localPosts, setLocalPosts] = useState<{ author: string; avatar: string; time: string; content: string }[]>([])
   const [leaving, setLeaving] = useState(false)
+  const [joining, setJoining] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
+  const [members, setMembers] = useState<GroupMember[] | null>(null)
   const userProfile = useUIStore(s => s.userProfile)
   const ts = TYPE_STYLE[group.type]
   const canEdit = (!!currentUser && Array.isArray(group.admins) && group.admins.includes(currentUser.id)) || role === 'admin' || role === 'superadmin'
+
+  useEffect(() => {
+    if (tab === 'members' && members === null) {
+      api<GroupMember[]>(`/groups/${group.id}/members`).then(setMembers).catch(() => setMembers([]))
+    }
+  }, [tab, group.id])
 
   async function handleLeave() {
     if (!window.confirm(`Leave ${group.name}?`)) return
@@ -59,6 +78,16 @@ function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBac
       onLeft()
     } catch {
       setLeaving(false)
+    }
+  }
+
+  async function handleJoin() {
+    setJoining(true)
+    try {
+      await api(`/groups/${group.id}/join`, { method: 'POST' })
+      onUpdated()
+    } finally {
+      setJoining(false)
     }
   }
 
@@ -106,12 +135,21 @@ function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBac
                   color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
                 }}>✏ Edit Group</button>
               )}
-              <button onClick={handleLeave} disabled={leaving} style={{
-                padding: '9px 20px', borderRadius: '8px', cursor: leaving ? 'default' : 'pointer',
-                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
-                color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
-                opacity: leaving ? 0.6 : 1,
-              }}>{leaving ? 'Leaving…' : 'Leave Group'}</button>
+              {group.joined ? (
+                <button onClick={handleLeave} disabled={leaving} style={{
+                  padding: '9px 20px', borderRadius: '8px', cursor: leaving ? 'default' : 'pointer',
+                  border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                  opacity: leaving ? 0.6 : 1,
+                }}>{leaving ? 'Leaving…' : 'Leave Group'}</button>
+              ) : (
+                <button onClick={handleJoin} disabled={joining} style={{
+                  padding: '9px 20px', borderRadius: '8px', cursor: joining ? 'default' : 'pointer',
+                  border: 'none', backgroundColor: 'var(--color-navy)',
+                  color: '#fff', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                  opacity: joining ? 0.6 : 1,
+                }}>{joining ? 'Joining…' : 'Join Group'}</button>
+              )}
             </div>
           </div>
         </div>
@@ -137,6 +175,7 @@ function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBac
       {tab === 'posts' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* Composer */}
+          {group.joined && (
           <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '14px 16px' }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               {userProfile.avatarUrl
@@ -170,6 +209,7 @@ function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBac
               </div>
             </div>
           </div>
+          )}
 
           {localPosts.length === 0 && (
             <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontSize: '14px' }}>
@@ -212,9 +252,45 @@ function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBac
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--color-border)', fontSize: '14px', fontWeight: 700, color: 'var(--color-text-1)' }}>
             {group.members} Members
           </div>
-          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>
-            {group.members} members in this group
-          </div>
+          {members === null && (
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>Loading members…</div>
+          )}
+          {members !== null && members.length === 0 && (
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>No members yet.</div>
+          )}
+          {members !== null && members.length > 0 && (
+            <div>
+              {members.map(m => (
+                <div key={m.id} onClick={() => openProfile(m.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
+                  borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer',
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--color-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent' }}
+                >
+                  {m.avatarUrl
+                    ? <img src={m.avatarUrl} alt={m.name} style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '15px' }}>{(m.name || '?').slice(0, 2).toUpperCase()}</div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--color-text-1)' }}>{m.name}</div>
+                    {(m.title || m.church) && (
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {[m.title, m.church].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                  {m.isAdmin && (
+                    <span style={{
+                      fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
+                      backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)',
+                      border: '1px solid var(--color-gold-border)', flexShrink: 0,
+                    }}>Admin</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -480,7 +556,7 @@ export default function GroupsView() {
               cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
               display: 'flex', flexDirection: 'column',
             }}
-              onClick={() => { if (group.joined) setSelectedGroup(group) }}
+              onClick={() => setSelectedGroup(group)}
               onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'none' }}
             >

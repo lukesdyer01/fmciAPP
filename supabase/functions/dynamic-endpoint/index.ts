@@ -967,6 +967,33 @@ app.post(`${BASE}/groups/:id/leave`, async (c) => {
   return c.json(serializeGroup(updated, caller.id));
 });
 
+// Any signed-in member can see a group's roster, not just its own members —
+// membership itself, and Leadership-Only/Private/Invite-Only access, still
+// gate joining and posting, but the member list is public within the network.
+app.get(`${BASE}/groups/:id/members`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const groups = await kv.get("groups") ?? [];
+  const group = groups.find((g: any) => g.id === id);
+  if (!group) return c.json({ error: "Group not found" }, 404);
+  const memberIds = new Set(Array.isArray(group.memberIds) ? group.memberIds : []);
+  const admins = new Set(Array.isArray(group.admins) ? group.admins : []);
+  const users = await listAuthUsers();
+  const members = users
+    .filter((u: any) => memberIds.has(u.id))
+    .map((u: any) => ({
+      id: u.id,
+      name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "",
+      title: u.user_metadata?.title ?? "",
+      church: u.user_metadata?.church ?? "",
+      avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
+      isAdmin: admins.has(u.id),
+    }))
+    .sort((a: any, b: any) => Number(b.isAdmin) - Number(a.isAdmin));
+  return c.json(members);
+});
+
 app.put(`${BASE}/orgs`, async (c) => {
   const body = await c.req.json();
   const previous = await kv.get("orgs") ?? SEED_ORGS;
