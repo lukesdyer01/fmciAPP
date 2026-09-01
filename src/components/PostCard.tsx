@@ -311,23 +311,11 @@ export default function PostCard({ post }: { post: Post }) {
           padding: '10px 4px', border: 'none', cursor: 'pointer',
           backgroundColor: 'transparent', color: 'var(--color-text-2)',
           fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 500, transition: 'background 0.15s',
-          borderRight: '1px solid var(--color-border)',
         }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
         >
           <span style={{ fontSize: '16px' }}>💬</span> Comment
-        </button>
-        <button style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          padding: '10px 4px', border: 'none', cursor: 'pointer',
-          backgroundColor: 'transparent', color: 'var(--color-text-2)',
-          fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 500, transition: 'background 0.15s',
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-        >
-          <span style={{ fontSize: '16px' }}>↗️</span> Share
         </button>
       </div>
 

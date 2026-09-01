@@ -8,7 +8,7 @@ interface Props {
 const NAV: { id: ActiveView; icon: string; label: string }[] = [
   { id: 'feed',      icon: '🏠', label: 'Home Feed' },
   { id: 'directory', icon: '👤', label: 'Member Directory' },
-  { id: 'orgs',      icon: '🏛', label: 'My Organizations' },
+  { id: 'orgs',      icon: '🏛', label: 'Ministries' },
   { id: 'groups',    icon: '👥', label: 'Groups' },
   { id: 'prayer',    icon: '🙏', label: 'Prayer Requests' },
   { id: 'events',    icon: '📅', label: 'Events' },

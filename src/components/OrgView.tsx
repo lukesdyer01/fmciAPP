@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../api-client/server'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../providers/AuthProvider'
 
 interface OrgMember {
   userId: string
@@ -20,8 +21,11 @@ interface MyOrg {
   website: string
   verified: boolean
   status: string
+  img: string
   features: string[]
   members: OrgMember[]
+  following: boolean
+  followerCount: number
   createdAt: string
 }
 
@@ -39,7 +43,14 @@ const ORG_TYPES = [
   { value: 'bible_college', label: 'Bible College' },
   { value: 'school', label: 'School' },
   { value: 'nonprofit', label: 'Nonprofit' },
+  { value: 'headquarters', label: 'Headquarters' },
+  { value: 'region', label: 'Region' },
+  { value: 'council', label: 'Council' },
 ]
+
+function typeLabel(type: string): string {
+  return ORG_TYPES.find(t => t.value === type)?.label ?? type
+}
 
 const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   owner:     { bg: 'rgba(200,155,60,0.1)',   color: 'var(--color-gold)' },
@@ -60,14 +71,48 @@ function input(): React.CSSProperties {
   return { width: '100%', padding: '9px 12px', boxSizing: 'border-box', border: '1.5px solid var(--color-border)', borderRadius: '8px', fontSize: '14px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)', backgroundColor: 'var(--color-surface)', outline: 'none' }
 }
 
+function OrgLogo({ org, size }: { org: Pick<MyOrg, 'name' | 'img'>; size: number }) {
+  return org.img
+    ? <img src={org.img} alt={org.name} style={{ width: size, height: size, borderRadius: size / 4, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+    : (
+      <div style={{
+        width: size, height: size, borderRadius: size / 4, flexShrink: 0,
+        background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4,
+      }}>🏛</div>
+    )
+}
+
 // ── Create Org Form ──────────────────────────────────────────────────────────
 function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', website: '' })
+  const { currentUser } = useAuth()
+  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', website: '', img: '' })
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
 
   function set(key: keyof typeof form, val: string) {
     setForm(f => ({ ...f, [key]: val }))
+  }
+
+  async function handleImageFile(file: File) {
+    if (!currentUser) return
+    setUploading(true); setErr('')
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/org-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      set('img', data.publicUrl)
+    } catch (e: any) {
+      setErr(e.message ?? 'Failed to upload image.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   async function handleCreate() {
@@ -85,7 +130,27 @@ function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '24px', marginBottom: '20px' }}>
-      <h2 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)', fontFamily: 'var(--font-serif)' }}>Create New Organization</h2>
+      <h2 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)', fontFamily: 'var(--font-serif)' }}>Create New Ministry</h2>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+        <div onClick={() => fileRef.current?.click()} style={{ cursor: 'pointer', position: 'relative' }}>
+          <OrgLogo org={{ name: form.name || 'New', img: form.img }} size={56} />
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.15s', fontSize: '16px',
+          }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
+          >📷</div>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>{uploading ? 'Uploading…' : 'Logo / Photo'}</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>Click to {form.img ? 'change' : 'upload'} (optional)</div>
+        </div>
+      </div>
+
       <div className="grid-2-lg" style={{ marginBottom: '16px' }}>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={label()}>Organization Name *</label>
@@ -111,14 +176,14 @@ function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
         </div>
       </div>
       <div style={{ fontSize: '12px', color: 'var(--color-text-3)', marginBottom: '16px', lineHeight: 1.6 }}>
-        New organizations are submitted for approval. You will be set as owner and can manage members immediately.
+        You'll be set as owner and can manage members and content immediately.
       </div>
       {err && <div style={{ fontSize: '13px', color: '#dc2626', marginBottom: '12px', fontWeight: 600 }}>{err}</div>}
       <button
         onClick={handleCreate}
-        disabled={saving}
+        disabled={saving || uploading}
         style={{ padding: '10px 28px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}
-      >{saving ? 'Creating…' : 'Create Organization'}</button>
+      >{saving ? 'Creating…' : 'Create Ministry'}</button>
     </div>
   )
 }
@@ -298,46 +363,67 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
 }
 
 // ── Org Card ─────────────────────────────────────────────────────────────────
-function OrgCard({ org, currentUserId, onManage }: { org: MyOrg; currentUserId: string; onManage: () => void }) {
+function OrgCard({ org, currentUserId, isMember, onManage, onFollowToggle, followBusy }: {
+  org: MyOrg
+  currentUserId: string
+  isMember: boolean
+  onManage: () => void
+  onFollowToggle: () => void
+  followBusy: boolean
+}) {
   const myRole = org.members.find(m => m.userId === currentUserId)?.role
   const rs = ROLE_STYLE[myRole ?? 'moderator']
   const ss = STATUS_STYLE[org.status] ?? STATUS_STYLE.pending
-  const typeLabel = ORG_TYPES.find(t => t.value === org.type)?.label ?? org.type
   const canManage = myRole === 'owner' || myRole === 'admin'
 
   return (
     <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
       <div style={{ height: '6px', background: 'linear-gradient(90deg, var(--color-navy), var(--color-navy-light, #2d4a8a))' }} />
       <div style={{ padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '10px' }}>
+          <OrgLogo org={org} size={44} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
               <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.name}</span>
               {org.verified && <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 7px', borderRadius: '8px', backgroundColor: '#ECFDF5', color: '#047857' }}>✓ Verified</span>}
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>{typeLabel}{org.location ? ` · ${org.location}` : ''}</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>{typeLabel(org.type)}{org.location ? ` · ${org.location}` : ''}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end', flexShrink: 0 }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 9px', borderRadius: '8px', backgroundColor: rs.bg, color: rs.color, textTransform: 'capitalize' }}>Your role: {myRole}</span>
+            {isMember && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 9px', borderRadius: '8px', backgroundColor: rs.bg, color: rs.color, textTransform: 'capitalize' }}>{myRole}</span>}
             <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '8px', backgroundColor: ss.bg, color: ss.color }}>{ss.label}</span>
           </div>
         </div>
         {org.description && <div style={{ fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.6, marginBottom: '12px' }}>{org.description}</div>}
         <div style={{ display: 'flex', gap: '16px', marginBottom: '14px' }}>
           <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.members.length}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Members</div></div>
+          <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.followerCount}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Followers</div></div>
           {org.website && <div style={{ fontSize: '13px', color: 'var(--color-navy)', alignSelf: 'center' }}>{org.website}</div>}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          {canManage && (
+          {isMember && canManage && (
             <button
               onClick={onManage}
               style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
             >Manage Members</button>
           )}
-          {!canManage && (
+          {isMember && !canManage && (
             <div style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: 'var(--color-surface)', fontSize: '13px', color: 'var(--color-text-3)', textAlign: 'center' }}>
               Moderator — contact an admin to manage members
             </div>
+          )}
+          {!isMember && (
+            <button
+              onClick={onFollowToggle}
+              disabled={followBusy}
+              style={{
+                flex: 1, padding: '8px', borderRadius: '8px', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
+                border: org.following ? '1px solid var(--color-border)' : 'none',
+                backgroundColor: org.following ? 'var(--color-surface)' : 'var(--color-navy)',
+                color: org.following ? 'var(--color-text-1)' : '#fff',
+                opacity: followBusy ? 0.6 : 1,
+              }}
+            >{followBusy ? '…' : org.following ? '✓ Following' : '+ Follow'}</button>
           )}
         </div>
       </div>
@@ -347,11 +433,14 @@ function OrgCard({ org, currentUserId, onManage }: { org: MyOrg; currentUserId: 
 
 // ── Main View ─────────────────────────────────────────────────────────────────
 export default function OrgView() {
+  const [tab, setTab] = useState<'my' | 'discover'>('my')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
   const [orgs, setOrgs] = useState<MyOrg[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [managingOrg, setManagingOrg] = useState<MyOrg | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string>('')
+  const [followBusyId, setFollowBusyId] = useState<string | null>(null)
 
   async function load() {
     try {
@@ -374,66 +463,127 @@ export default function OrgView() {
     setShowCreate(false)
     setLoading(true)
     await load()
+    setTab('my')
   }
 
   async function handleMemberUpdate() {
     await load()
-    if (managingOrg) {
-      const updated = orgs.find(o => o.id === managingOrg.id)
-      if (updated) setManagingOrg(updated)
-    }
   }
 
   // After reload, sync the managing panel with fresh data
   useEffect(() => {
     if (managingOrg) {
       const fresh = orgs.find(o => o.id === managingOrg.id)
-      if (fresh) setManagingOrg(fresh)
+      setManagingOrg(fresh ?? null)
     }
   }, [orgs])
+
+  async function toggleFollow(org: MyOrg) {
+    setFollowBusyId(org.id)
+    try {
+      await api(`/orgs/${org.id}/${org.following ? 'unfollow' : 'follow'}`, { method: 'POST' })
+      await load()
+    } finally {
+      setFollowBusyId(null)
+    }
+  }
+
+  const isMember = (org: MyOrg) => org.members.some(m => m.userId === currentUserId)
+  const myOrgs = orgs.filter(isMember)
+  const discoverOrgs = orgs.filter(o => !isMember(o))
+
+  const availableTypes = Array.from(new Set(orgs.map(o => o.type))).sort()
+
+  const tabOrgs = (tab === 'my' ? myOrgs : discoverOrgs).filter(o => typeFilter === 'all' || o.type === typeFilter)
 
   return (
     <div className="org-view-container" style={{ maxWidth: '960px', margin: '0 auto', paddingRight: managingOrg ? '440px' : '0', transition: 'padding-right 0.25s' }}>
       {/* Header */}
       <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '20px 24px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>My Organizations</h1>
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Manage your churches, ministries, and networks</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Ministries</h1>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Churches, ministries, and networks across the FMCI network</p>
         </div>
         <button
           onClick={() => setShowCreate(v => !v)}
           style={{ padding: '10px 22px', borderRadius: '8px', border: 'none', backgroundColor: showCreate ? 'var(--color-border)' : 'var(--color-navy)', color: showCreate ? 'var(--color-text-1)' : '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
-        >{showCreate ? 'Cancel' : '+ New Organization'}</button>
+        >{showCreate ? 'Cancel' : '+ New Ministry'}</button>
       </div>
 
       {showCreate && <CreateOrgForm onCreated={handleOrgCreated} />}
 
-      {loading && (
-        <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading organizations…</div>
-      )}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        {([
+          { id: 'my' as const, label: `My Ministries (${myOrgs.length})` },
+          { id: 'discover' as const, label: `Discover (${discoverOrgs.length})` },
+        ]).map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            padding: '9px 22px', borderRadius: '8px', cursor: 'pointer',
+            fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
+            backgroundColor: tab === t.id ? 'var(--color-navy)' : 'var(--color-card)',
+            color: tab === t.id ? '#fff' : 'var(--color-text-2)',
+            border: tab === t.id ? 'none' : '1px solid var(--color-border)',
+            transition: 'all 0.15s',
+          }}>{t.label}</button>
+        ))}
+      </div>
 
-      {!loading && orgs.length === 0 && (
-        <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '60px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🏛</div>
-          <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--color-text-1)', marginBottom: '8px', fontFamily: 'var(--font-serif)' }}>No organizations yet</div>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.7, maxWidth: '400px', margin: '0 auto 20px' }}>
-            Create your church, ministry, or network to post on its behalf and manage its members.
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            style={{ padding: '10px 28px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
-          >Create Your First Organization</button>
+      {/* Type filter */}
+      {availableTypes.length > 1 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          <button onClick={() => setTypeFilter('all')} style={{
+            padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 600,
+            border: `1px solid ${typeFilter === 'all' ? 'var(--color-navy)' : 'var(--color-border)'}`,
+            backgroundColor: typeFilter === 'all' ? 'var(--color-navy)' : 'transparent',
+            color: typeFilter === 'all' ? '#fff' : 'var(--color-text-2)',
+          }}>All Types</button>
+          {availableTypes.map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)} style={{
+              padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 600,
+              border: `1px solid ${typeFilter === t ? 'var(--color-navy)' : 'var(--color-border)'}`,
+              backgroundColor: typeFilter === t ? 'var(--color-navy)' : 'transparent',
+              color: typeFilter === t ? '#fff' : 'var(--color-text-2)',
+            }}>{typeLabel(t)}</button>
+          ))}
         </div>
       )}
 
-      {!loading && orgs.length > 0 && (
+      {loading && (
+        <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading ministries…</div>
+      )}
+
+      {!loading && tabOrgs.length === 0 && (
+        <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '60px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🏛</div>
+          <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--color-text-1)', marginBottom: '8px', fontFamily: 'var(--font-serif)' }}>
+            {tab === 'my' ? "You're not part of any ministries yet" : 'Nothing to discover right now'}
+          </div>
+          <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.7, maxWidth: '400px', margin: '0 auto 20px' }}>
+            {tab === 'my'
+              ? 'Create your church, ministry, or network, or browse Discover to follow others.'
+              : typeFilter !== 'all' ? 'Try a different type filter.' : "You're already part of everything else on the network."}
+          </div>
+          {tab === 'my' && (
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{ padding: '10px 28px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+            >Create Your First Ministry</button>
+          )}
+        </div>
+      )}
+
+      {!loading && tabOrgs.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
-          {orgs.map(org => (
+          {tabOrgs.map(org => (
             <OrgCard
               key={org.id}
               org={org}
               currentUserId={currentUserId}
+              isMember={isMember(org)}
               onManage={() => setManagingOrg(managingOrg?.id === org.id ? null : org)}
+              onFollowToggle={() => toggleFollow(org)}
+              followBusy={followBusyId === org.id}
             />
           ))}
         </div>
