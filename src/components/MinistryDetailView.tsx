@@ -3,7 +3,7 @@ import { api } from '../api-client/server'
 import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
 import CreateEventModal from './CreateEventModal'
-import { EventCard, type EventItem } from './EventCard'
+import { EventCard, UpcomingEvents, type EventItem } from './EventCard'
 import { useFeedPosts } from '../api-client/posts'
 
 interface OrgMember {
@@ -73,7 +73,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
     }
   }
 
-  useEffect(() => { if (tab === 'events') loadEvents() }, [tab])
+  useEffect(() => { loadEvents() }, [])
 
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto' }}>
@@ -134,6 +134,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
       {tab === 'feed' && (
         <div>
           <PostComposer fixedOrgId={ministry.id} fixedOrgName={ministry.name} placeholder={`Share something with ${ministry.name}…`} />
+          <UpcomingEvents events={events} onChanged={loadEvents} showOrg={false} />
           {postsLoading && (
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading posts…</div>
           )}

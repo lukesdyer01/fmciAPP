@@ -13,6 +13,7 @@ export interface EventItem {
   time: string
   location: string
   img: string
+  infoUrl?: string
   type: string
   access: string
   price: string
@@ -30,6 +31,27 @@ export const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
   'Prayer Call':        { color: '#6D28D9', bg: '#F5F3FF' },
   'Teaching':           { color: '#92700A', bg: '#FBF5E6' },
   'Leadership Meeting': { color: '#C2410C', bg: '#FFF7ED' },
+}
+
+export function UpcomingEvents({ events, onChanged, showOrg = true }: { events: EventItem[]; onChanged: () => void; showOrg?: boolean }) {
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const upcoming = events
+    .filter(e => !e.date || e.date >= todayStr)
+    .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
+    .slice(0, 2)
+
+  if (upcoming.length === 0) return null
+
+  return (
+    <div style={{ marginBottom: '18px' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: '10px' }}>📅 Upcoming Events</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {upcoming.map(event => (
+          <EventCard key={event.id} event={event} onChanged={onChanged} showOrg={showOrg} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function EventCard({ event, onChanged, showOrg = true }: { event: EventItem; onChanged: () => void; showOrg?: boolean }) {
@@ -116,6 +138,14 @@ export function EventCard({ event, onChanged, showOrg = true }: { event: EventIt
             </div>
           ))}
         </div>
+        {event.infoUrl && (
+          <div style={{ marginBottom: '16px' }}>
+            <a href={event.infoUrl} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none',
+            }}>🔗 More Info</a>
+          </div>
+        )}
         {event.speakers.length > 0 && (
           <div style={{ marginBottom: '16px' }}>
             <div style={{ fontSize: '12px', color: 'var(--color-text-3)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Speakers</div>

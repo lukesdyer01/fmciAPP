@@ -362,6 +362,7 @@ app.post(`${BASE}/events`, async (c) => {
     time: body.time ?? "",
     location: body.location ?? "",
     img: body.img ?? "",
+    infoUrl: body.infoUrl ?? "",
     type: body.type ?? "Conference",
     access: body.access ?? "Open to all",
     price: body.price ?? "Free",

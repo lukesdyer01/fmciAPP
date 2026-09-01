@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
 import DirectoryView from './DirectoryView'
@@ -7,8 +7,10 @@ import PrayerRequestsView from './PrayerRequestsView'
 import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
 import OrgView from './OrgView'
+import { UpcomingEvents, type EventItem } from './EventCard'
 import type { ActiveView } from '../App'
 import { useFeedPosts } from '../api-client/posts'
+import { api } from '../api-client/server'
 
 type FeedFilter = 'network' | 'following'
 
@@ -75,14 +77,21 @@ function FeedToggle({ filter, setFilter }: { filter: FeedFilter; setFilter: (f: 
 function MainFeed() {
   const [filter, setFilter] = useState<FeedFilter>('network')
   const { data: allPosts, isLoading, isError } = useFeedPosts(filter)
+  const [events, setEvents] = useState<EventItem[]>([])
 
   // Filter out truly orphaned posts (completely missing author)
   const posts = allPosts?.filter(p => p.author && p.author.trim() !== '')
+
+  function loadEvents() {
+    api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
+  }
+  useEffect(() => { loadEvents() }, [])
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
       <FeedToggle filter={filter} setFilter={setFilter} />
       <PostComposer />
+      <UpcomingEvents events={events} onChanged={loadEvents} />
       {isLoading && [1, 2, 3].map(i => <PostSkeleton key={i} />)}
       {isError && (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>

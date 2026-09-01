@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { api } from '../api-client/server'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../providers/AuthProvider'
 
 const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting']
 
@@ -9,6 +11,7 @@ export default function CreateEventModal({ orgId, orgName, onClose, onCreated }:
   onClose: () => void
   onCreated: () => void
 }) {
+  const { currentUser } = useAuth()
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
@@ -16,8 +19,31 @@ export default function CreateEventModal({ orgId, orgName, onClose, onCreated }:
   const [type, setType] = useState(EVENT_TYPES[0])
   const [access, setAccess] = useState('Open to all')
   const [price, setPrice] = useState('Free')
+  const [img, setImg] = useState('')
+  const [infoUrl, setInfoUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleImageFile(file: File) {
+    if (!currentUser) return
+    setUploading(true); setErr('')
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/event-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      setImg(data.publicUrl)
+    } catch (e: any) {
+      setErr(e.message ?? 'Failed to upload image.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function handleCreate() {
     if (!title.trim()) { setErr('Event title is required.'); return }
@@ -26,7 +52,7 @@ export default function CreateEventModal({ orgId, orgName, onClose, onCreated }:
       await api('/events', {
         method: 'POST',
         body: JSON.stringify({
-          title: title.trim(), date, time, location, type, access, price,
+          title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim(),
           host: orgName ?? '', orgId, orgName, official: !!orgId,
         }),
       })
@@ -60,6 +86,30 @@ export default function CreateEventModal({ orgId, orgName, onClose, onCreated }:
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div onClick={() => fileRef.current?.click()} style={{ cursor: 'pointer', position: 'relative' }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 14, flexShrink: 0, overflow: 'hidden',
+                background: img ? undefined : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
+              }}>
+                {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '📅'}
+              </div>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.15s', fontSize: '16px',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
+              >📷</div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>{uploading ? 'Uploading…' : 'Event Image'}</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>Click to {img ? 'change' : 'upload'} (optional)</div>
+            </div>
+          </div>
           <div>
             <label style={labelStyle}>Event Title *</label>
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Annual Leadership Summit" style={inputStyle} autoFocus />
@@ -94,13 +144,17 @@ export default function CreateEventModal({ orgId, orgName, onClose, onCreated }:
             <label style={labelStyle}>Access</label>
             <input value={access} onChange={e => setAccess(e.target.value)} placeholder="Open to all" style={inputStyle} />
           </div>
+          <div>
+            <label style={labelStyle}>More Info URL</label>
+            <input value={infoUrl} onChange={e => setInfoUrl(e.target.value)} placeholder="https://…" style={inputStyle} />
+          </div>
           {err && (
             <div style={{ padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red)' }}>{err}</div>
           )}
         </div>
         <div style={{ display: 'flex', gap: '10px', padding: '16px 24px', borderTop: '1px solid var(--color-border)' }}>
           <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-2)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Cancel</button>
-          <button onClick={handleCreate} disabled={saving} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)', color: '#fff', fontSize: '14px', fontWeight: 800, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}>
+          <button onClick={handleCreate} disabled={saving || uploading} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)', color: '#fff', fontSize: '14px', fontWeight: 800, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Creating…' : 'Create Event'}
           </button>
         </div>
