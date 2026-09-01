@@ -19,6 +19,7 @@ interface MyOrg {
   type: string
   description: string
   location: string
+  address?: string
   website: string
   verified: boolean
   status: string
@@ -88,7 +89,7 @@ function OrgLogo({ org, size }: { org: Pick<MyOrg, 'name' | 'img'>; size: number
 // ── Create Org Form ──────────────────────────────────────────────────────────
 function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
   const { currentUser } = useAuth()
-  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', website: '', img: '' })
+  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', address: '', website: '', img: '' })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
@@ -167,6 +168,10 @@ function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
         <div>
           <label style={label()}>Location</label>
           <input value={form.location} onChange={e => set('location', e.target.value)} style={input()} placeholder="City, Country" />
+        </div>
+        <div>
+          <label style={label()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional — pins it precisely on the Global Map)</span></label>
+          <input value={form.address} onChange={e => set('address', e.target.value)} style={input()} placeholder="123 Main St, City, State ZIP" />
         </div>
         <div>
           <label style={label()}>Website</label>

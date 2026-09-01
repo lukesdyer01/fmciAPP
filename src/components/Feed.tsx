@@ -7,6 +7,7 @@ import PrayerRequestsView from './PrayerRequestsView'
 import TestimoniesView from './TestimoniesView'
 import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
+import GlobalMapView from './GlobalMapView'
 import AboutView from './AboutView'
 import OrgView from './OrgView'
 import { EventCard, type EventItem } from './EventCard'
@@ -156,6 +157,7 @@ export default function Feed({ activeView }: { activeView: ActiveView }) {
   if (activeView === 'testimonies') return <TestimoniesView />
   if (activeView === 'events')    return <EventsView />
   if (activeView === 'resources') return <ResourcesView />
+  if (activeView === 'map')       return <GlobalMapView />
   if (activeView === 'about')     return <AboutView />
 
   return <MainFeed />

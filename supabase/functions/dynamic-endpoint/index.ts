@@ -241,6 +241,52 @@ app.put(`${BASE}/profile`, async (c) => {
 
 app.get(`${BASE}/orgs`, async (c) => c.json(await kv.get("orgs") ?? SEED_ORGS));
 
+// Geocodes each active org's address (or city/state) once via Nominatim and
+// caches lat/lng permanently on the org record — later calls just read the
+// cache, so this only ever hits the geocoder for a genuinely new location.
+app.get(`${BASE}/orgs/locations`, async (c) => {
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const active = orgs.filter((o: any) => o.status === "active");
+  let changed = false;
+  const results = [];
+  for (const o of active) {
+    const summary = { id: o.id, name: o.name, type: o.type, location: o.location, address: o.address, img: o.img, verified: o.verified };
+    if (o.lat != null && o.lng != null) {
+      results.push({ ...summary, lat: o.lat, lng: o.lng });
+      continue;
+    }
+    if (o.geocodeFailed) {
+      results.push({ ...summary, lat: null, lng: null });
+      continue;
+    }
+    const query = (o.address ?? "").trim() || (o.location ?? "").trim();
+    if (!query) { results.push({ ...summary, lat: null, lng: null }); continue; }
+    try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`, {
+        headers: { "User-Agent": "FMCI-Network-App/1.0" },
+      });
+      const geoData = await geoRes.json();
+      if (Array.isArray(geoData) && geoData[0]) {
+        o.lat = parseFloat(geoData[0].lat);
+        o.lng = parseFloat(geoData[0].lon);
+        changed = true;
+        results.push({ ...summary, lat: o.lat, lng: o.lng });
+      } else {
+        o.geocodeFailed = true;
+        changed = true;
+        results.push({ ...summary, lat: null, lng: null });
+      }
+    } catch {
+      // Network hiccup — don't cache a failure, just skip it for this request and retry next time.
+      results.push({ ...summary, lat: null, lng: null });
+    }
+    // Be a good citizen of Nominatim's free tier (~1 req/sec) when geocoding more than one org.
+    await new Promise(r => setTimeout(r, 250));
+  }
+  if (changed) await kv.set("orgs", orgs);
+  return c.json(results);
+});
+
 function serializeOrg(o: any, callerId: string) {
   const members = Array.isArray(o.members) ? o.members : [];
   const followerIds = Array.isArray(o.followerIds) ? o.followerIds : [];
@@ -296,6 +342,7 @@ app.post(`${BASE}/orgs`, async (c) => {
     type: body.type ?? "church",
     description: body.description ?? "",
     location: body.location ?? "",
+    address: body.address ?? "",
     website: body.website ?? "",
     img: body.img ?? "",
     verified: false,
@@ -764,8 +811,19 @@ app.post(`${BASE}/groups/:id/leave`, async (c) => {
 
 app.put(`${BASE}/orgs`, async (c) => {
   const body = await c.req.json();
-  await kv.set("orgs", body);
-  return c.json(body);
+  const previous = await kv.get("orgs") ?? SEED_ORGS;
+  // If an admin edit changed an org's location/address, its cached geocode is
+  // stale — clear it so /orgs/locations re-geocodes on the next request.
+  const updated = body.map((o: any) => {
+    const prev = previous.find((p: any) => p.id === o.id);
+    if (prev && (prev.location !== o.location || prev.address !== o.address)) {
+      const { lat, lng, geocodeFailed, ...rest } = o;
+      return rest;
+    }
+    return o;
+  });
+  await kv.set("orgs", updated);
+  return c.json(updated);
 });
 
 app.get(`${BASE}/admin/users`, async (c) => {

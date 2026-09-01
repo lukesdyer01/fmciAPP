@@ -17,6 +17,7 @@ interface Org {
   parentName: string | null
   members: OrgMember[]
   location: string
+  address?: string
   website: string
   description: string
   verified: boolean
@@ -176,6 +177,10 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
               <input value={draft.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="City, State or Country" />
             </div>
             <div>
+              <label style={labelStyle()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(pins it precisely on the Global Map)</span></label>
+              <input value={draft.address ?? ''} onChange={e => set('address', e.target.value)} style={inputStyle()} placeholder="123 Main St, City, State ZIP" />
+            </div>
+            <div>
               <label style={labelStyle()}>Website</label>
               <input value={draft.website} onChange={e => set('website', e.target.value)} style={inputStyle()} placeholder="example.org" />
             </div>
@@ -299,7 +304,7 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
 
 // ── Create Org Modal ──────────────────────────────────────────────────────────
 function CreateOrgModal({ onClose, onCreate }: { onClose: () => void; onCreate: (org: Org) => void }) {
-  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', website: '' })
+  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', address: '', website: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -340,6 +345,10 @@ function CreateOrgModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
               <label style={labelStyle()}>Location</label>
               <input value={form.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="City, Country" />
             </div>
+          </div>
+          <div>
+            <label style={labelStyle()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+            <input value={form.address} onChange={e => set('address', e.target.value)} style={inputStyle()} placeholder="123 Main St, City, State ZIP" />
           </div>
           <div>
             <label style={labelStyle()}>Website</label>
