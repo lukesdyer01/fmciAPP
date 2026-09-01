@@ -126,6 +126,41 @@ app.get(`${BASE}/members`, async (c) => {
   return c.json(members);
 });
 
+// Called periodically by every signed-in client while the app is open —
+// powers the "Active Now" sidebar widget. Not admin-gated: any signed-in
+// member can see who else is currently active, same visibility as the
+// member directory itself.
+app.post(`${BASE}/heartbeat`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const res = await updateUserMeta(caller.id, { ...caller.user_metadata, lastActiveAt: new Date().toISOString() });
+  if (!res.ok) return c.json({ error: await res.text() }, res.status);
+  return c.json({ ok: true });
+});
+
+// Must be registered before the /members/:id route below — otherwise Hono
+// matches "active" as the :id param and this route never gets hit.
+app.get(`${BASE}/members/active`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const users = await listAuthUsers();
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  const active = users
+    .filter((u: any) => u.id !== caller.id)
+    .map((u: any) => ({ u, lastActiveAt: u.user_metadata?.lastActiveAt }))
+    .filter((x: any) => x.lastActiveAt && new Date(x.lastActiveAt).getTime() > cutoff)
+    .sort((a: any, b: any) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime())
+    .map(({ u, lastActiveAt }: any) => ({
+      id: u.id,
+      name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "",
+      avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
+      title: u.user_metadata?.title ?? "",
+      church: u.user_metadata?.church ?? "",
+      lastActiveAt,
+    }));
+  return c.json(active);
+});
+
 app.get(`${BASE}/members/:id`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);

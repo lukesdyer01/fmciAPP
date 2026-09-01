@@ -7,6 +7,7 @@ import { useUIStore } from './store/ui'
 import { useSupabaseRole } from './contexts/SupabaseRoleContext'
 import { useAuth } from './providers/AuthProvider'
 import { api } from './api-client/server'
+import { useHeartbeat } from './api-client/presence'
 import Topbar from './components/Topbar'
 import LeftSidebar from './components/LeftSidebar'
 import Feed from './components/Feed'
@@ -49,6 +50,8 @@ function AppShell() {
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
   const { role } = useSupabaseRole()
   const { currentUser } = useAuth()
+
+  useHeartbeat()
 
   useEffect(() => {
     // The signed-in user's Supabase Auth record is the single source of truth for

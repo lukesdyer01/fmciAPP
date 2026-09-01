@@ -6,6 +6,7 @@ import EditProfileModal from './EditProfileModal'
 import VerifiedBadge from './VerifiedBadge'
 import { api } from '../api-client/server'
 import { useFeedPosts } from '../api-client/posts'
+import { useActiveMembers } from '../api-client/presence'
 import type { EventItem } from './EventCard'
 
 interface VerificationRequest {
@@ -224,6 +225,47 @@ function SidebarEvents() {
   )
 }
 
+function ActiveUsersWidget() {
+  const openProfile = useOpenProfile()
+  const { data: active } = useActiveMembers()
+  const shown = (active ?? []).slice(0, 8)
+
+  if (shown.length === 0) return null
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)', borderRadius: '12px',
+      border: '1px solid var(--color-border)', padding: '14px 16px', marginBottom: '12px',
+    }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>
+        🟢 Active Now {active && active.length > 0 && <span style={{ color: 'var(--color-text-3)' }}>· {active.length}</span>}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {shown.map(m => (
+          <div key={m.id} onClick={() => openProfile(m.id)} style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer' }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              {m.avatarUrl
+                ? <img src={m.avatarUrl} alt={m.name} style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover', display: 'block' }} />
+                : <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '13px' }}>{(m.name || '?').slice(0, 2).toUpperCase()}</div>
+              }
+              <span style={{
+                position: 'absolute', bottom: '-2px', right: '-2px', width: '11px', height: '11px', borderRadius: '50%',
+                backgroundColor: '#22c55e', border: '2px solid var(--color-card)',
+              }} />
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
+              {(m.title || m.church) && (
+                <div style={{ fontSize: '11px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[m.title, m.church].filter(Boolean).join(' · ')}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function AboutFmciBox() {
   const setActiveView = useUIStore(s => s.setActiveView)
 
@@ -332,6 +374,8 @@ export default function RightSidebar() {
       <ProfileChecklist />
 
       {onHomeFeed && <SidebarEvents />}
+
+      {onHomeFeed && <ActiveUsersWidget />}
 
       <AboutFmciBox />
 
