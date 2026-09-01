@@ -39,6 +39,9 @@ interface UIState {
   leftSidebarCollapsed: boolean
   toggleLeftSidebar: () => void
 
+  mobileNavOpen: boolean
+  setMobileNavOpen: (open: boolean) => void
+
   composerDraft: string
   setComposerDraft: (text: string) => void
   clearComposerDraft: () => void
@@ -64,13 +67,16 @@ interface UIState {
 
 export const useUIStore = create<UIState>(set => ({
   activeView: 'feed',
-  setActiveView: view => set({ activeView: view, notifOpen: false }),
+  setActiveView: view => set({ activeView: view, notifOpen: false, mobileNavOpen: false }),
 
   notifOpen: false,
   setNotifOpen: open => set({ notifOpen: open }),
 
   leftSidebarCollapsed: false,
   toggleLeftSidebar: () => set(s => ({ leftSidebarCollapsed: !s.leftSidebarCollapsed })),
+
+  mobileNavOpen: false,
+  setMobileNavOpen: open => set({ mobileNavOpen: open }),
 
   composerDraft: '',
   setComposerDraft: text => set({ composerDraft: text }),

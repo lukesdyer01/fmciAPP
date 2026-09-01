@@ -14,6 +14,7 @@ import RightSidebar from './components/RightSidebar'
 import AdminShell from './components/admin/AdminShell'
 import ProfileView from './components/ProfileView'
 import MessagesPanel from './components/MessagesPanel'
+import MobileNavDrawer from './components/MobileNavDrawer'
 import AuthGate from './components/AuthGate'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -44,6 +45,7 @@ function AppShell() {
   const profileId = useUIStore(s => s.profileId)
   const closeProfile = useUIStore(s => s.closeProfile)
   const messagesOpen = useUIStore(s => s.messagesOpen)
+  const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
   const { role } = useSupabaseRole()
   const { currentUser } = useAuth()
@@ -92,6 +94,7 @@ function AppShell() {
         <RightSidebar />
       </div>
       {messagesOpen && <MessagesPanel />}
+      {mobileNavOpen && <MobileNavDrawer />}
     </div>
   )
 }

@@ -167,6 +167,7 @@ export default function Topbar() {
   const closeProfile = useUIStore(s => s.closeProfile)
   const openProfile = useOpenProfile()
   const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
+  const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
   const { data: conversations } = useConversations()
   const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
   const [search, setSearch] = useState('')
@@ -188,6 +189,20 @@ export default function Topbar() {
       padding: '0 16px', gap: '12px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
     }}>
+      {/* Hamburger — mobile only, opens the slide-out nav drawer. `display` is
+          intentionally omitted from the inline style and owned entirely by the
+          .mobile-nav-toggle CSS class, since an inline display would always
+          beat the class's responsive show/hide (inline styles win the cascade). */}
+      <button className="mobile-nav-toggle" onClick={() => setMobileNavOpen(true)} title="Menu" style={{
+        width: '36px', height: '36px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+        backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)',
+        alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s', flexShrink: 0,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
       {/* Brand */}
       <div className="topbar-brand">
         <img

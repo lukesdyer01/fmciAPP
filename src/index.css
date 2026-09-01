@@ -99,7 +99,7 @@ html[data-theme="dark"] #root {
   align-items: start;
 }
 
-.mobile-tab-bar { display: none; }
+.mobile-nav-toggle { display: none; }
 .admin-mobile-nav { display: none; }
 
 /* Topbar sections that hide/reflow on mobile */
@@ -127,13 +127,12 @@ html[data-theme="dark"] #root {
 
   .app-grid {
     grid-template-columns: 1fr;
-    padding-bottom: 64px; /* clears the fixed mobile tab bar */
   }
   .left-sidebar-desktop,
   .right-sidebar {
     display: none;
   }
-  .mobile-tab-bar {
+  .mobile-nav-toggle {
     display: flex;
   }
 
