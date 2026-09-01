@@ -53,6 +53,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
   const [events, setEvents] = useState<EventItem[]>([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const [showCreateEvent, setShowCreateEvent] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
 
   const isMember = ministry.members.some(m => m.userId === currentUserId)
   const myRole = ministry.members.find(m => m.userId === currentUserId)?.role
@@ -134,7 +135,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
       {tab === 'feed' && (
         <div>
           <PostComposer fixedOrgId={ministry.id} fixedOrgName={ministry.name} placeholder={`Share something with ${ministry.name}…`} />
-          <UpcomingEvents events={events} onChanged={loadEvents} showOrg={false} />
+          <UpcomingEvents events={events} onChanged={loadEvents} onEdit={setEditingEvent} showOrg={false} />
           {postsLoading && (
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading posts…</div>
           )}
@@ -169,6 +170,15 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
               onCreated={() => { setShowCreateEvent(false); loadEvents() }}
             />
           )}
+          {editingEvent && (
+            <CreateEventModal
+              event={editingEvent}
+              orgId={ministry.id}
+              orgName={ministry.name}
+              onClose={() => setEditingEvent(null)}
+              onCreated={() => { setEditingEvent(null); loadEvents() }}
+            />
+          )}
           {eventsLoading && (
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading events…</div>
           )}
@@ -179,7 +189,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {events.map(event => (
-              <EventCard key={event.id} event={event} onChanged={loadEvents} showOrg={false} />
+              <EventCard key={event.id} event={event} onChanged={loadEvents} onEdit={setEditingEvent} showOrg={false} />
             ))}
           </div>
         </div>

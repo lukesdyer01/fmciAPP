@@ -27,7 +27,7 @@ app.use("*", logger(console.log));
 app.use("/*", cors({
   origin: "*",
   allowHeaders: ["Content-Type", "Authorization"],
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   exposeHeaders: ["Content-Length"],
   maxAge: 600,
 }));
@@ -394,6 +394,29 @@ app.post(`${BASE}/events/:id/rsvp`, async (c) => {
   return c.json(serializeEvent(updated, caller.id));
 });
 
+app.patch(`${BASE}/events/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const events = await kv.get("events") ?? [];
+  const event = events.find((e: any) => e.id === id);
+  if (!event) return c.json({ error: "Event not found" }, 404);
+  const isCreator = event.createdBy === caller.id;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  if (body.title !== undefined && !String(body.title).trim()) return c.json({ error: "Event title is required" }, 400);
+  const EDITABLE_FIELDS = ["title", "date", "time", "location", "img", "infoUrl", "type", "access", "price", "speakers"];
+  const patch: Record<string, unknown> = {};
+  for (const f of EDITABLE_FIELDS) {
+    if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : body[f];
+  }
+  if (isAdmin && body.official !== undefined) patch.official = !!body.official;
+  const updated = { ...event, ...patch, editedAt: new Date().toISOString() };
+  await kv.set("events", events.map((e: any) => e.id === id ? updated : e));
+  return c.json(serializeEvent(updated, caller.id));
+});
+
 app.delete(`${BASE}/events/:id`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
@@ -405,6 +428,75 @@ app.delete(`${BASE}/events/:id`, async (c) => {
   const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
   if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
   await kv.set("events", events.filter((e: any) => e.id !== id));
+  return c.json({ ok: true });
+});
+
+app.get(`${BASE}/resources`, async (c) => {
+  const resources = await kv.get("resources") ?? [];
+  return c.json(resources);
+});
+
+app.post(`${BASE}/resources`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const body = await c.req.json();
+  if (!body.title || !String(body.title).trim()) return c.json({ error: "Resource title is required" }, 400);
+  const resources = await kv.get("resources") ?? [];
+  const newResource = {
+    id: `r${Date.now()}`,
+    title: String(body.title).trim(),
+    author: body.author ?? "",
+    type: ["Book", "Course", "Series", "Podcast", "Article"].includes(body.type) ? body.type : "Article",
+    category: body.category ?? "Discipleship",
+    description: body.description ?? "",
+    tags: Array.isArray(body.tags) ? body.tags.filter(Boolean) : [],
+    img: body.img ?? "",
+    url: body.url ?? "",
+    recommended: false,
+    rating: 0,
+    reviews: 0,
+    createdBy: caller.id,
+    submittedByName: body.submittedByName ?? "",
+    createdAt: new Date().toISOString(),
+  };
+  await kv.set("resources", [newResource, ...resources]);
+  return c.json(newResource, 201);
+});
+
+app.patch(`${BASE}/resources/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const resources = await kv.get("resources") ?? [];
+  const resource = resources.find((r: any) => r.id === id);
+  if (!resource) return c.json({ error: "Resource not found" }, 404);
+  const isCreator = resource.createdBy === caller.id;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  if (body.title !== undefined && !String(body.title).trim()) return c.json({ error: "Resource title is required" }, 400);
+  const EDITABLE_FIELDS = ["title", "author", "type", "category", "description", "tags", "img", "url"];
+  const patch: Record<string, unknown> = {};
+  for (const f of EDITABLE_FIELDS) {
+    if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : body[f];
+  }
+  if (isAdmin && body.recommended !== undefined) patch.recommended = !!body.recommended;
+  const updated = { ...resource, ...patch, editedAt: new Date().toISOString() };
+  await kv.set("resources", resources.map((r: any) => r.id === id ? updated : r));
+  return c.json(updated);
+});
+
+app.delete(`${BASE}/resources/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const resources = await kv.get("resources") ?? [];
+  const resource = resources.find((r: any) => r.id === id);
+  if (!resource) return c.json({ error: "Resource not found" }, 404);
+  const isCreator = resource.createdBy === caller.id;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  await kv.set("resources", resources.filter((r: any) => r.id !== id));
   return c.json({ ok: true });
 });
 

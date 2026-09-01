@@ -33,7 +33,7 @@ export const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
   'Leadership Meeting': { color: '#C2410C', bg: '#FFF7ED' },
 }
 
-export function UpcomingEvents({ events, onChanged, showOrg = true }: { events: EventItem[]; onChanged: () => void; showOrg?: boolean }) {
+export function UpcomingEvents({ events, onChanged, onEdit, showOrg = true }: { events: EventItem[]; onChanged: () => void; onEdit?: (event: EventItem) => void; showOrg?: boolean }) {
   const todayStr = new Date().toISOString().slice(0, 10)
   const upcoming = events
     .filter(e => !e.date || e.date >= todayStr)
@@ -47,19 +47,19 @@ export function UpcomingEvents({ events, onChanged, showOrg = true }: { events: 
       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: '10px' }}>📅 Upcoming Events</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {upcoming.map(event => (
-          <EventCard key={event.id} event={event} onChanged={onChanged} showOrg={showOrg} />
+          <EventCard key={event.id} event={event} onChanged={onChanged} onEdit={onEdit} showOrg={showOrg} />
         ))}
       </div>
     </div>
   )
 }
 
-export function EventCard({ event, onChanged, showOrg = true }: { event: EventItem; onChanged: () => void; showOrg?: boolean }) {
+export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event: EventItem; onChanged: () => void; onEdit?: (event: EventItem) => void; showOrg?: boolean }) {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
   const [busy, setBusy] = useState(false)
   const ts = TYPE_COLOR[event.type] ?? { color: '#374151', bg: '#F9FAFB' }
-  const canDelete = currentUser?.id === event.createdBy || role === 'admin' || role === 'superadmin'
+  const canModify = currentUser?.id === event.createdBy || role === 'admin' || role === 'superadmin'
 
   async function rsvp(status: 'going' | 'interested' | null) {
     setBusy(true)
@@ -113,11 +113,19 @@ export function EventCard({ event, onChanged, showOrg = true }: { event: EventIt
       <div style={{ padding: '22px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
           <h2 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)', lineHeight: 1.3 }}>{event.title}</h2>
-          {canDelete && (
-            <button onClick={handleDelete} disabled={busy} title="Delete event" style={{
-              background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer', color: 'var(--color-text-3)',
-              fontSize: '16px', padding: '2px 6px', flexShrink: 0,
-            }}>🗑</button>
+          {canModify && (
+            <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+              {onEdit && (
+                <button onClick={() => onEdit(event)} disabled={busy} title="Edit event" style={{
+                  background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer', color: 'var(--color-text-3)',
+                  fontSize: '15px', padding: '2px 6px',
+                }}>✏</button>
+              )}
+              <button onClick={handleDelete} disabled={busy} title="Delete event" style={{
+                background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer', color: 'var(--color-text-3)',
+                fontSize: '16px', padding: '2px 6px',
+              }}>🗑</button>
+            </div>
           )}
         </div>
         {showOrg && event.orgName && (

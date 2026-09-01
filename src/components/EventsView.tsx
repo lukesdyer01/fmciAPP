@@ -10,6 +10,7 @@ export default function EventsView() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
 
   async function load() {
     try {
@@ -43,6 +44,15 @@ export default function EventsView() {
       {showCreate && (
         <CreateEventModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load() }} />
       )}
+      {editingEvent && (
+        <CreateEventModal
+          event={editingEvent}
+          orgId={editingEvent.orgId ?? undefined}
+          orgName={editingEvent.orgName ?? undefined}
+          onClose={() => setEditingEvent(null)}
+          onCreated={() => { setEditingEvent(null); load() }}
+        />
+      )}
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {FILTERS.map(f => (
@@ -74,7 +84,7 @@ export default function EventsView() {
           </div>
         )}
         {!loading && filtered.map(event => (
-          <EventCard key={event.id} event={event} onChanged={load} />
+          <EventCard key={event.id} event={event} onChanged={load} onEdit={setEditingEvent} />
         ))}
       </div>
     </div>

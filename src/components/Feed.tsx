@@ -8,6 +8,7 @@ import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
 import OrgView from './OrgView'
 import { UpcomingEvents, type EventItem } from './EventCard'
+import CreateEventModal from './CreateEventModal'
 import type { ActiveView } from '../App'
 import { useFeedPosts } from '../api-client/posts'
 import { api } from '../api-client/server'
@@ -78,6 +79,7 @@ function MainFeed() {
   const [filter, setFilter] = useState<FeedFilter>('network')
   const { data: allPosts, isLoading, isError } = useFeedPosts(filter)
   const [events, setEvents] = useState<EventItem[]>([])
+  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
 
   // Filter out truly orphaned posts (completely missing author)
   const posts = allPosts?.filter(p => p.author && p.author.trim() !== '')
@@ -91,7 +93,16 @@ function MainFeed() {
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
       <FeedToggle filter={filter} setFilter={setFilter} />
       <PostComposer />
-      <UpcomingEvents events={events} onChanged={loadEvents} />
+      <UpcomingEvents events={events} onChanged={loadEvents} onEdit={setEditingEvent} />
+      {editingEvent && (
+        <CreateEventModal
+          event={editingEvent}
+          orgId={editingEvent.orgId ?? undefined}
+          orgName={editingEvent.orgName ?? undefined}
+          onClose={() => setEditingEvent(null)}
+          onCreated={() => { setEditingEvent(null); loadEvents() }}
+        />
+      )}
       {isLoading && [1, 2, 3].map(i => <PostSkeleton key={i} />)}
       {isError && (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>
