@@ -35,6 +35,11 @@ export interface Resource {
 const CATEGORIES = ['All', 'Apostolic Teaching', 'Leadership', 'Prayer', 'Missions', 'Marketplace', 'Discipleship']
 const TYPES = ['All', 'Books', 'Courses', 'Videos', 'Articles']
 
+function extractYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+}
+
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   Book:    { bg: '#EFF6FF', color: '#1D4ED8' },
   Course:  { bg: '#ECFDF5', color: '#047857' },
@@ -264,14 +269,28 @@ export default function ResourcesView() {
             const isSaved = saved.has(r.id)
             const canModify = currentUser?.id === r.createdBy || role === 'admin' || role === 'superadmin'
             const typeStyle = TYPE_COLORS[r.type] ?? { bg: 'var(--color-surface)', color: 'var(--color-text-2)' }
+            const videoId = r.type === 'Video' && r.url ? extractYouTubeId(r.url) : null
             return (
               <div key={r.id} style={{
                 backgroundColor: 'var(--color-card)', borderRadius: '14px',
                 border: `1px solid ${r.recommended ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
-                padding: '20px 22px', display: 'flex', gap: '20px', alignItems: 'flex-start',
                 boxShadow: r.recommended ? '0 2px 14px rgba(200,155,60,0.1)' : '0 1px 4px rgba(0,0,0,0.05)',
+                overflow: 'hidden',
               }}>
+                {videoId && (
+                  <div style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
+                    <iframe
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      title={r.title}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
+                <div style={{ padding: '20px 22px', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
                 {/* Cover */}
+                {!videoId && (
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {r.img
                     ? <img src={r.img} alt={r.title} style={{ width: '84px', height: '112px', objectFit: 'cover', borderRadius: '8px', display: 'block', boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }} />
@@ -288,6 +307,7 @@ export default function ResourcesView() {
                     }}>★</div>
                   )}
                 </div>
+                )}
 
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -385,6 +405,7 @@ export default function ResourcesView() {
                       <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Cancel</button>
                     </div>
                   )}
+                </div>
                 </div>
               </div>
             )

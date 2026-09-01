@@ -58,7 +58,6 @@ function AppShell() {
       name: currentUser.displayName ?? '',
       bio: currentUser.bio ?? '',
       avatarUrl: currentUser.avatarUrl ?? '',
-      coverUrl: currentUser.coverUrl ?? '',
       title: currentUser.title ?? '',
       church: currentUser.church ?? '',
       location: currentUser.location ?? '',

@@ -139,7 +139,6 @@ app.get(`${BASE}/members/:id`, async (c) => {
     church: u.user_metadata?.church ?? "",
     location: u.user_metadata?.location ?? "",
     avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
-    coverUrl: u.user_metadata?.cover_url ?? u.user_metadata?.coverUrl ?? "",
     bio: u.user_metadata?.bio ?? "",
     website: u.user_metadata?.website ?? "",
     email: u.email ?? "",

@@ -9,7 +9,6 @@ export interface User {
   displayName: string
   email: string
   avatarUrl: string | null
-  coverUrl: string | null
   bio: string | null
   title: string | null
   church: string | null

@@ -12,7 +12,6 @@ export interface UserProfile {
   location: string
   bio: string
   avatarUrl: string
-  coverUrl: string
   website: string
   email: string
   phone: string
@@ -26,7 +25,6 @@ const DEFAULT_PROFILE: UserProfile = {
   location: '',
   bio: '',
   avatarUrl: '',
-  coverUrl: '',
   website: '',
   email: '',
   phone: '',

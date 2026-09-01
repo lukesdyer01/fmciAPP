@@ -53,10 +53,9 @@ export default function EditProfileModal() {
 
   const [draft, setDraft] = useState<UserProfile>({ ...userProfile })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const [uploading, setUploading] = useState<'avatarUrl' | 'coverUrl' | null>(null)
+  const [uploading, setUploading] = useState<'avatarUrl' | null>(null)
   const [uploadError, setUploadError] = useState('')
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const coverInputRef = useRef<HTMLInputElement>(null)
 
   function set<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
     setDraft(d => ({ ...d, [key]: value }))
@@ -69,7 +68,7 @@ export default function EditProfileModal() {
     }))
   }
 
-  async function handleImageFile(key: 'avatarUrl' | 'coverUrl', file: File) {
+  async function handleImageFile(key: 'avatarUrl', file: File) {
     if (!currentUser) return
     setUploading(key)
     setUploadError('')
@@ -80,7 +79,7 @@ export default function EditProfileModal() {
       // token past what Cloudflare/most proxies allow in a request header,
       // breaking every authenticated call the user makes (posting included).
       const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const path = `${currentUser.id}/${key === 'avatarUrl' ? 'avatar' : 'cover'}-${Date.now()}.${ext}`
+      const path = `${currentUser.id}/avatar-${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
         upsert: true,
         contentType: file.type || 'image/jpeg',
@@ -104,7 +103,6 @@ export default function EditProfileModal() {
         data: {
           full_name: draft.name,
           avatar_url: draft.avatarUrl,
-          cover_url: draft.coverUrl,
           bio: draft.bio,
           title: draft.title,
           church: draft.church,
@@ -119,7 +117,6 @@ export default function EditProfileModal() {
       updateCurrentUser({
         displayName: draft.name,
         avatarUrl: draft.avatarUrl,
-        coverUrl: draft.coverUrl,
         bio: draft.bio,
         title: draft.title,
         church: draft.church,
@@ -171,70 +168,42 @@ export default function EditProfileModal() {
         </div>
 
         <div style={{ padding: '0 0 24px' }}>
-          {/* Cover photo */}
-          <div style={{ position: 'relative', marginBottom: '48px' }}>
+          {/* Avatar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '20px 24px 0', marginBottom: '4px' }}>
             <div
-              onClick={() => coverInputRef.current?.click()}
+              onClick={() => avatarInputRef.current?.click()}
               style={{
-                height: '120px', cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                background: draft.coverUrl
-                  ? `url(${draft.coverUrl}) center/cover no-repeat`
-                  : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+                width: '72px', height: '72px', borderRadius: '16px', flexShrink: 0,
+                overflow: 'hidden', cursor: 'pointer', position: 'relative',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               }}
             >
+              {draft.avatarUrl
+                ? <img src={draft.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '22px' }}>📷</div>
+              }
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.2s',
+                backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.2s', borderRadius: '16px',
               }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.35)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
               >
-                <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, backgroundColor: 'rgba(0,0,0,0.45)', padding: '6px 14px', borderRadius: '20px' }}>
-                  {uploading === 'coverUrl' ? 'Uploading…' : '📷 Change Cover'}
+                <span style={{ color: '#fff', fontSize: uploading === 'avatarUrl' ? '11px' : '18px', fontWeight: 700, textAlign: 'center' }}>
+                  {uploading === 'avatarUrl' ? 'Uploading…' : '📷'}
                 </span>
               </div>
             </div>
-            <input ref={coverInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile('coverUrl', f) }} />
-
-            {/* Avatar overlapping cover */}
-            <div style={{ position: 'absolute', bottom: '-36px', left: '24px' }}>
-              <div
-                onClick={() => avatarInputRef.current?.click()}
-                style={{
-                  width: '72px', height: '72px', borderRadius: '16px',
-                  border: '3px solid var(--color-card)',
-                  overflow: 'hidden', cursor: 'pointer', position: 'relative',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                }}
-              >
-                {draft.avatarUrl
-                  ? <img src={draft.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  : <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '22px' }}>📷</div>
-                }
-                <div style={{
-                  position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.2s', borderRadius: '13px',
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
-                >
-                  <span style={{ color: '#fff', fontSize: uploading === 'avatarUrl' ? '11px' : '18px', fontWeight: 700, textAlign: 'center' }}>
-                    {uploading === 'avatarUrl' ? 'Uploading…' : '📷'}
-                  </span>
-                </div>
-              </div>
-              <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile('avatarUrl', f) }} />
-            </div>
-
-            <div style={{ position: 'absolute', bottom: '-28px', left: '108px', right: '24px' }}>
+            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile('avatarUrl', f) }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)', marginBottom: '6px' }}>Profile Photo</div>
               <input
                 value={draft.avatarUrl.startsWith('data:') ? '' : draft.avatarUrl}
                 onChange={e => set('avatarUrl', e.target.value)}
                 placeholder="Or paste photo URL…"
                 style={{
-                  width: '100%', boxSizing: 'border-box', padding: '6px 10px',
+                  width: '100%', boxSizing: 'border-box', padding: '8px 10px',
                   fontSize: '12px', fontFamily: 'var(--font-sans)',
                   border: '1px solid var(--color-border)', borderRadius: '6px',
                   backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', outline: 'none',

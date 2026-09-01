@@ -264,32 +264,26 @@ function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => voi
         overflow: 'hidden',
         marginBottom: '12px',
       }}>
-        <div style={{
-          height: '60px',
-          background: userProfile.coverUrl
-            ? `url(${userProfile.coverUrl}) center/cover no-repeat`
-            : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
-          position: 'relative',
-        }}>
-          <div style={{
-            position: 'absolute', bottom: '-24px', left: '16px',
-            width: '48px', height: '48px', borderRadius: '12px',
-            border: '3px solid #fff', overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-          }}>
-            {userProfile.avatarUrl
-              ? <img src={userProfile.avatarUrl} alt={userProfile.name} onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: userId ? 'pointer' : 'default' }} />
-              : <div onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px', cursor: userId ? 'pointer' : 'default' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
-            }
-          </div>
-        </div>
-        <div style={{ padding: '32px 16px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>
-            {userProfile.name}
-            {currentUser?.verified && <VerifiedBadge size={15} />}
-          </div>
-          <div style={{ fontSize: '12px', color: 'var(--color-text-2)', marginBottom: '10px' }}>
-            {userProfile.title} · {userProfile.church} · {userProfile.location}
+        <div style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}>
+              {userProfile.avatarUrl
+                ? <img src={userProfile.avatarUrl} alt={userProfile.name} onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: userId ? 'pointer' : 'default' }} />
+                : <div onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px', cursor: userId ? 'pointer' : 'default' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
+              }
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>
+                {userProfile.name}
+                {currentUser?.verified && <VerifiedBadge size={15} />}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-2)' }}>
+                {userProfile.title} · {userProfile.church} · {userProfile.location}
+              </div>
+            </div>
           </div>
           <button
             onClick={() => setEditProfileOpen(true)}

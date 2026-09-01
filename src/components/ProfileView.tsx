@@ -15,7 +15,6 @@ export interface MemberProfile {
   church: string
   location: string
   avatarUrl: string
-  coverUrl: string
   bio: string
   website: string
   email: string
@@ -83,17 +82,11 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
 
       {/* Header */}
       <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '14px', border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: '14px' }}>
-        <div style={{
-          height: '120px',
-          background: member.coverUrl
-            ? `url(${member.coverUrl}) center/cover no-repeat`
-            : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
-        }} />
-        <div style={{ padding: '0 20px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '14px', marginTop: '-36px', marginBottom: '12px', flexWrap: 'wrap' }}>
+        <div style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '14px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <div style={{
               width: '84px', height: '84px', borderRadius: '16px', flexShrink: 0,
-              border: '4px solid var(--color-card)', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+              overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
             }}>
               {member.avatarUrl
                 ? <img src={member.avatarUrl} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
