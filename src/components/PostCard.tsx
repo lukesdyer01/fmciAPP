@@ -31,6 +31,7 @@ export interface Post {
   wallUserName?: string
   editedAt?: string
   prayerStatus?: 'unanswered' | 'answered'
+  isAnonymous?: boolean
 }
 
 
@@ -124,22 +125,26 @@ export default function PostCard({ post }: { post: Post }) {
 
       {/* Header */}
       <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-        {post.avatar
+        {post.isAnonymous
+          ? <div style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, backgroundColor: 'var(--color-text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🙏</div>
+          : post.avatar
           ? <img src={post.avatar} alt={post.author} onClick={() => post.authorId && openProfile(post.authorId)} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', display: 'block', flexShrink: 0, cursor: post.authorId ? 'pointer' : 'default' }} />
           : <div onClick={() => post.authorId && openProfile(post.authorId)} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, cursor: post.authorId ? 'pointer' : 'default', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px' }}>{(post.author || '?').slice(0, 2).toUpperCase()}</div>
         }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
             <div>
-              <div onClick={() => post.authorId && openProfile(post.authorId)} style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: post.authorId ? 'pointer' : 'default', marginBottom: '3px' }}>
-                {post.author}
+              <div onClick={() => !post.isAnonymous && post.authorId && openProfile(post.authorId)} style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: !post.isAnonymous && post.authorId ? 'pointer' : 'default', marginBottom: '3px' }}>
+                {post.isAnonymous ? 'Anonymous' : post.author}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
                 {(post.badges ?? []).map((b, i) => <Badge key={i} variant={b} />)}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>
-                {post.title} · {post.church} · {post.location}
-              </div>
+              {!post.isAnonymous && (
+                <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>
+                  {post.title} · {post.church} · {post.location}
+                </div>
+              )}
               {post.orgName && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)' }}>
                   <span style={{ fontSize: '11px' }}>🏛</span>

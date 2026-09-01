@@ -51,6 +51,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
   const [showVideoInput, setShowVideoInput] = useState(false)
   const [videoUrlDraft, setVideoUrlDraft] = useState('')
   const [mediaError, setMediaError] = useState('')
+  const [anonymous, setAnonymous] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const userProfile = useUIStore(s => s.userProfile)
   const { mutate: createPost, isPending } = useCreatePost()
@@ -101,12 +102,15 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
   function handlePost() {
     if (!text.trim() || isPending) return
     const selectedOrg = postAs !== 'self' ? myOrgs.find(o => o.id === postAs) : null
+    // Anonymous posts still carry the real caller's authorId server-side (so the
+    // poster keeps edit/delete rights), but the displayed name/avatar/details are
+    // replaced so other users can't identify them.
     createPost({
-      author: userProfile.name,
-      avatar: userProfile.avatarUrl,
-      title: userProfile.title,
-      church: userProfile.church,
-      location: userProfile.location,
+      author: anonymous ? 'Anonymous' : userProfile.name,
+      avatar: anonymous ? '' : userProfile.avatarUrl,
+      title: anonymous ? '' : userProfile.title,
+      church: anonymous ? '' : userProfile.church,
+      location: anonymous ? '' : userProfile.location,
       badges: [],
       type,
       content: text.trim(),
@@ -118,9 +122,10 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       image: image || undefined,
       imageAlt: image ? 'Post photo' : undefined,
       videoId: videoId || undefined,
+      isAnonymous: anonymous || undefined,
       ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
-      onSuccess: () => { setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false) },
+      onSuccess: () => { setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false); setAnonymous(false) },
     })
   }
 
@@ -281,6 +286,31 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
         )}
         {mediaError && (
           <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-red)' }}>{mediaError}</div>
+        )}
+
+        {/* Anonymous toggle — prayer requests only */}
+        {type === 'prayer' && (
+          <div
+            role="switch"
+            aria-checked={anonymous}
+            tabIndex={0}
+            onClick={() => setAnonymous(a => !a)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAnonymous(a => !a) } }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', cursor: 'pointer', userSelect: 'none' }}
+          >
+            <span style={{
+              width: '36px', height: '20px', borderRadius: '10px', position: 'relative', flexShrink: 0,
+              backgroundColor: anonymous ? 'var(--color-navy)' : 'var(--color-border)', transition: 'background 0.15s',
+            }}>
+              <span style={{
+                position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '50%',
+                backgroundColor: '#fff', transition: 'left 0.15s', left: anonymous ? '18px' : '2px',
+              }} />
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)' }}>
+              🕶 Post anonymously — your name won't be shown
+            </span>
+          </div>
         )}
       </div>
 
