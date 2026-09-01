@@ -16,7 +16,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
     const stored = localStorage.getItem('ic-color-scheme')
     if (stored === 'dark' || stored === 'light') return stored
-    return 'dark'
+    return 'light'
   })
 
   useEffect(() => {
