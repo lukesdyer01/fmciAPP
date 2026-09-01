@@ -480,12 +480,60 @@ app.post(`${BASE}/resources`, async (c) => {
     recommended: false,
     rating: 0,
     reviews: 0,
+    reviewList: [],
     createdBy: caller.id,
     submittedByName: body.submittedByName ?? "",
     createdAt: new Date().toISOString(),
   };
   await kv.set("resources", [newResource, ...resources]);
   return c.json(newResource, 201);
+});
+
+function recomputeResourceRating(resource: any) {
+  const list = Array.isArray(resource.reviewList) ? resource.reviewList : [];
+  const reviews = list.length;
+  const rating = reviews ? Math.round((list.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews) * 10) / 10 : 0;
+  return { ...resource, reviewList: list, reviews, rating };
+}
+
+app.post(`${BASE}/resources/:id/reviews`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const resources = await kv.get("resources") ?? [];
+  const resource = resources.find((r: any) => r.id === id);
+  if (!resource) return c.json({ error: "Resource not found" }, 404);
+  const body = await c.req.json();
+  const rating = Number(body.rating);
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5) return c.json({ error: "Rating must be between 1 and 5" }, 400);
+  const reviewerName = body.reviewerName ?? "";
+  const existingList = Array.isArray(resource.reviewList) ? resource.reviewList : [];
+  // One review per user — re-reviewing edits the existing entry rather than piling up duplicates.
+  const withoutMine = existingList.filter((r: any) => r.userId !== caller.id);
+  const myReview = {
+    id: `rev${Date.now()}`, userId: caller.id, reviewerName,
+    rating, comment: String(body.comment ?? "").trim(), createdAt: new Date().toISOString(),
+  };
+  const updated = recomputeResourceRating({ ...resource, reviewList: [myReview, ...withoutMine] });
+  await kv.set("resources", resources.map((r: any) => r.id === id ? updated : r));
+  return c.json(updated);
+});
+
+app.delete(`${BASE}/resources/:id/reviews/:reviewId`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id, reviewId } = c.req.param();
+  const resources = await kv.get("resources") ?? [];
+  const resource = resources.find((r: any) => r.id === id);
+  if (!resource) return c.json({ error: "Resource not found" }, 404);
+  const list = Array.isArray(resource.reviewList) ? resource.reviewList : [];
+  const review = list.find((r: any) => r.id === reviewId);
+  if (!review) return c.json({ error: "Review not found" }, 404);
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (review.userId !== caller.id && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const updated = recomputeResourceRating({ ...resource, reviewList: list.filter((r: any) => r.id !== reviewId) });
+  await kv.set("resources", resources.map((r: any) => r.id === id ? updated : r));
+  return c.json(updated);
 });
 
 app.patch(`${BASE}/resources/:id`, async (c) => {

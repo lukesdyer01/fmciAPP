@@ -2,7 +2,17 @@ import { useState, useEffect } from 'react'
 import { api } from '../api-client/server'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
+import { useUIStore } from '../store/ui'
 import CreateResourceModal from './CreateResourceModal'
+
+export interface ReviewItem {
+  id: string
+  userId: string
+  reviewerName: string
+  rating: number
+  comment: string
+  createdAt: string
+}
 
 export interface Resource {
   id: string
@@ -12,6 +22,7 @@ export interface Resource {
   category: string
   rating: number
   reviews: number
+  reviewList?: ReviewItem[]
   img: string
   url?: string
   description: string
@@ -43,6 +54,108 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <button key={i} type="button" onClick={() => onChange(i)} style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+          color: i <= value ? '#F59E0B' : '#CBD5E1', fontSize: '20px', lineHeight: 1,
+        }}>★</button>
+      ))}
+    </span>
+  )
+}
+
+function ReviewsSection({ resource, onChanged }: { resource: Resource; onChanged: (updated: Resource) => void }) {
+  const { currentUser } = useAuth()
+  const { role } = useSupabaseRole()
+  const userProfile = useUIStore(s => s.userProfile)
+  const myReview = resource.reviewList?.find(r => r.userId === currentUser?.id)
+  const [draftRating, setDraftRating] = useState(myReview?.rating ?? 0)
+  const [draftComment, setDraftComment] = useState(myReview?.comment ?? '')
+  const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function submitReview() {
+    if (!draftRating) return
+    setSubmitting(true)
+    try {
+      const updated = await api<Resource>(`/resources/${resource.id}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({ rating: draftRating, comment: draftComment.trim(), reviewerName: userProfile.name }),
+      })
+      onChanged(updated)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function deleteReview(reviewId: string) {
+    setDeletingId(reviewId)
+    try {
+      const updated = await api<Resource>(`/resources/${resource.id}/reviews/${reviewId}`, { method: 'DELETE' })
+      onChanged(updated)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const reviews = resource.reviewList ?? []
+
+  return (
+    <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--color-border-light)' }}>
+      {reviews.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+          {reviews.map(rev => {
+            const canDelete = rev.userId === currentUser?.id || role === 'admin' || role === 'superadmin'
+            return (
+              <div key={rev.id} style={{ backgroundColor: 'var(--color-surface)', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>{rev.reviewerName || 'Member'}</span>
+                    <Stars rating={rev.rating} />
+                  </div>
+                  {canDelete && (
+                    <button onClick={() => deleteReview(rev.id)} disabled={deletingId === rev.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '13px' }}>🗑</button>
+                  )}
+                </div>
+                {rev.comment && <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.5 }}>{rev.comment}</p>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <div>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', marginBottom: '6px' }}>{myReview ? 'Update your review' : 'Write a review'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <StarPicker value={draftRating} onChange={setDraftRating} />
+        </div>
+        <textarea
+          value={draftComment}
+          onChange={e => setDraftComment(e.target.value)}
+          placeholder="What did you think? (optional)"
+          rows={2}
+          style={{
+            width: '100%', boxSizing: 'border-box', padding: '8px 10px', resize: 'vertical',
+            border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '13px',
+            fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)', backgroundColor: 'var(--color-surface)', outline: 'none',
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+          <button onClick={submitReview} disabled={!draftRating || submitting} style={{
+            padding: '7px 18px', borderRadius: '8px', border: 'none',
+            backgroundColor: draftRating ? 'var(--color-navy)' : 'var(--color-border)',
+            color: draftRating ? '#fff' : 'var(--color-text-3)',
+            fontSize: '13px', fontWeight: 700, cursor: draftRating && !submitting ? 'pointer' : 'default',
+            fontFamily: 'var(--font-sans)',
+          }}>{submitting ? 'Saving…' : myReview ? 'Update Review' : 'Submit Review'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ResourcesView() {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
@@ -54,6 +167,7 @@ export default function ResourcesView() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingResource, setEditingResource] = useState<Resource | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   function load() {
     setLoading(true)
@@ -217,12 +331,13 @@ export default function ResourcesView() {
                   </div>
 
                   {/* Stars + reviews */}
-                  {r.reviews > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                      <Stars rating={r.rating} />
-                      <span style={{ fontSize: '12px', color: 'var(--color-text-2)' }}>({r.reviews.toLocaleString()} reviews)</span>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    {r.reviews > 0 && <Stars rating={r.rating} />}
+                    <button
+                      onClick={() => setExpandedId(id => id === r.id ? null : r.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', color: 'var(--color-navy)', fontWeight: 600, fontFamily: 'var(--font-sans)' }}
+                    >{r.reviews > 0 ? `${r.reviews.toLocaleString()} review${r.reviews === 1 ? '' : 's'}` : 'Write a review'}</button>
+                  </div>
 
                   {/* Description */}
                   {r.description && (
@@ -259,6 +374,10 @@ export default function ResourcesView() {
                       }}
                     >{isSaved ? '🔖 Saved' : '+ Save'}</button>
                   </div>
+
+                  {expandedId === r.id && (
+                    <ReviewsSection resource={r} onChanged={updated => setResources(rs => rs.map(x => x.id === updated.id ? updated : x))} />
+                  )}
 
                   {confirmDeleteId === r.id && (
                     <div style={{ marginTop: '12px', backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
