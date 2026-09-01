@@ -28,7 +28,7 @@ export interface Resource {
   description: string
   tags: string[]
   recommended: boolean
-  createdBy: string
+  createdBy: string | null
   submittedByName?: string
 }
 
@@ -346,7 +346,7 @@ export default function ResourcesView() {
                     </div>
                   )}
                   <div style={{ fontSize: '12px', color: 'var(--color-text-2)', marginBottom: '10px' }}>
-                    {r.submittedByName ? `Shared by ${r.submittedByName}` : ''}
+                    {!r.createdBy ? '🏛 Published by FMCI' : r.submittedByName ? `Shared by ${r.submittedByName}` : ''}
                   </div>
 
                   {/* Stars + reviews */}

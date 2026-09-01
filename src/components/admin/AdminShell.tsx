@@ -8,11 +8,12 @@ import OrgsAdmin from './views/OrgsAdmin'
 import GroupsAdmin from './views/GroupsAdmin'
 import ContentAdmin from './views/ContentAdmin'
 import EventsAdmin from './views/EventsAdmin'
+import ResourcesAdmin from './views/ResourcesAdmin'
 import VerificationAdmin from './views/VerificationAdmin'
 import FeatureFlagsAdmin from './views/FeatureFlagsAdmin'
 import SettingsAdmin from './views/SettingsAdmin'
 
-export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'events' | 'verification' | 'feature-flags' | 'settings'
+export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'events' | 'resources' | 'verification' | 'feature-flags' | 'settings'
 
 const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'dashboard',     icon: '◈',  label: 'Dashboard' },
@@ -21,6 +22,7 @@ const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'groups',        icon: '🫂', label: 'Groups' },
   { id: 'content',       icon: '🗂', label: 'Content' },
   { id: 'events',        icon: '📅', label: 'Events' },
+  { id: 'resources',     icon: '📚', label: 'Resources' },
   { id: 'verification',  icon: '✓',  label: 'Verification' },
   { id: 'feature-flags', icon: '⚑',  label: 'Feature Flags' },
   { id: 'settings',      icon: '⚙', label: 'Settings' },
@@ -41,6 +43,7 @@ export default function AdminShell() {
       case 'groups':        return <GroupsAdmin />
       case 'content':       return <ContentAdmin />
       case 'events':        return <EventsAdmin />
+      case 'resources':     return <ResourcesAdmin />
       case 'verification':  return <VerificationAdmin />
       case 'feature-flags': return <FeatureFlagsAdmin />
       case 'settings':      return <SettingsAdmin />

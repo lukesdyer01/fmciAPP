@@ -679,6 +679,10 @@ app.post(`${BASE}/resources`, async (c) => {
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const body = await c.req.json();
   if (!body.title || !String(body.title).trim()) return c.json({ error: "Resource title is required" }, 400);
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  // Admins can publish a resource on behalf of FMCI itself rather than
+  // their own account — no individual owner, only admins can edit/delete it.
+  const unattributed = isAdmin && body.unattributed === true;
   const resources = await kv.get("resources") ?? [];
   const newResource = {
     id: `r${Date.now()}`,
@@ -694,8 +698,8 @@ app.post(`${BASE}/resources`, async (c) => {
     rating: 0,
     reviews: 0,
     reviewList: [],
-    createdBy: caller.id,
-    submittedByName: body.submittedByName ?? "",
+    createdBy: unattributed ? null : caller.id,
+    submittedByName: unattributed ? "" : (body.submittedByName ?? ""),
     createdAt: new Date().toISOString(),
   };
   await kv.set("resources", [newResource, ...resources]);
@@ -761,12 +765,15 @@ app.patch(`${BASE}/resources/:id`, async (c) => {
   if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
   const body = await c.req.json();
   if (body.title !== undefined && !String(body.title).trim()) return c.json({ error: "Resource title is required" }, 400);
-  const EDITABLE_FIELDS = ["title", "author", "type", "category", "description", "tags", "img", "url"];
+  const EDITABLE_FIELDS = ["title", "author", "type", "category", "description", "tags", "img", "url", "submittedByName"];
   const patch: Record<string, unknown> = {};
   for (const f of EDITABLE_FIELDS) {
     if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : body[f];
   }
   if (isAdmin && body.recommended !== undefined) patch.recommended = !!body.recommended;
+  // Admin-only: reassign ownership to/from FMCI itself (no individual owner).
+  if (isAdmin && body.unattributed === true) { patch.createdBy = null; patch.submittedByName = ""; }
+  if (isAdmin && body.unattributed === false && !resource.createdBy) { patch.createdBy = caller.id; }
   const updated = { ...resource, ...patch, editedAt: new Date().toISOString() };
   await kv.set("resources", resources.map((r: any) => r.id === id ? updated : r));
   return c.json(updated);

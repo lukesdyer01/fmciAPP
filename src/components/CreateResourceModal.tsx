@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { api } from '../api-client/server'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
+import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
 import type { Resource } from './ResourcesView'
 
@@ -14,7 +15,10 @@ export default function CreateResourceModal({ resource, onClose, onSaved }: {
   onSaved: () => void
 }) {
   const { currentUser } = useAuth()
+  const { role } = useSupabaseRole()
+  const isAdmin = role === 'admin' || role === 'superadmin'
   const userProfile = useUIStore(s => s.userProfile)
+  const [unattributed, setUnattributed] = useState(resource ? !resource.createdBy : false)
   const [title, setTitle] = useState(resource?.title ?? '')
   const [author, setAuthor] = useState(resource?.author ?? '')
   const [type, setType] = useState(resource?.type ?? RESOURCE_TYPES[0])
@@ -55,12 +59,12 @@ export default function CreateResourceModal({ resource, onClose, onSaved }: {
       if (resource) {
         await api(`/resources/${resource.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ title: title.trim(), author, type, category, description, tags: tagList, img, url }),
+          body: JSON.stringify({ title: title.trim(), author, type, category, description, tags: tagList, img, url, ...(isAdmin ? { unattributed } : {}) }),
         })
       } else {
         await api('/resources', {
           method: 'POST',
-          body: JSON.stringify({ title: title.trim(), author, type, category, description, tags: tagList, img, url, submittedByName: userProfile.name }),
+          body: JSON.stringify({ title: title.trim(), author, type, category, description, tags: tagList, img, url, submittedByName: userProfile.name, ...(isAdmin ? { unattributed } : {}) }),
         })
       }
       onSaved()
@@ -152,6 +156,17 @@ export default function CreateResourceModal({ resource, onClose, onSaved }: {
             <label style={labelStyle}>Link URL</label>
             <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" style={inputStyle} />
           </div>
+          {isAdmin && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 14px', backgroundColor: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>Publish as FMCI</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '2px' }}>No individual owner — shown as published by FMCI, editable only by admins</div>
+              </div>
+              <button type="button" onClick={() => setUnattributed(v => !v)} style={{ width: '42px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s', backgroundColor: unattributed ? 'var(--color-gold)' : 'var(--color-border)' }}>
+                <span style={{ position: 'absolute', top: '3px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', left: unattributed ? '21px' : '3px' }} />
+              </button>
+            </div>
+          )}
           {err && (
             <div style={{ padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red)' }}>{err}</div>
           )}
