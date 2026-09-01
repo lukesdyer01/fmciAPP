@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '../api-client/server'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
+import MinistryDetailView from './MinistryDetailView'
 
 interface OrgMember {
   userId: string
@@ -363,11 +364,12 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
 }
 
 // ── Org Card ─────────────────────────────────────────────────────────────────
-function OrgCard({ org, currentUserId, isMember, onManage, onFollowToggle, followBusy }: {
+function OrgCard({ org, currentUserId, isMember, onManage, onView, onFollowToggle, followBusy }: {
   org: MyOrg
   currentUserId: string
   isMember: boolean
   onManage: () => void
+  onView: () => void
   onFollowToggle: () => void
   followBusy: boolean
 }) {
@@ -380,7 +382,7 @@ function OrgCard({ org, currentUserId, isMember, onManage, onFollowToggle, follo
     <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
       <div style={{ height: '6px', background: 'linear-gradient(90deg, var(--color-navy), var(--color-navy-light, #2d4a8a))' }} />
       <div style={{ padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '10px' }}>
+        <div onClick={onView} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '10px', cursor: 'pointer' }}>
           <OrgLogo org={org} size={44} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
@@ -401,16 +403,15 @@ function OrgCard({ org, currentUserId, isMember, onManage, onFollowToggle, follo
           {org.website && <div style={{ fontSize: '13px', color: 'var(--color-navy)', alignSelf: 'center' }}>{org.website}</div>}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={onView}
+            style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+          >View →</button>
           {isMember && canManage && (
             <button
               onClick={onManage}
               style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
             >Manage Members</button>
-          )}
-          {isMember && !canManage && (
-            <div style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: 'var(--color-surface)', fontSize: '13px', color: 'var(--color-text-3)', textAlign: 'center' }}>
-              Moderator — contact an admin to manage members
-            </div>
           )}
           {!isMember && (
             <button
@@ -439,6 +440,7 @@ export default function OrgView() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [managingOrg, setManagingOrg] = useState<MyOrg | null>(null)
+  const [viewingOrgId, setViewingOrgId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string>('')
   const [followBusyId, setFollowBusyId] = useState<string | null>(null)
 
@@ -495,6 +497,19 @@ export default function OrgView() {
   const availableTypes = Array.from(new Set(orgs.map(o => o.type))).sort()
 
   const tabOrgs = (tab === 'my' ? myOrgs : discoverOrgs).filter(o => typeFilter === 'all' || o.type === typeFilter)
+
+  const viewingOrg = viewingOrgId ? orgs.find(o => o.id === viewingOrgId) ?? null : null
+  if (viewingOrg) {
+    return (
+      <MinistryDetailView
+        ministry={viewingOrg}
+        currentUserId={currentUserId}
+        onBack={() => setViewingOrgId(null)}
+        onFollowToggle={() => toggleFollow(viewingOrg)}
+        followBusy={followBusyId === viewingOrg.id}
+      />
+    )
+  }
 
   return (
     <div className="org-view-container" style={{ maxWidth: '960px', margin: '0 auto', paddingRight: managingOrg ? '440px' : '0', transition: 'padding-right 0.25s' }}>
@@ -582,6 +597,7 @@ export default function OrgView() {
               currentUserId={currentUserId}
               isMember={isMember(org)}
               onManage={() => setManagingOrg(managingOrg?.id === org.id ? null : org)}
+              onView={() => setViewingOrgId(org.id)}
               onFollowToggle={() => toggleFollow(org)}
               followBusy={followBusyId === org.id}
             />

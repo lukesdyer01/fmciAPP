@@ -19,9 +19,14 @@ const POST_TYPES = [
 interface Props {
   type?: 'post' | 'prayer'
   placeholder?: string
+  // When set, the composer posts directly to this ministry's feed (as the
+  // current user, not "on behalf of" it) and skips the org-selector UI —
+  // used on a ministry's own page.
+  fixedOrgId?: string
+  fixedOrgName?: string
 }
 
-export default function PostComposer({ type = 'post', placeholder }: Props) {
+export default function PostComposer({ type = 'post', placeholder, fixedOrgId, fixedOrgName }: Props) {
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [myOrgs, setMyOrgs] = useState<MyOrg[]>([])
@@ -30,6 +35,7 @@ export default function PostComposer({ type = 'post', placeholder }: Props) {
   const { mutate: createPost, isPending } = useCreatePost()
 
   useEffect(() => {
+    if (fixedOrgId) return
     api<MyOrg[]>('/orgs/my')
       .then(orgs => {
         // Only show orgs where the user is owner or admin (can post as)
@@ -40,7 +46,7 @@ export default function PostComposer({ type = 'post', placeholder }: Props) {
         ))
       })
       .catch(() => {})
-  }, [])
+  }, [fixedOrgId])
 
   function handlePost() {
     if (!text.trim() || isPending) return
@@ -55,8 +61,8 @@ export default function PostComposer({ type = 'post', placeholder }: Props) {
       type,
       content: text.trim(),
       isFollowing: false,
-      orgId: selectedOrg?.id,
-      orgName: selectedOrg?.name,
+      orgId: fixedOrgId ?? selectedOrg?.id,
+      orgName: fixedOrgName ?? selectedOrg?.name,
       ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
       onSuccess: () => setText(''),

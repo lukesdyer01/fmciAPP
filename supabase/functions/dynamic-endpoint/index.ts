@@ -323,6 +323,90 @@ app.post(`${BASE}/orgs/:id/unfollow`, async (c) => {
   return c.json(serializeOrg(updated, caller.id));
 });
 
+function serializeEvent(e: any, callerId: string) {
+  const going = Array.isArray(e.going) ? e.going : [];
+  const interested = Array.isArray(e.interested) ? e.interested : [];
+  return { ...e, attending: going.length, interestedCount: interested.length, isGoing: going.includes(callerId), isInterested: interested.includes(callerId) };
+}
+
+app.get(`${BASE}/events`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  const events = await kv.get("events") ?? [];
+  if (!caller) return c.json(events);
+  return c.json(events.map((e: any) => serializeEvent(e, caller.id)));
+});
+
+app.post(`${BASE}/events`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const body = await c.req.json();
+  if (!body.title || !String(body.title).trim()) return c.json({ error: "Event title is required" }, 400);
+  // An event posted on behalf of a ministry requires being that ministry's
+  // owner/admin — anyone can create a personal (non-org) event.
+  if (body.orgId) {
+    const orgs = await kv.get("orgs") ?? SEED_ORGS;
+    const org = orgs.find((o: any) => o.id === body.orgId);
+    const myRole = org ? orgRole(org, caller.id) : undefined;
+    if (!org || (myRole !== "owner" && myRole !== "admin")) {
+      return c.json({ error: "Only that ministry's owner or admin can post events on its behalf" }, 403);
+    }
+  }
+  const events = await kv.get("events") ?? [];
+  const newEvent = {
+    id: `e${Date.now()}`,
+    title: String(body.title).trim(),
+    host: body.host ?? "",
+    orgId: body.orgId ?? null,
+    orgName: body.orgName ?? null,
+    date: body.date ?? "",
+    time: body.time ?? "",
+    location: body.location ?? "",
+    img: body.img ?? "",
+    type: body.type ?? "Conference",
+    access: body.access ?? "Open to all",
+    price: body.price ?? "Free",
+    speakers: Array.isArray(body.speakers) ? body.speakers.filter(Boolean) : [],
+    official: !!body.official,
+    createdBy: caller.id,
+    createdAt: new Date().toISOString(),
+    going: [caller.id],
+    interested: [],
+  };
+  await kv.set("events", [newEvent, ...events]);
+  return c.json(serializeEvent(newEvent, caller.id), 201);
+});
+
+app.post(`${BASE}/events/:id/rsvp`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const { status } = await c.req.json(); // "going" | "interested" | null
+  const events = await kv.get("events") ?? [];
+  const event = events.find((e: any) => e.id === id);
+  if (!event) return c.json({ error: "Event not found" }, 404);
+  const going = (Array.isArray(event.going) ? event.going : []).filter((u: string) => u !== caller.id);
+  const interested = (Array.isArray(event.interested) ? event.interested : []).filter((u: string) => u !== caller.id);
+  if (status === "going") going.push(caller.id);
+  else if (status === "interested") interested.push(caller.id);
+  const updated = { ...event, going, interested };
+  await kv.set("events", events.map((e: any) => e.id === id ? updated : e));
+  return c.json(serializeEvent(updated, caller.id));
+});
+
+app.delete(`${BASE}/events/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const events = await kv.get("events") ?? [];
+  const event = events.find((e: any) => e.id === id);
+  if (!event) return c.json({ error: "Event not found" }, 404);
+  const isCreator = event.createdBy === caller.id;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  await kv.set("events", events.filter((e: any) => e.id !== id));
+  return c.json({ ok: true });
+});
+
 function serializeGroup(g: any, callerId: string) {
   const memberIds = Array.isArray(g.memberIds) ? g.memberIds : [];
   return { ...g, members: memberIds.length, joined: memberIds.includes(callerId) };
