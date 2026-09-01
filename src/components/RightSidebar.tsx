@@ -4,7 +4,89 @@ import { useUIStore } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import EditProfileModal from './EditProfileModal'
 import { api } from '../api-client/server'
+import { useFeedPosts } from '../api-client/posts'
 import type { EventItem } from './EventCard'
+
+interface MyOrgSummary {
+  id: string
+  following: boolean
+  members: { userId: string }[]
+}
+
+function ProfileChecklist() {
+  const { currentUser } = useAuth()
+  const setActiveView = useUIStore(s => s.setActiveView)
+  const closeProfile = useUIStore(s => s.closeProfile)
+  const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
+  const { data: posts } = useFeedPosts('network')
+  const [orgs, setOrgs] = useState<MyOrgSummary[] | null>(null)
+
+  useEffect(() => {
+    api<MyOrgSummary[]>('/orgs/my').then(setOrgs).catch(() => setOrgs([]))
+  }, [])
+
+  // Wait for the ministry check to resolve before deciding whether the
+  // checklist is fully done — otherwise it flashes complete then reappears.
+  if (!currentUser || orgs === null) return null
+
+  const hasPosted = (posts ?? []).some(p => p.authorId === currentUser.id)
+  const hasMinistry = orgs.some(o => o.following || o.members.some(m => m.userId === currentUser.id))
+
+  const items = [
+    { done: !!currentUser.avatarUrl, label: 'Add a profile photo', action: () => setEditProfileOpen(true) },
+    { done: !!currentUser.bio?.trim(), label: 'Write a short bio', action: () => setEditProfileOpen(true) },
+    { done: !!(currentUser.title && currentUser.church && currentUser.location), label: 'Add your title, church & location', action: () => setEditProfileOpen(true) },
+    { done: hasPosted, label: 'Make your first post', action: () => { closeProfile(); setActiveView('feed') } },
+    { done: hasMinistry, label: 'Follow or join a ministry', action: () => { closeProfile(); setActiveView('orgs') } },
+  ]
+
+  const doneCount = items.filter(i => i.done).length
+  if (doneCount === items.length) return null
+
+  const pct = Math.round((doneCount / items.length) * 100)
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)', borderRadius: '12px',
+      border: '1px solid var(--color-border)', padding: '16px', marginBottom: '12px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>🚀 Complete Your Profile</div>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-navy)' }}>{doneCount}/{items.length}</div>
+      </div>
+      <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--color-surface)', overflow: 'hidden', marginBottom: '14px' }}>
+        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--color-gold)', transition: 'width 0.3s' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+        {items.map((item, i) => (
+          <button
+            key={i}
+            onClick={item.done ? undefined : item.action}
+            disabled={item.done}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '9px', width: '100%',
+              padding: 0, border: 'none', background: 'none', textAlign: 'left',
+              cursor: item.done ? 'default' : 'pointer', fontFamily: 'var(--font-sans)',
+            }}
+          >
+            <span style={{
+              width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px',
+              backgroundColor: item.done ? '#22c55e' : 'transparent',
+              border: item.done ? 'none' : '1.5px solid var(--color-border)',
+              color: '#fff',
+            }}>{item.done ? '✓' : ''}</span>
+            <span style={{
+              fontSize: '13px', fontWeight: item.done ? 500 : 600,
+              color: item.done ? 'var(--color-text-3)' : 'var(--color-text-1)',
+              textDecoration: item.done ? 'line-through' : 'none',
+            }}>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function SidebarEvents() {
   const [events, setEvents] = useState<EventItem[]>([])
@@ -133,6 +215,8 @@ export default function RightSidebar() {
       scrollbarWidth: 'thin',
     }}>
       <ProfileCard openProfile={openProfile} userId={currentUser?.id} />
+
+      <ProfileChecklist />
 
       {onHomeFeed && <SidebarEvents />}
 
