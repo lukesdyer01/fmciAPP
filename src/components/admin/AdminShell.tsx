@@ -5,18 +5,20 @@ import EditProfileModal from '../EditProfileModal'
 import Dashboard from './views/Dashboard'
 import MembersAdmin from './views/MembersAdmin'
 import OrgsAdmin from './views/OrgsAdmin'
+import GroupsAdmin from './views/GroupsAdmin'
 import ContentAdmin from './views/ContentAdmin'
 import EventsAdmin from './views/EventsAdmin'
 import VerificationAdmin from './views/VerificationAdmin'
 import FeatureFlagsAdmin from './views/FeatureFlagsAdmin'
 import SettingsAdmin from './views/SettingsAdmin'
 
-export type AdminView = 'dashboard' | 'members' | 'organizations' | 'content' | 'events' | 'verification' | 'feature-flags' | 'settings'
+export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'events' | 'verification' | 'feature-flags' | 'settings'
 
 const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'dashboard',     icon: '◈',  label: 'Dashboard' },
   { id: 'members',       icon: '👥', label: 'Members' },
-  { id: 'organizations', icon: '🏛', label: 'Organizations' },
+  { id: 'organizations', icon: '🏛', label: 'Ministries' },
+  { id: 'groups',        icon: '🫂', label: 'Groups' },
   { id: 'content',       icon: '🗂', label: 'Content' },
   { id: 'events',        icon: '📅', label: 'Events' },
   { id: 'verification',  icon: '✓',  label: 'Verification' },
@@ -36,6 +38,7 @@ export default function AdminShell() {
       case 'dashboard':     return <Dashboard />
       case 'members':       return <MembersAdmin />
       case 'organizations': return <OrgsAdmin />
+      case 'groups':        return <GroupsAdmin />
       case 'content':       return <ContentAdmin />
       case 'events':        return <EventsAdmin />
       case 'verification':  return <VerificationAdmin />

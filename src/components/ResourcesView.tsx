@@ -33,13 +33,12 @@ export interface Resource {
 }
 
 const CATEGORIES = ['All', 'Apostolic Teaching', 'Leadership', 'Prayer', 'Missions', 'Marketplace', 'Discipleship']
-const TYPES = ['All', 'Books', 'Courses', 'Series', 'Podcasts', 'Articles']
+const TYPES = ['All', 'Books', 'Courses', 'Videos', 'Articles']
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   Book:    { bg: '#EFF6FF', color: '#1D4ED8' },
-  Series:  { bg: '#F5F3FF', color: '#6D28D9' },
   Course:  { bg: '#ECFDF5', color: '#047857' },
-  Podcast: { bg: '#FFF7ED', color: '#C2410C' },
+  Video:   { bg: '#FFF7ED', color: '#C2410C' },
   Article: { bg: '#F0F9FF', color: '#0369A1' },
 }
 
@@ -185,7 +184,7 @@ export default function ResourcesView() {
   }
 
   const filtered = resources.filter(r => {
-    const matchType = type === 'All' || r.type === type || (type === 'Books' && r.type === 'Book') || (type === 'Courses' && r.type === 'Course') || (type === 'Series' && r.type === 'Series') || (type === 'Podcasts' && r.type === 'Podcast') || (type === 'Articles' && r.type === 'Article')
+    const matchType = type === 'All' || r.type === type || (type === 'Books' && r.type === 'Book') || (type === 'Courses' && r.type === 'Course') || (type === 'Videos' && r.type === 'Video') || (type === 'Articles' && r.type === 'Article')
     const matchCat = category === 'All' || r.category === category
     return matchType && matchCat
   })

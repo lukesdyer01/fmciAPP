@@ -67,9 +67,9 @@ export default function Dashboard() {
           trend="up"
         />
         <StatCard
-          label="Organizations"
+          label="Ministries"
           value={orgCount === null ? '—' : String(orgCount)}
-          delta={orgCount !== null ? `${orgCount} registered orgs` : 'Via Orgs panel'}
+          delta={orgCount !== null ? `${orgCount} registered orgs` : 'Via Ministries panel'}
           icon="🏛"
           trend="up"
         />
@@ -129,7 +129,7 @@ export default function Dashboard() {
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#e6edf3', marginBottom: '16px' }}>Quick Access</div>
           {[
             { icon: '👥', label: 'Manage Members',    desc: 'View and edit all users' },
-            { icon: '🏛',  label: 'Organizations',     desc: 'Manage churches and networks' },
+            { icon: '🏛',  label: 'Ministries',        desc: 'Manage churches and networks' },
             { icon: '✓',  label: 'Verification Queue', desc: 'Review pending requests' },
             { icon: '⚙',  label: 'Platform Settings',  desc: 'Configure platform options' },
           ].map((item, i) => (

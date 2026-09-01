@@ -641,7 +641,7 @@ app.post(`${BASE}/resources`, async (c) => {
     id: `r${Date.now()}`,
     title: String(body.title).trim(),
     author: body.author ?? "",
-    type: ["Book", "Course", "Series", "Podcast", "Article"].includes(body.type) ? body.type : "Article",
+    type: ["Book", "Course", "Video", "Article"].includes(body.type) ? body.type : "Article",
     category: body.category ?? "Discipleship",
     description: body.description ?? "",
     tags: Array.isArray(body.tags) ? body.tags.filter(Boolean) : [],
@@ -882,6 +882,20 @@ app.patch(`${BASE}/groups/:id`, async (c) => {
   const updated = { ...group, ...patch };
   await kv.set("groups", groups.map((g: any) => g.id === id ? updated : g));
   return c.json(serializeGroup(updated, caller.id));
+});
+
+app.delete(`${BASE}/groups/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const groups = await kv.get("groups") ?? [];
+  const group = groups.find((g: any) => g.id === id);
+  if (!group) return c.json({ error: "Group not found" }, 404);
+  const isGroupAdmin = Array.isArray(group.admins) && group.admins.includes(caller.id);
+  const isPlatformAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isGroupAdmin && !isPlatformAdmin) return c.json({ error: "Forbidden" }, 403);
+  await kv.set("groups", groups.filter((g: any) => g.id !== id));
+  return c.json({ ok: true });
 });
 
 app.post(`${BASE}/groups/:id/join`, async (c) => {

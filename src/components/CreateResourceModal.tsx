@@ -5,7 +5,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { useUIStore } from '../store/ui'
 import type { Resource } from './ResourcesView'
 
-const RESOURCE_TYPES = ['Book', 'Course', 'Series', 'Podcast', 'Article']
+const RESOURCE_TYPES = ['Book', 'Course', 'Video', 'Article']
 const CATEGORIES = ['Apostolic Teaching', 'Leadership', 'Prayer', 'Missions', 'Marketplace', 'Discipleship']
 
 export default function CreateResourceModal({ resource, onClose, onSaved }: {

@@ -84,10 +84,10 @@ export default function FeatureFlagsAdmin() {
         <div style={{ textAlign: 'center', padding: '64px 24px', backgroundColor: '#161b22', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ fontSize: '36px', marginBottom: '14px' }}>🏳</div>
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#e6edf3', marginBottom: '6px' }}>
-            {search ? 'No organizations match your search' : 'No organizations configured'}
+            {search ? 'No ministries match your search' : 'No ministries configured'}
           </div>
           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
-            Add organizations in the Organizations panel — their feature flags will appear here.
+            Add ministries in the Ministries panel — their feature flags will appear here.
           </div>
         </div>
       )}
@@ -98,7 +98,7 @@ export default function FeatureFlagsAdmin() {
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.8px', width: '220px' }}>Organization</th>
+              <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.8px', width: '220px' }}>Ministry</th>
               {FLAGS.map(f => (
                 <th key={f} style={{ padding: '10px 6px', textAlign: 'center', fontSize: '16px' }} title={FLAG_LABELS[f].label + ' — ' + FLAG_LABELS[f].description}>
                   {FLAG_LABELS[f].icon}
