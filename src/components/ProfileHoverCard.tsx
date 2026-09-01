@@ -3,6 +3,7 @@ import { useUIStore } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useOpenProfile } from './ProfileView'
+import { useColorScheme } from '../providers/ThemeProvider'
 import { supabase } from '../lib/supabase'
 import VerifiedBadge from './VerifiedBadge'
 
@@ -15,6 +16,7 @@ export default function ProfileHoverCard() {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
   const openProfile = useOpenProfile()
+  const { colorScheme, toggleColorScheme } = useColorScheme()
   const isAdmin = role === 'superadmin' || role === 'admin'
 
   // Closes the menu on an outside click — covers touch devices (no hover)
@@ -86,6 +88,12 @@ export default function ProfileHoverCard() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <MenuButton icon="✏" label="Edit Profile" onClick={() => closeAnd(() => setEditProfileOpen(true))} />
+                <ToggleRow
+                  icon={colorScheme === 'dark' ? '☀' : '🌙'}
+                  label={colorScheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  checked={colorScheme === 'dark'}
+                  onToggle={toggleColorScheme}
+                />
                 {isAdmin && <MenuButton icon="⚙" label="Admin Panel" onClick={() => closeAnd(() => setAdminMode(true))} />}
                 <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: '4px 0' }} />
                 <MenuButton icon="↪" label="Sign Out" onClick={() => closeAnd(() => supabase.auth.signOut())} />
@@ -95,6 +103,35 @@ export default function ProfileHoverCard() {
         </div>
       )}
     </div>
+  )
+}
+
+function ToggleRow({ icon, label, checked, onToggle }: { icon: string; label: string; checked: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '9px 10px', borderRadius: '8px', cursor: 'pointer',
+        border: 'none', backgroundColor: 'transparent',
+        color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 600,
+        fontFamily: 'var(--font-sans)', textAlign: 'left', transition: 'background 0.15s',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
+    >
+      <span style={{ fontSize: '14px', width: '18px', textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1 }}>{label}</span>
+      <span style={{
+        width: '32px', height: '18px', borderRadius: '9px', flexShrink: 0, position: 'relative',
+        backgroundColor: checked ? 'var(--color-navy)' : 'var(--color-border)', transition: 'background 0.15s',
+      }}>
+        <span style={{
+          position: 'absolute', top: '2px', width: '14px', height: '14px', borderRadius: '50%',
+          backgroundColor: '#fff', transition: 'left 0.15s', left: checked ? '16px' : '2px',
+        }} />
+      </span>
+    </button>
   )
 }
 

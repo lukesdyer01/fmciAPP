@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
-import { useColorScheme } from '../providers/ThemeProvider'
 import { useUIStore } from '../store/ui'
 import { useOpenProfile } from './ProfileView'
 import EditProfileModal from './EditProfileModal'
@@ -154,7 +153,6 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
 }
 
 export default function Topbar() {
-  const { colorScheme, toggleColorScheme } = useColorScheme()
   const notifOpen = useUIStore(s => s.notifOpen)
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
@@ -249,13 +247,6 @@ export default function Topbar() {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
           {unreadTotal > 0 && <span style={badgeDot}>{unreadTotal > 9 ? '9+' : unreadTotal}</span>}
-        </button>
-        {/* Dark mode toggle */}
-        <button onClick={toggleColorScheme} title={colorScheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} style={iconBtn}>
-          {colorScheme === 'dark'
-            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          }
         </button>
         {/* Notifications */}
         <button onClick={() => setNotifOpen(!notifOpen)} style={{ ...iconBtn, position: 'relative', backgroundColor: notifOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)' }}>
