@@ -1,7 +1,56 @@
+import { useState, useEffect } from 'react'
 import { useOpenProfile } from './ProfileView'
 import { useUIStore } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import EditProfileModal from './EditProfileModal'
+import { api } from '../api-client/server'
+import type { EventItem } from './EventCard'
+
+function SidebarEvents() {
+  const [events, setEvents] = useState<EventItem[]>([])
+
+  useEffect(() => {
+    api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
+  }, [])
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const upcoming = events
+    .filter(e => !e.date || e.date >= todayStr)
+    .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
+
+  if (upcoming.length === 0) return null
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)', borderRadius: '12px',
+      border: '1px solid var(--color-border)', padding: '14px 16px', marginBottom: '12px',
+    }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>📅 Upcoming Events</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {upcoming.map(e => (
+          <div key={e.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0, overflow: 'hidden',
+              background: e.img ? undefined : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px',
+            }}>
+              {e.img ? <img src={e.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '📅'}
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1.35 }}>{e.title}</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '2px' }}>
+                {e.date || 'Date TBA'}{e.location ? ` · ${e.location}` : ''}
+              </div>
+              {(e.orgName ?? e.host) && (
+                <div style={{ fontSize: '11px', color: 'var(--color-gold)', marginTop: '1px', fontWeight: 600 }}>{e.orgName ?? e.host}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => void; userId?: string }) {
   const userProfile = useUIStore(s => s.userProfile)
@@ -72,6 +121,9 @@ function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => voi
 export default function RightSidebar() {
   const openProfile = useOpenProfile()
   const { currentUser } = useAuth()
+  const activeView = useUIStore(s => s.activeView)
+  const profileId = useUIStore(s => s.profileId)
+  const onHomeFeed = activeView === 'feed' && profileId === null
 
   return (
     <aside className="right-sidebar" style={{
@@ -81,6 +133,8 @@ export default function RightSidebar() {
       scrollbarWidth: 'thin',
     }}>
       <ProfileCard openProfile={openProfile} userId={currentUser?.id} />
+
+      {onHomeFeed && <SidebarEvents />}
 
       {!currentUser?.verified && (
         <div style={{
