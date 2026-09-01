@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useSupabaseRole } from '../../../contexts/SupabaseRoleContext'
+import { api } from '../../../api-client/server'
+
+const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
+const COMMUNICATION_PREFS = ['Phone Call', 'Text Message', 'Email']
 
 type MemberStatus = 'active' | 'suspended' | 'pending'
 type PlatformRole = 'superadmin' | 'admin' | 'member'
@@ -19,6 +23,13 @@ interface Member {
   createdAt: string
   lastSignIn: string
   confirmed: boolean
+  // Not returned by admin_list_users — lazy-loaded by EditMemberModal from
+  // GET /members/:id when an admin opens the edit panel for this member.
+  bio?: string
+  website?: string
+  phone?: string
+  ministryRoles?: string[]
+  communicationPrefs?: string[]
 }
 
 const PLATFORM_ROLE_META: Record<PlatformRole, { label: string; bg: string; color: string }> = {
@@ -324,6 +335,11 @@ interface EditMemberDraft {
   role: PlatformRole
   status: MemberStatus
   verified: boolean
+  bio: string
+  website: string
+  phone: string
+  ministryRoles: string[]
+  communicationPrefs: string[]
 }
 
 function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose: () => void; onSaved: (updated: Member) => void }) {
@@ -338,14 +354,51 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
     role: member.role,
     status: member.status,
     verified: member.verified,
+    bio: member.bio ?? '',
+    website: member.website ?? '',
+    phone: member.phone ?? '',
+    ministryRoles: member.ministryRoles ?? [],
+    communicationPrefs: member.communicationPrefs ?? [],
   })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [loadingExtra, setLoadingExtra] = useState(true)
   const avatarRef = useRef<HTMLInputElement>(null)
+
+  // admin_list_users (the source of `member`) doesn't return bio/website/phone/
+  // ministryRoles/communicationPrefs — fetch them lazily from the same route
+  // the public profile page uses.
+  useEffect(() => {
+    api<{ bio: string; website: string; phone: string; ministryRoles: string[]; communicationPrefs: string[] }>(`/members/${member.id}`)
+      .then(data => setDraft(d => ({
+        ...d,
+        bio: data.bio ?? '',
+        website: data.website ?? '',
+        phone: data.phone ?? '',
+        ministryRoles: data.ministryRoles ?? [],
+        communicationPrefs: data.communicationPrefs ?? [],
+      })))
+      .catch(() => {})
+      .finally(() => setLoadingExtra(false))
+  }, [member.id])
 
   function set<K extends keyof EditMemberDraft>(key: K, value: EditMemberDraft[K]) {
     setDraft(d => ({ ...d, [key]: value }))
+  }
+
+  function toggleRole(role: string) {
+    setDraft(d => ({
+      ...d,
+      ministryRoles: d.ministryRoles.includes(role) ? d.ministryRoles.filter(r => r !== role) : [...d.ministryRoles, role],
+    }))
+  }
+
+  function toggleCommunicationPref(pref: string) {
+    setDraft(d => ({
+      ...d,
+      communicationPrefs: d.communicationPrefs.includes(pref) ? d.communicationPrefs.filter(p => p !== pref) : [...d.communicationPrefs, pref],
+    }))
   }
 
   async function handleImageFile(file: File) {
@@ -395,6 +448,22 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
         },
       })
       if (saveErr) throw new Error(saveErr.message)
+      // admin_update_member (the RPC above) only writes the fields it already
+      // knows about — bio/website/phone/ministryRoles/communicationPrefs go
+      // through the generic metadata-merge route instead.
+      await api('/admin/update-member', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: member.id,
+          patch: {
+            bio: draft.bio.trim(),
+            website: draft.website.trim(),
+            phone: draft.phone.trim(),
+            ministryRoles: draft.ministryRoles,
+            communicationPrefs: draft.communicationPrefs,
+          },
+        }),
+      })
       setStatus('saved')
       onSaved({ ...member, ...draft, avatarUrl: draft.avatarUrl })
       setTimeout(onClose, 800)
@@ -522,6 +591,69 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
                 <input value={draft.church} onChange={e => set('church', e.target.value)} placeholder="Grace Community Church" style={inputStyle}
                   onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(200,155,60,0.5)' }}
                   onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.1)' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Profile details */}
+          <div>
+            {sectionLabel('Profile Details')}
+            {loadingExtra && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', marginBottom: '10px' }}>Loading…</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={labelStyle}>Bio</label>
+                <textarea value={draft.bio} onChange={e => set('bio', e.target.value)} placeholder="Tell the network about yourself…" rows={3}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                  onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(200,155,60,0.5)' }}
+                  onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.1)' }} />
+              </div>
+              <div className="grid-2">
+                <div>
+                  <label style={labelStyle}>Website</label>
+                  <input value={draft.website} onChange={e => set('website', e.target.value)} placeholder="yoursite.org" style={inputStyle}
+                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(200,155,60,0.5)' }}
+                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.1)' }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone</label>
+                  <input value={draft.phone} onChange={e => set('phone', e.target.value)} placeholder="(555) 555-5555" style={inputStyle}
+                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(200,155,60,0.5)' }}
+                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.1)' }} />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Ministry Role</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {MINISTRY_ROLES.map(role => {
+                    const active = draft.ministryRoles.includes(role)
+                    return (
+                      <button key={role} type="button" onClick={() => toggleRole(role)} style={{
+                        padding: '7px 14px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        fontSize: '12px', fontWeight: 700,
+                        border: `1px solid ${active ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                        backgroundColor: active ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.03)',
+                        color: active ? 'var(--color-gold)' : 'rgba(255,255,255,0.4)',
+                      }}>{active ? '✓ ' : ''}{role}</button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Communication Preference</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {COMMUNICATION_PREFS.map(pref => {
+                    const active = draft.communicationPrefs.includes(pref)
+                    return (
+                      <button key={pref} type="button" onClick={() => toggleCommunicationPref(pref)} style={{
+                        padding: '7px 14px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        fontSize: '12px', fontWeight: 700,
+                        border: `1px solid ${active ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                        backgroundColor: active ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)',
+                        color: active ? '#60a5fa' : 'rgba(255,255,255,0.4)',
+                      }}>{active ? '✓ ' : ''}{pref}</button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
