@@ -13,7 +13,6 @@ interface MyOrg {
 }
 
 const POST_TYPES = [
-  { icon: '📖', label: 'Scripture',      color: 'var(--color-gold)' },
   { icon: '🙏', label: 'Prayer Request', color: '#7C3AED' },
 ]
 
