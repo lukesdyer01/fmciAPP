@@ -1,8 +1,63 @@
+import { useState, useEffect } from 'react'
 import type { ActiveView } from '../App'
+import { api } from '../api-client/server'
 
 interface Props {
   activeView: ActiveView
   setActiveView: (v: ActiveView) => void
+}
+
+interface RecentOrg {
+  id: string
+  name: string
+  type: string
+  location: string
+  img: string
+  createdAt?: string
+}
+
+function RecentMinistries({ setActiveView }: { setActiveView: (v: ActiveView) => void }) {
+  const [orgs, setOrgs] = useState<RecentOrg[] | null>(null)
+
+  useEffect(() => {
+    api<RecentOrg[]>('/orgs/my').then(setOrgs).catch(() => setOrgs([]))
+  }, [])
+
+  if (!orgs) return null
+
+  const recent = orgs
+    .filter(o => o.id !== 'org_fmci')
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+    .slice(0, 5)
+
+  if (recent.length === 0) return null
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)', borderRadius: '12px',
+      border: '1px solid var(--color-border)', padding: '14px', marginTop: '12px',
+    }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>🏛 Recent Ministries</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {recent.map(o => (
+          <div key={o.id} onClick={() => setActiveView('orgs')} style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, overflow: 'hidden' }}>
+              {o.img
+                ? <img src={o.img} alt={o.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>🏛</div>
+              }
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.name}</div>
+              {o.location && (
+                <div style={{ fontSize: '11px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.location}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export const NAV: { id: ActiveView; icon: string; label: string }[] = [
@@ -52,6 +107,8 @@ export default function LeftSidebar({ activeView, setActiveView }: Props) {
           )
         })}
       </div>
+
+      <RecentMinistries setActiveView={setActiveView} />
     </aside>
   )
 }
