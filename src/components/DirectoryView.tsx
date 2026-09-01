@@ -180,11 +180,11 @@ function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id
           ))}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button style={{
+          <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} style={{
             flex: 1, padding: '7px', borderRadius: '8px', border: 'none',
             backgroundColor: 'var(--color-navy)', color: '#fff',
             fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-          }}>Connect</button>
+          }}>View Profile</button>
           <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} style={{
             flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--color-border)',
             background: 'none', color: 'var(--color-text-1)',
@@ -222,11 +222,11 @@ function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id:
         </div>
       </div>
       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-        <button style={{
+        <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} style={{
           padding: '8px 16px', borderRadius: '8px', border: 'none',
           backgroundColor: 'var(--color-navy)', color: '#fff',
           fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-        }}>Connect</button>
+        }}>View Profile</button>
         <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} style={{
           padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--color-border)',
           background: 'none', color: 'var(--color-text-1)',

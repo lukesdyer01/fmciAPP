@@ -26,7 +26,7 @@ export default function PrayerRequestsView() {
         <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Share a need, and stand with others in prayer</p>
       </div>
 
-      <PostComposer type="prayer" placeholder="Share a prayer request with the network…" />
+      <PostComposer type="prayer" placeholder="Share a prayer request with the network…" hidePostAs />
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         {([

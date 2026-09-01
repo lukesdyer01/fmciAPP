@@ -433,7 +433,7 @@ function OrgCard({ org, currentUserId, isMember, onManage, onView, onFollowToggl
 
 // ── Main View ─────────────────────────────────────────────────────────────────
 export default function OrgView() {
-  const [tab, setTab] = useState<'my' | 'discover'>('my')
+  const [tab, setTab] = useState<'my' | 'following' | 'discover'>('my')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [orgs, setOrgs] = useState<MyOrg[]>([])
   const [loading, setLoading] = useState(true)
@@ -491,11 +491,13 @@ export default function OrgView() {
 
   const isMember = (org: MyOrg) => org.members.some(m => m.userId === currentUserId)
   const myOrgs = orgs.filter(isMember)
+  const followingOrgs = orgs.filter(o => o.following)
   const discoverOrgs = orgs.filter(o => !isMember(o))
 
   const availableTypes = Array.from(new Set(orgs.map(o => o.type))).sort()
 
-  const tabOrgs = (tab === 'my' ? myOrgs : discoverOrgs).filter(o => typeFilter === 'all' || o.type === typeFilter)
+  const tabList = tab === 'my' ? myOrgs : tab === 'following' ? followingOrgs : discoverOrgs
+  const tabOrgs = tabList.filter(o => typeFilter === 'all' || o.type === typeFilter)
 
   const viewingOrg = viewingOrgId ? orgs.find(o => o.id === viewingOrgId) ?? null : null
   if (viewingOrg) {
@@ -530,6 +532,7 @@ export default function OrgView() {
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         {([
           { id: 'my' as const, label: `My Ministries (${myOrgs.length})` },
+          { id: 'following' as const, label: `Following (${followingOrgs.length})` },
           { id: 'discover' as const, label: `Discover (${discoverOrgs.length})` },
         ]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -571,11 +574,15 @@ export default function OrgView() {
         <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '60px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: '40px', marginBottom: '16px' }}>🏛</div>
           <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--color-text-1)', marginBottom: '8px', fontFamily: 'var(--font-serif)' }}>
-            {tab === 'my' ? "You're not part of any ministries yet" : 'Nothing to discover right now'}
+            {tab === 'my' ? "You're not part of any ministries yet"
+              : tab === 'following' ? "You're not following any ministries yet"
+              : 'Nothing to discover right now'}
           </div>
           <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.7, maxWidth: '400px', margin: '0 auto 20px' }}>
             {tab === 'my'
               ? 'Create your church, ministry, or network, or browse Discover to follow others.'
+              : tab === 'following'
+              ? 'Follow a ministry from Discover to see its posts in your feed and keep track of it here.'
               : typeFilter !== 'all' ? 'Try a different type filter.' : "You're already part of everything else on the network."}
           </div>
           {tab === 'my' && (

@@ -7,11 +7,15 @@ import PrayerRequestsView from './PrayerRequestsView'
 import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
 import OrgView from './OrgView'
-import { UpcomingEvents, type EventItem } from './EventCard'
+import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
 import type { ActiveView } from '../App'
-import { useFeedPosts } from '../api-client/posts'
+import { useFeedPosts, type FeedPost } from '../api-client/posts'
 import { api } from '../api-client/server'
+
+type FeedEntry =
+  | { kind: 'post'; ts: number; post: FeedPost }
+  | { kind: 'event'; ts: number; event: EventItem }
 
 type FeedFilter = 'network' | 'following'
 
@@ -89,11 +93,18 @@ function MainFeed() {
   }
   useEffect(() => { loadEvents() }, [])
 
+  // Posts and events interleaved by when they were posted/created — a plain
+  // chronological feed rather than a separate pinned events section.
+  const now = Date.now()
+  const merged: FeedEntry[] = [
+    ...(posts ?? []).map((post): FeedEntry => ({ kind: 'post', ts: now - post.recencyHours * 3_600_000, post })),
+    ...events.map((event): FeedEntry => ({ kind: 'event', ts: event.createdAt ? new Date(event.createdAt).getTime() : 0, event })),
+  ].sort((a, b) => b.ts - a.ts)
+
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
       <FeedToggle filter={filter} setFilter={setFilter} />
       <PostComposer hidePostAs />
-      <UpcomingEvents events={events} onChanged={loadEvents} onEdit={setEditingEvent} />
       {editingEvent && (
         <CreateEventModal
           event={editingEvent}
@@ -123,9 +134,14 @@ function MainFeed() {
           </div>
         </div>
       )}
-      {posts?.map(post => (
-        <PostCard key={post.id} post={post as unknown as Post} />
-      ))}
+      {merged.map(entry => entry.kind === 'post'
+        ? <PostCard key={`p-${entry.post.id}`} post={entry.post as unknown as Post} />
+        : (
+          <div key={`e-${entry.event.id}`} style={{ marginBottom: '12px' }}>
+            <EventCard event={entry.event} onChanged={loadEvents} onEdit={setEditingEvent} />
+          </div>
+        )
+      )}
     </div>
   )
 }

@@ -208,7 +208,7 @@ export default function ResourcesView() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           {[
             { n: String(resources.length), label: 'Resources' },
-            { n: String(resources.filter(r => r.recommended).length), label: 'Recommended', gold: true },
+            { n: String(resources.reduce((sum, r) => sum + (r.reviews ?? 0), 0)), label: 'Reviews', gold: true },
           ].map((s, i) => (
             <div key={i} style={{
               backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: '10px',

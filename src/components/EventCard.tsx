@@ -20,6 +20,7 @@ export interface EventItem {
   speakers: string[]
   official: boolean
   createdBy: string
+  createdAt?: string
   attending: number
   interestedCount: number
   isGoing: boolean
