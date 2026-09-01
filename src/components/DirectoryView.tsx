@@ -14,6 +14,7 @@ interface Member {
   avatarUrl: string
   badges: BadgeVariant[]
   callings: string[]
+  ministryRoles: string[]
 }
 
 const FILTERS = ['All Members', 'Leadership', 'Pastors', 'Apostolic Council', 'Overseers', 'Missionaries', 'Intercessors']
@@ -179,6 +180,9 @@ function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id
           {member.badges.filter(b => b !== 'verified').map((b, j) => <Badge key={j} variant={b} size="sm" />)}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
+          {member.ministryRoles.map(r => (
+            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', fontWeight: 700 }}>{r}</span>
+          ))}
           {member.callings.map((c, j) => (
             <span key={j} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', fontWeight: 500 }}>{c}</span>
           ))}
@@ -223,6 +227,9 @@ function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id:
         <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '4px' }}>{member.title} · {member.church} · {member.location}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
           {member.badges.filter(b => b !== 'verified').map((b, j) => <Badge key={j} variant={b} size="sm" />)}
+          {member.ministryRoles.map(r => (
+            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', fontWeight: 700 }}>{r}</span>
+          ))}
           {member.callings.map((c, j) => (
             <span key={j} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', fontWeight: 500 }}>{c}</span>
           ))}

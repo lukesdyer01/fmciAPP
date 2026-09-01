@@ -64,6 +64,8 @@ function AppShell() {
       location: currentUser.location ?? '',
       website: currentUser.website ?? '',
       email: currentUser.email ?? '',
+      phone: currentUser.phone ?? '',
+      ministryRoles: currentUser.ministryRoles ?? [],
     })
   }, [currentUser])
 

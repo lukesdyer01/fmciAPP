@@ -15,6 +15,8 @@ export interface User {
   church: string | null
   location: string | null
   website: string | null
+  phone: string | null
+  ministryRoles: string[]
   platformRole: PlatformRole
   verified: boolean
   createdAt: string

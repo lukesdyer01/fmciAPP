@@ -15,6 +15,8 @@ export interface UserProfile {
   coverUrl: string
   website: string
   email: string
+  phone: string
+  ministryRoles: string[]
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -27,6 +29,8 @@ const DEFAULT_PROFILE: UserProfile = {
   coverUrl: '',
   website: '',
   email: '',
+  phone: '',
+  ministryRoles: [],
 }
 
 interface UIState {

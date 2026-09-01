@@ -18,6 +18,9 @@ export interface MemberProfile {
   coverUrl: string
   bio: string
   website: string
+  email: string
+  phone: string
+  ministryRoles: string[]
   verified: boolean
   joinedAt: string
 }
@@ -118,12 +121,27 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
           <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: member.bio ? '10px' : 0 }}>
             {[member.title, member.church, member.location].filter(Boolean).join(' · ')}
           </div>
+          {member.ministryRoles.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: member.bio ? '10px' : 0 }}>
+              {member.ministryRoles.map(role => (
+                <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', border: '1px solid var(--color-gold-border)' }}>{role}</span>
+              ))}
+            </div>
+          )}
           {member.bio && (
             <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-1)', lineHeight: 1.6 }}>{member.bio}</p>
           )}
-          {member.website && (
-            <div style={{ marginTop: '8px', fontSize: '13px' }}>
-              <a href={member.website.startsWith('http') ? member.website : `https://${member.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-navy)', fontWeight: 600 }}>🌐 {member.website}</a>
+          {(member.website || member.email || member.phone) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px', fontSize: '13px' }}>
+              {member.website && (
+                <a href={member.website.startsWith('http') ? member.website : `https://${member.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-navy)', fontWeight: 600 }}>🌐 {member.website}</a>
+              )}
+              {member.email && (
+                <a href={`mailto:${member.email}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>✉️ {member.email}</a>
+              )}
+              {member.phone && (
+                <a href={`tel:${member.phone}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>📞 {member.phone}</a>
+              )}
             </div>
           )}
         </div>

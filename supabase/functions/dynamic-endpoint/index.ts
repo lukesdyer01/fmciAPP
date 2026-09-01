@@ -120,6 +120,7 @@ app.get(`${BASE}/members`, async (c) => {
       avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
       badges: u.user_metadata?.verified ? ["verified"] : [],
       callings: [],
+      ministryRoles: Array.isArray(u.user_metadata?.ministryRoles) ? u.user_metadata.ministryRoles : [],
     }));
   return c.json(members);
 });
@@ -141,6 +142,9 @@ app.get(`${BASE}/members/:id`, async (c) => {
     coverUrl: u.user_metadata?.cover_url ?? u.user_metadata?.coverUrl ?? "",
     bio: u.user_metadata?.bio ?? "",
     website: u.user_metadata?.website ?? "",
+    email: u.email ?? "",
+    phone: u.user_metadata?.phone ?? "",
+    ministryRoles: Array.isArray(u.user_metadata?.ministryRoles) ? u.user_metadata.ministryRoles : [],
     verified: !!u.user_metadata?.verified,
     joinedAt: u.created_at,
   });

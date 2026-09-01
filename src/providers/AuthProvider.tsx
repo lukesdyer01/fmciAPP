@@ -30,6 +30,8 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
     church: meta.church ?? null,
     location: meta.location ?? null,
     website: meta.website ?? null,
+    phone: meta.phone ?? null,
+    ministryRoles: Array.isArray(meta.ministryRoles) ? meta.ministryRoles : [],
     platformRole: role as User['platformRole'],
     verified: meta.verified ?? false,
     createdAt: su.created_at ?? new Date().toISOString(),
@@ -70,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         church: prev.church || fresh.church,
         location: prev.location || fresh.location,
         website: prev.website || fresh.website,
+        phone: prev.phone || fresh.phone,
+        ministryRoles: prev.ministryRoles.length ? prev.ministryRoles : fresh.ministryRoles,
       }
     })
   }, [session.user.id, role])

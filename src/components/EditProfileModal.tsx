@@ -3,6 +3,8 @@ import { useUIStore, type UserProfile } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import { supabase } from '../lib/supabase'
 
+const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
+
 function Field({ label, value, onChange, multiline = false, placeholder = '' }: {
   label: string
   value: string
@@ -60,6 +62,13 @@ export default function EditProfileModal() {
     setDraft(d => ({ ...d, [key]: value }))
   }
 
+  function toggleRole(role: string) {
+    setDraft(d => ({
+      ...d,
+      ministryRoles: d.ministryRoles.includes(role) ? d.ministryRoles.filter(r => r !== role) : [...d.ministryRoles, role],
+    }))
+  }
+
   async function handleImageFile(key: 'avatarUrl' | 'coverUrl', file: File) {
     if (!currentUser) return
     setUploading(key)
@@ -101,6 +110,8 @@ export default function EditProfileModal() {
           church: draft.church,
           location: draft.location,
           website: draft.website,
+          phone: draft.phone,
+          ministryRoles: draft.ministryRoles,
         },
       })
       if (error) throw error
@@ -115,6 +126,8 @@ export default function EditProfileModal() {
         location: draft.location,
         website: draft.website,
         email: draft.email,
+        phone: draft.phone,
+        ministryRoles: draft.ministryRoles,
       })
       setStatus('saved')
       setTimeout(() => {
@@ -250,6 +263,32 @@ export default function EditProfileModal() {
             <div className="grid-2">
               <Field label="Website" value={draft.website} onChange={v => set('website', v)} placeholder="yoursite.org" />
               <Field label="Email" value={draft.email} onChange={v => set('email', v)} />
+            </div>
+            <Field label="Phone" value={draft.phone} onChange={v => set('phone', v)} placeholder="(555) 555-5555" />
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Ministry Role <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {MINISTRY_ROLES.map(role => {
+                  const active = draft.ministryRoles.includes(role)
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => toggleRole(role)}
+                      style={{
+                        padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        fontSize: '13px', fontWeight: 700,
+                        border: `1.5px solid ${active ? 'var(--color-navy)' : 'var(--color-border)'}`,
+                        backgroundColor: active ? 'var(--color-navy)' : 'var(--color-surface)',
+                        color: active ? '#fff' : 'var(--color-text-2)',
+                        transition: 'all 0.15s',
+                      }}
+                    >{active ? '✓ ' : ''}{role}</button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
