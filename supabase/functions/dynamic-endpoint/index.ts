@@ -124,6 +124,28 @@ app.get(`${BASE}/members`, async (c) => {
   return c.json(members);
 });
 
+app.get(`${BASE}/members/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const users = await listAuthUsers();
+  const u = users.find((x: any) => x.id === id);
+  if (!u) return c.json({ error: "Member not found" }, 404);
+  return c.json({
+    id: u.id,
+    name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "",
+    title: u.user_metadata?.title ?? "",
+    church: u.user_metadata?.church ?? "",
+    location: u.user_metadata?.location ?? "",
+    avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
+    coverUrl: u.user_metadata?.cover_url ?? u.user_metadata?.coverUrl ?? "",
+    bio: u.user_metadata?.bio ?? "",
+    website: u.user_metadata?.website ?? "",
+    verified: !!(u.user_metadata?.verified ?? u.confirmed_at),
+    joinedAt: u.created_at,
+  });
+});
+
 app.get(`${BASE}/posts`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   const caller = await getCallerUser(c.req.header("Authorization"));
@@ -191,7 +213,10 @@ app.delete(`${BASE}/posts/:id`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   const post = posts.find((p: any) => p.id === id);
   if (!post) return c.json({ error: "Post not found" }, 404);
-  if (!canModifyPost(post, caller)) return c.json({ error: "Forbidden" }, 403);
+  // A wall owner may also remove posts others wrote on their own page, same as
+  // Facebook timeline moderation — separate from authorship-based edit rights.
+  const isWallOwner = post.wallUserId && post.wallUserId === caller.id;
+  if (!canModifyPost(post, caller) && !isWallOwner) return c.json({ error: "Forbidden" }, 403);
   await kv.set("posts", posts.filter((p: any) => p.id !== id));
   return c.json({ ok: true });
 });

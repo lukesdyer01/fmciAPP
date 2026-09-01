@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
-import { useOpenProfile } from './ProfileModal'
 import { useUIStore } from '../store/ui'
 import { api } from '../api-client/server'
 
@@ -42,7 +41,6 @@ function GroupDetail({ group, onBack, onLeft }: { group: Group; onBack: () => vo
   const [postText, setPostText] = useState('')
   const [localPosts, setLocalPosts] = useState<{ author: string; avatar: string; time: string; content: string }[]>([])
   const [leaving, setLeaving] = useState(false)
-  const openProfile = useOpenProfile()
   const userProfile = useUIStore(s => s.userProfile)
   const ts = TYPE_STYLE[group.type]
 
@@ -164,14 +162,11 @@ function GroupDetail({ group, onBack, onLeft }: { group: Group; onBack: () => vo
             <div key={i} style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px' }}>
                 {post.avatar
-                  ? <img src={post.avatar} alt={post.author} onClick={() => openProfile(post.author)} style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0, cursor: 'pointer' }} />
-                  : <div onClick={() => openProfile(post.author)} style={{ width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0, cursor: 'pointer', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '14px' }}>{(post.author || '?').slice(0, 2).toUpperCase()}</div>
+                  ? <img src={post.avatar} alt={post.author} style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+                  : <div style={{ width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '14px' }}>{(post.author || '?').slice(0, 2).toUpperCase()}</div>
                 }
                 <div>
-                  <div
-                    onClick={() => openProfile(post.author)}
-                    style={{ fontWeight: 700, fontSize: '14px', color: 'var(--color-text-1)', cursor: 'pointer' }}
-                  >{post.author}</div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--color-text-1)' }}>{post.author}</div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>{post.time}</div>
                 </div>
               </div>

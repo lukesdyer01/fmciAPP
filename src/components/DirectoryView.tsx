@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import { api } from '../api-client/server'
+import { useOpenProfile } from './ProfileView'
 
 interface Member {
   id: string
@@ -17,6 +18,7 @@ const FILTERS = ['All Members', 'Leadership', 'Pastors', 'Apostolic Council', 'O
 const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', 'Europe', 'Asia', 'Latin America', 'Caribbean']
 
 export default function DirectoryView() {
+  const openProfile = useOpenProfile()
   const [filter, setFilter] = useState('All Members')
   const [region, setRegion] = useState('All Regions')
   const [search, setSearch] = useState('')
@@ -139,8 +141,8 @@ export default function DirectoryView() {
         }}>
           {filtered.map((member, i) => (
             view === 'grid'
-              ? <MemberCard key={i} member={member} />
-              : <MemberRow key={i} member={member} />
+              ? <MemberCard key={i} member={member} onOpen={openProfile} />
+              : <MemberRow key={i} member={member} onOpen={openProfile} />
           ))}
         </div>
       )}
@@ -148,9 +150,9 @@ export default function DirectoryView() {
   )
 }
 
-function MemberCard({ member }: { member: Member }) {
+function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
   return (
-    <div style={{
+    <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
       border: '1px solid var(--color-border)', overflow: 'hidden',
       cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
@@ -192,9 +194,9 @@ function MemberCard({ member }: { member: Member }) {
   )
 }
 
-function MemberRow({ member }: { member: Member }) {
+function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
   return (
-    <div style={{
+    <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
       border: '1px solid var(--color-border)', padding: '16px 20px',
       display: 'flex', alignItems: 'center', gap: '16px',

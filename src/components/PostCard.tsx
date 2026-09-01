@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
-import { useOpenProfile } from './ProfileModal'
+import { useOpenProfile } from './ProfileView'
 import { useEditPost, useDeletePost, useSetPrayerStatus } from '../api-client/posts'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
@@ -26,6 +26,8 @@ export interface Post {
   pinned?: boolean
   orgId?: string
   orgName?: string
+  wallUserId?: string
+  wallUserName?: string
   editedAt?: string
   prayerStatus?: 'unanswered' | 'answered'
 }
@@ -57,7 +59,11 @@ export default function PostCard({ post }: { post: Post }) {
   const isOwner = !!currentUser && (
     post.authorId ? post.authorId === currentUser.id : post.author === currentUser.displayName
   )
-  const canModify = isOwner || role === 'admin' || role === 'superadmin'
+  const isAdmin = role === 'admin' || role === 'superadmin'
+  const isWallOwner = !!currentUser && post.wallUserId === currentUser.id
+  const canEdit = isOwner || isAdmin
+  const canDelete = isOwner || isAdmin || isWallOwner
+  const canModify = canEdit
 
   const handleReaction = (type: 'amen' | 'pray' | 'heart') => {
     setReactions(r => {
@@ -118,13 +124,13 @@ export default function PostCard({ post }: { post: Post }) {
       {/* Header */}
       <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
         {post.avatar
-          ? <img src={post.avatar} alt={post.author} onClick={() => openProfile(post.author)} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', display: 'block', flexShrink: 0, cursor: 'pointer' }} />
-          : <div onClick={() => openProfile(post.author)} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, cursor: 'pointer', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px' }}>{(post.author || '?').slice(0, 2).toUpperCase()}</div>
+          ? <img src={post.avatar} alt={post.author} onClick={() => post.authorId && openProfile(post.authorId)} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', display: 'block', flexShrink: 0, cursor: post.authorId ? 'pointer' : 'default' }} />
+          : <div onClick={() => post.authorId && openProfile(post.authorId)} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, cursor: post.authorId ? 'pointer' : 'default', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px' }}>{(post.author || '?').slice(0, 2).toUpperCase()}</div>
         }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
             <div>
-              <div onClick={() => openProfile(post.author)} style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: 'pointer', marginBottom: '3px' }}>
+              <div onClick={() => post.authorId && openProfile(post.authorId)} style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: post.authorId ? 'pointer' : 'default', marginBottom: '3px' }}>
                 {post.author}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
@@ -137,6 +143,15 @@ export default function PostCard({ post }: { post: Post }) {
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)' }}>
                   <span style={{ fontSize: '11px' }}>🏛</span>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>Posted on behalf of {post.orgName}</span>
+                </div>
+              )}
+              {post.wallUserId && post.wallUserId !== post.authorId && post.wallUserName && (
+                <div
+                  onClick={() => openProfile(post.wallUserId!)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: '11px' }}>📝</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-2)' }}>Wrote on {post.wallUserName}'s page</span>
                 </div>
               )}
               <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '2px' }}>{post.time}</div>
@@ -173,7 +188,7 @@ export default function PostCard({ post }: { post: Post }) {
                   }}>{post.prayerStatus === 'answered' ? '✓ Answered' : '○ Unanswered'}</span>
                 )
               )}
-              {canModify && (
+              {(canEdit || canDelete) && (
                 <div style={{ position: 'relative' }}>
                   <button onClick={() => setMenuOpen(o => !o)} style={{
                     background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px',
@@ -188,16 +203,20 @@ export default function PostCard({ post }: { post: Post }) {
                         borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden',
                         minWidth: '120px',
                       }}>
-                        <button onClick={startEdit} style={{
-                          display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
-                          cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)',
-                          textAlign: 'left', fontFamily: 'var(--font-sans)',
-                        }}>✏️ Edit</button>
+                        {canEdit && (
+                          <button onClick={startEdit} style={{
+                            display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
+                            cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)',
+                            textAlign: 'left', fontFamily: 'var(--font-sans)',
+                          }}>✏️ Edit</button>
+                        )}
+                        {canDelete && (
                         <button onClick={handleDelete} disabled={deletePost.isPending} style={{
                           display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
                           cursor: deletePost.isPending ? 'default' : 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-red)',
                           textAlign: 'left', fontFamily: 'var(--font-sans)', opacity: deletePost.isPending ? 0.5 : 1,
                         }}>{deletePost.isPending ? 'Deleting…' : '🗑 Delete'}</button>
+                        )}
                       </div>
                     </>
                   )}

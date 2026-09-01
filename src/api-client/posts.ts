@@ -26,6 +26,8 @@ export interface FeedPost {
   isFollowing?: boolean
   orgId?: string
   orgName?: string
+  wallUserId?: string
+  wallUserName?: string
   editedAt?: string
   prayerStatus?: 'unanswered' | 'answered'
 }
@@ -71,6 +73,8 @@ function adaptPost(raw: any, index: number): FeedPost {
     isFollowing: raw.isFollowing ?? false,
     orgId: raw.orgId,
     orgName: raw.orgName,
+    wallUserId: raw.wallUserId,
+    wallUserName: raw.wallUserName,
     editedAt: raw.editedAt,
     prayerStatus: raw.prayerStatus,
   }
@@ -109,7 +113,7 @@ export function useFeedPosts(filter: 'network' | 'following' = 'network') {
 export function useCreatePost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; prayerStatus?: 'unanswered' | 'answered' }) =>
+    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; wallUserId?: string; wallUserName?: string; prayerStatus?: 'unanswered' | 'answered' }) =>
       api<FeedPost>('/posts', { method: 'POST', body: JSON.stringify(post) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })

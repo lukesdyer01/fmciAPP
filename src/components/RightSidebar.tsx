@@ -1,9 +1,9 @@
-import { useOpenProfile } from './ProfileModal'
+import { useOpenProfile } from './ProfileView'
 import { useUIStore } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import EditProfileModal from './EditProfileModal'
 
-function ProfileCard({ openProfile }: { openProfile: (name: string) => void }) {
+function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => void; userId?: string }) {
   const userProfile = useUIStore(s => s.userProfile)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
@@ -31,8 +31,8 @@ function ProfileCard({ openProfile }: { openProfile: (name: string) => void }) {
             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}>
             {userProfile.avatarUrl
-              ? <img src={userProfile.avatarUrl} alt={userProfile.name} onClick={() => openProfile(userProfile.name)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
-              : <div onClick={() => openProfile(userProfile.name)} style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px', cursor: 'pointer' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
+              ? <img src={userProfile.avatarUrl} alt={userProfile.name} onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: userId ? 'pointer' : 'default' }} />
+              : <div onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px', cursor: userId ? 'pointer' : 'default' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
             }
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function RightSidebar() {
       padding: '16px 12px 32px',
       scrollbarWidth: 'thin',
     }}>
-      <ProfileCard openProfile={openProfile} />
+      <ProfileCard openProfile={openProfile} userId={currentUser?.id} />
 
       {!currentUser?.verified && (
         <div style={{

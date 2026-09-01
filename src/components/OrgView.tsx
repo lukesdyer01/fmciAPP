@@ -400,7 +400,6 @@ function OrgCard({ org, currentUserId, isMember, onManage, onView, onFollowToggl
         <div style={{ display: 'flex', gap: '16px', marginBottom: '14px' }}>
           <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.members.length}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Members</div></div>
           <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.followerCount}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Followers</div></div>
-          {org.website && <div style={{ fontSize: '13px', color: 'var(--color-navy)', alignSelf: 'center' }}>{org.website}</div>}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button

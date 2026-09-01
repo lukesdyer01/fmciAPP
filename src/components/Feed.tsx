@@ -92,7 +92,7 @@ function MainFeed() {
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
       <FeedToggle filter={filter} setFilter={setFilter} />
-      <PostComposer />
+      <PostComposer hidePostAs />
       <UpcomingEvents events={events} onChanged={loadEvents} onEdit={setEditingEvent} />
       {editingEvent && (
         <CreateEventModal

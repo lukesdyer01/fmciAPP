@@ -11,7 +11,7 @@ import LeftSidebar from './components/LeftSidebar'
 import Feed from './components/Feed'
 import RightSidebar from './components/RightSidebar'
 import AdminShell from './components/admin/AdminShell'
-import ProfileModal from './components/ProfileModal'
+import ProfileView from './components/ProfileView'
 import AuthGate from './components/AuthGate'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -40,6 +40,7 @@ function AppShell() {
   const adminMode = useUIStore(s => s.adminMode)
   const setAdminMode = useUIStore(s => s.setAdminMode)
   const profileId = useUIStore(s => s.profileId)
+  const closeProfile = useUIStore(s => s.closeProfile)
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
   const { role } = useSupabaseRole()
   const { currentUser } = useAuth()
@@ -74,11 +75,12 @@ function AppShell() {
       <div className="app-grid">
         <LeftSidebar activeView={activeView} setActiveView={setActiveView} />
         <main style={{ padding: '20px 12px', minHeight: 'calc(100vh - 64px)' }}>
-          <Feed activeView={activeView} />
+          {profileId !== null
+            ? <ProfileView userId={profileId} onBack={closeProfile} />
+            : <Feed activeView={activeView} />}
         </main>
         <RightSidebar />
       </div>
-      {profileId !== null && <ProfileModal />}
     </div>
   )
 }

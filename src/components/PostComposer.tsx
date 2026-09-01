@@ -24,9 +24,17 @@ interface Props {
   // used on a ministry's own page.
   fixedOrgId?: string
   fixedOrgName?: string
+  // When set, the post is tagged to this user's wall (their profile page) —
+  // used both when posting on your own page and on someone else's.
+  wallUserId?: string
+  wallUserName?: string
+  // Hides the "Posting as" org selector even when the user has orgs they
+  // could post as — used on the main feed, which the user asked to keep
+  // personal-only.
+  hidePostAs?: boolean
 }
 
-export default function PostComposer({ type = 'post', placeholder, fixedOrgId, fixedOrgName }: Props) {
+export default function PostComposer({ type = 'post', placeholder, fixedOrgId, fixedOrgName, wallUserId, wallUserName, hidePostAs }: Props) {
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [myOrgs, setMyOrgs] = useState<MyOrg[]>([])
@@ -35,7 +43,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
   const { mutate: createPost, isPending } = useCreatePost()
 
   useEffect(() => {
-    if (fixedOrgId) return
+    if (fixedOrgId || wallUserId || hidePostAs) return
     api<MyOrg[]>('/orgs/my')
       .then(orgs => {
         // Only show orgs where the user is owner or admin (can post as)
@@ -46,7 +54,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
         ))
       })
       .catch(() => {})
-  }, [fixedOrgId])
+  }, [fixedOrgId, wallUserId, hidePostAs])
 
   function handlePost() {
     if (!text.trim() || isPending) return
@@ -63,6 +71,8 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       isFollowing: false,
       orgId: fixedOrgId ?? selectedOrg?.id,
       orgName: fixedOrgName ?? selectedOrg?.name,
+      wallUserId,
+      wallUserName,
       ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
       onSuccess: () => setText(''),
