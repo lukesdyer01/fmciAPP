@@ -9,7 +9,7 @@ interface OrgMember {
   email: string
   name: string
   avatarUrl: string
-  role: 'owner' | 'admin' | 'moderator'
+  role: 'owner' | 'admin' | 'moderator' | 'member'
   addedAt: string
 }
 
@@ -57,6 +57,7 @@ const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   owner:     { bg: 'rgba(200,155,60,0.1)',   color: 'var(--color-gold)' },
   admin:     { bg: 'rgba(96,165,250,0.1)',   color: '#60a5fa' },
   moderator: { bg: 'rgba(167,139,250,0.1)', color: '#a78bfa' },
+  member:    { bg: 'var(--color-surface)',   color: 'var(--color-text-2)' },
 }
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
@@ -497,7 +498,10 @@ export default function OrgView() {
   const availableTypes = Array.from(new Set(orgs.map(o => o.type))).sort()
 
   const tabList = tab === 'my' ? myOrgs : tab === 'following' ? followingOrgs : discoverOrgs
-  const tabOrgs = tabList.filter(o => typeFilter === 'all' || o.type === typeFilter)
+  const tabOrgs = tabList
+    .filter(o => typeFilter === 'all' || o.type === typeFilter)
+    // FMCI is the network's own headquarters — always shown first, wherever it appears.
+    .sort((a, b) => (a.id === 'org_fmci' ? -1 : b.id === 'org_fmci' ? 1 : 0))
 
   const viewingOrg = viewingOrgId ? orgs.find(o => o.id === viewingOrgId) ?? null : null
   if (viewingOrg) {

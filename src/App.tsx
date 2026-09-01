@@ -6,6 +6,7 @@ import { OrgThemeProvider } from './providers/OrgThemeProvider'
 import { useUIStore } from './store/ui'
 import { useSupabaseRole } from './contexts/SupabaseRoleContext'
 import { useAuth } from './providers/AuthProvider'
+import { api } from './api-client/server'
 import Topbar from './components/Topbar'
 import LeftSidebar from './components/LeftSidebar'
 import Feed from './components/Feed'
@@ -63,6 +64,13 @@ function AppShell() {
       email: currentUser.email ?? '',
     })
   }, [currentUser])
+
+  useEffect(() => {
+    // Every member is inherently part of FMCI itself — idempotent on the
+    // server, so calling it once per session load is enough.
+    if (!currentUser) return
+    api('/orgs/fmci-bootstrap', { method: 'POST' }).catch(() => {})
+  }, [currentUser?.id])
 
   // If adminMode was somehow activated without a qualifying role, reset it
   useEffect(() => {

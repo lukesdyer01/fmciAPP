@@ -11,7 +11,7 @@ interface OrgMember {
   email: string
   name: string
   avatarUrl: string
-  role: 'owner' | 'admin' | 'moderator'
+  role: 'owner' | 'admin' | 'moderator' | 'member'
   addedAt: string
 }
 

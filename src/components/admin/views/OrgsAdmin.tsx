@@ -6,7 +6,7 @@ interface OrgMember {
   email: string
   name: string
   avatarUrl: string
-  role: 'owner' | 'admin' | 'moderator'
+  role: 'owner' | 'admin' | 'moderator' | 'member'
   addedAt: string
 }
 
@@ -49,6 +49,7 @@ const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   owner:     { bg: 'rgba(200,155,60,0.12)',  color: 'var(--color-gold)' },
   admin:     { bg: 'rgba(96,165,250,0.12)',  color: '#60a5fa' },
   moderator: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
+  member:    { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' },
 }
 
 function adminActionBtn(color: string): React.CSSProperties {

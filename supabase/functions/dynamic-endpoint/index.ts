@@ -262,6 +262,28 @@ app.get(`${BASE}/orgs/my`, async (c) => {
   return c.json(active);
 });
 
+// Every user is inherently part of FMCI itself — called once per session on
+// app load, idempotent, so it's safe to call repeatedly.
+app.post(`${BASE}/orgs/fmci-bootstrap`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const fmci = orgs.find((o: any) => o.id === "org_fmci");
+  if (!fmci) return c.json({ ok: true });
+  const members = Array.isArray(fmci.members) ? fmci.members : [];
+  const followerIds = Array.isArray(fmci.followerIds) ? fmci.followerIds : [];
+  const needsMember = !members.some((m: any) => m.userId === caller.id);
+  const needsFollow = !followerIds.includes(caller.id);
+  if (!needsMember && !needsFollow) return c.json(serializeOrg(fmci, caller.id));
+  const updated = {
+    ...fmci,
+    members: needsMember ? [...members, { userId: caller.id, role: "member", addedAt: new Date().toISOString() }] : members,
+    followerIds: needsFollow ? [...followerIds, caller.id] : followerIds,
+  };
+  await kv.set("orgs", orgs.map((o: any) => o.id === "org_fmci" ? updated : o));
+  return c.json(serializeOrg(updated, caller.id));
+});
+
 app.post(`${BASE}/orgs`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
