@@ -377,21 +377,34 @@ export default function ResourcesView() {
                         }}>{tag}</span>
                       ))}
                     </div>
-                    <button
-                      onClick={() => setSaved(prev => {
-                        const next = new Set(prev)
-                        if (isSaved) next.delete(r.id); else next.add(r.id)
-                        return next
-                      })}
-                      style={{
-                        padding: '7px 16px', borderRadius: '9px', cursor: 'pointer', flexShrink: 0,
-                        border: `1px solid ${isSaved ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
-                        backgroundColor: isSaved ? 'var(--color-gold-bg)' : 'var(--color-surface)',
-                        color: isSaved ? 'var(--color-gold)' : 'var(--color-text-1)',
-                        fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
-                        transition: 'all 0.15s',
-                      }}
-                    >{isSaved ? '🔖 Saved' : '+ Save'}</button>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      {r.url && (
+                        <a
+                          href={r.url} target="_blank" rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                            padding: '7px 16px', borderRadius: '9px', textDecoration: 'none',
+                            border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff',
+                            fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                          }}
+                        >More Info ↗</a>
+                      )}
+                      <button
+                        onClick={() => setSaved(prev => {
+                          const next = new Set(prev)
+                          if (isSaved) next.delete(r.id); else next.add(r.id)
+                          return next
+                        })}
+                        style={{
+                          padding: '7px 16px', borderRadius: '9px', cursor: 'pointer', flexShrink: 0,
+                          border: `1px solid ${isSaved ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
+                          backgroundColor: isSaved ? 'var(--color-gold-bg)' : 'var(--color-surface)',
+                          color: isSaved ? 'var(--color-gold)' : 'var(--color-text-1)',
+                          fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                          transition: 'all 0.15s',
+                        }}
+                      >{isSaved ? '🔖 Saved' : '+ Save'}</button>
+                    </div>
                   </div>
 
                   {expandedId === r.id && (
