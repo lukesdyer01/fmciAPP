@@ -336,7 +336,7 @@ export default function ResourcesView() {
 
                   {/* Title */}
                   <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)', lineHeight: 1.3 }}>
-                    {r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{r.title}</a> : r.title}
+                    {r.title}
                   </h3>
 
                   {/* Author */}
