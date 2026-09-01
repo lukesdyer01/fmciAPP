@@ -175,10 +175,14 @@ export default function MessagesPanel() {
           <button onClick={closeMessages} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
         <div className="messages-body" data-active={activeConv ? 'true' : 'false'} style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          <div className="messages-list-pane" style={{ width: '280px', flexShrink: 0, borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
+          {/* width/flex-shrink/display all live in CSS (base + mobile override),
+              not here — an inline width or display would always beat the
+              mobile class rules that expand this pane full-width and hide it
+              once a conversation is open. */}
+          <div className="messages-list-pane" style={{ borderRight: '1px solid var(--color-border)', flexDirection: 'column' }}>
             <ConversationList conversations={conversations ?? []} loading={isLoading} activeId={activeConv?.id ?? null} onSelect={setActiveConv} />
           </div>
-          <div className="messages-thread-pane" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div className="messages-thread-pane" style={{ flex: 1, flexDirection: 'column', minWidth: 0 }}>
             {activeConv
               ? <Thread conversation={activeConv} onBack={() => setActiveConv(null)} />
               : <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>Select a conversation</div>
