@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import { useUIStore } from '../store/ui'
 import { api } from '../api-client/server'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../providers/AuthProvider'
+import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 
 interface Group {
   id: string
@@ -36,13 +39,17 @@ const TYPE_STYLE: Record<Group['type'], { color: string; bg: string }> = {
   'Invite-Only':     { color: '#6D28D9', bg: '#F5F3FF' },
 }
 
-function GroupDetail({ group, onBack, onLeft }: { group: Group; onBack: () => void; onLeft: () => void }) {
+function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBack: () => void; onLeft: () => void; onUpdated: () => void }) {
+  const { currentUser } = useAuth()
+  const { role } = useSupabaseRole()
   const [tab, setTab] = useState<'posts' | 'members' | 'about'>('posts')
   const [postText, setPostText] = useState('')
   const [localPosts, setLocalPosts] = useState<{ author: string; avatar: string; time: string; content: string }[]>([])
   const [leaving, setLeaving] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const userProfile = useUIStore(s => s.userProfile)
   const ts = TYPE_STYLE[group.type]
+  const canEdit = (!!currentUser && Array.isArray(group.admins) && group.admins.includes(currentUser.id)) || role === 'admin' || role === 'superadmin'
 
   async function handleLeave() {
     if (!window.confirm(`Leave ${group.name}?`)) return
@@ -91,14 +98,26 @@ function GroupDetail({ group, onBack, onLeft }: { group: Group; onBack: () => vo
                 <strong style={{ color: 'var(--color-text-1)' }}>{group.members}</strong> members · Active {group.lastActivity}
               </div>
             </div>
-            <button onClick={handleLeave} disabled={leaving} style={{
-              padding: '9px 20px', borderRadius: '8px', cursor: leaving ? 'default' : 'pointer',
-              border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
-              color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
-              opacity: leaving ? 0.6 : 1,
-            }}>{leaving ? 'Leaving…' : 'Leave Group'}</button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {canEdit && (
+                <button onClick={() => setShowEdit(true)} style={{
+                  padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
+                  border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                }}>✏ Edit Group</button>
+              )}
+              <button onClick={handleLeave} disabled={leaving} style={{
+                padding: '9px 20px', borderRadius: '8px', cursor: leaving ? 'default' : 'pointer',
+                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
+                color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                opacity: leaving ? 0.6 : 1,
+              }}>{leaving ? 'Leaving…' : 'Leave Group'}</button>
+            </div>
           </div>
         </div>
+        {showEdit && (
+          <CreateGroupModal group={group} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onUpdated() }} />
+        )}
 
         {/* Tabs */}
         <div style={{ display: 'flex', borderTop: '1px solid var(--color-border)', padding: '0 20px' }}>
@@ -226,22 +245,49 @@ function GroupDetail({ group, onBack, onLeft }: { group: Group; onBack: () => vo
   )
 }
 
-function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [about, setAbout] = useState('')
-  const [type, setType] = useState<Group['type']>('Public')
+function CreateGroupModal({ group, onClose, onSaved }: { group?: Group; onClose: () => void; onSaved: () => void }) {
+  const { currentUser } = useAuth()
+  const [name, setName] = useState(group?.name ?? '')
+  const [description, setDescription] = useState(group?.description ?? '')
+  const [about, setAbout] = useState(group?.about ?? '')
+  const [type, setType] = useState<Group['type']>(group?.type ?? 'Public')
+  const [img, setImg] = useState(group?.img ?? '')
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  async function handleCreate() {
+  async function handleImageFile(file: File) {
+    if (!currentUser) return
+    setUploading(true); setErr('')
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/group-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      setImg(data.publicUrl)
+    } catch (e: any) {
+      setErr(e.message ?? 'Failed to upload image.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleSave() {
     if (!name.trim()) { setErr('Group name is required.'); return }
     setSaving(true); setErr('')
     try {
-      await api('/groups', { method: 'POST', body: JSON.stringify({ name: name.trim(), description: description.trim(), about: about.trim(), type }) })
-      onCreated()
+      if (group) {
+        await api(`/groups/${group.id}`, { method: 'PATCH', body: JSON.stringify({ name: name.trim(), description: description.trim(), about: about.trim(), type, img }) })
+      } else {
+        await api('/groups', { method: 'POST', body: JSON.stringify({ name: name.trim(), description: description.trim(), about: about.trim(), type, img }) })
+      }
+      onSaved()
     } catch (e: any) {
-      setErr(e.message ?? 'Failed to create group.')
+      setErr(e.message ?? `Failed to ${group ? 'update' : 'create'} group.`)
       setSaving(false)
     }
   }
@@ -263,10 +309,34 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
     >
       <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '16px', border: '1px solid var(--color-border)', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Create Group</div>
+          <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>{group ? 'Edit Group' : 'Create Group'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div onClick={() => fileRef.current?.click()} style={{ cursor: 'pointer', position: 'relative' }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 14, flexShrink: 0, overflow: 'hidden',
+                background: img ? undefined : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
+              }}>
+                {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👥'}
+              </div>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.15s', fontSize: '16px',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
+              >📷</div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>{uploading ? 'Uploading…' : 'Group Image'}</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>Click to {img ? 'change' : 'upload'} (optional)</div>
+            </div>
+          </div>
           <div>
             <label style={labelStyle}>Group Name *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Young Adults Ministry" style={inputStyle} autoFocus />
@@ -294,8 +364,8 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
         </div>
         <div style={{ display: 'flex', gap: '10px', padding: '16px 24px', borderTop: '1px solid var(--color-border)' }}>
           <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-2)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Cancel</button>
-          <button onClick={handleCreate} disabled={saving} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)', color: '#fff', fontSize: '14px', fontWeight: 800, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Creating…' : 'Create Group'}
+          <button onClick={handleSave} disabled={saving || uploading} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)', color: '#fff', fontSize: '14px', fontWeight: 800, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}>
+            {saving ? (group ? 'Saving…' : 'Creating…') : group ? 'Save Changes' : 'Create Group'}
           </button>
         </div>
       </div>
@@ -315,6 +385,7 @@ export default function GroupsView() {
     try {
       const data = await api<Group[]>('/groups')
       setGroups(data)
+      setSelectedGroup(sel => sel ? (data.find(g => g.id === sel.id) ?? sel) : sel)
     } catch {
       setGroups([])
     } finally {
@@ -338,7 +409,7 @@ export default function GroupsView() {
   const discoverGroups = groups.filter(g => !g.joined)
 
   if (selectedGroup) {
-    return <GroupDetail group={selectedGroup} onBack={() => setSelectedGroup(null)} onLeft={() => { setSelectedGroup(null); load() }} />
+    return <GroupDetail group={selectedGroup} onBack={() => setSelectedGroup(null)} onLeft={() => { setSelectedGroup(null); load() }} onUpdated={load} />
   }
 
   return (
@@ -356,7 +427,7 @@ export default function GroupsView() {
       </div>
 
       {showCreate && (
-        <CreateGroupModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load() }} />
+        <CreateGroupModal onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); load() }} />
       )}
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>

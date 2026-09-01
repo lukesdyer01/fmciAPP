@@ -560,6 +560,29 @@ app.post(`${BASE}/groups`, async (c) => {
   return c.json(serializeGroup(newGroup, caller.id), 201);
 });
 
+app.patch(`${BASE}/groups/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const groups = await kv.get("groups") ?? [];
+  const group = groups.find((g: any) => g.id === id);
+  if (!group) return c.json({ error: "Group not found" }, 404);
+  const isGroupAdmin = Array.isArray(group.admins) && group.admins.includes(caller.id);
+  const isPlatformAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isGroupAdmin && !isPlatformAdmin) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  if (body.name !== undefined && !String(body.name).trim()) return c.json({ error: "Group name is required" }, 400);
+  const EDITABLE_FIELDS = ["name", "description", "about", "type", "img"];
+  const patch: Record<string, unknown> = {};
+  for (const f of EDITABLE_FIELDS) {
+    if (body[f] !== undefined) patch[f] = f === "name" ? String(body[f]).trim() : body[f];
+  }
+  if (patch.type && !["Leadership-Only", "Private", "Public", "Invite-Only"].includes(patch.type as string)) delete patch.type;
+  const updated = { ...group, ...patch };
+  await kv.set("groups", groups.map((g: any) => g.id === id ? updated : g));
+  return c.json(serializeGroup(updated, caller.id));
+});
+
 app.post(`${BASE}/groups/:id/join`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
