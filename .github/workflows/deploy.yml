@@ -35,9 +35,9 @@ jobs:
         run: pnpm install
 
       - name: Build
+        # Served from the fmci.network custom domain at the root, not from a
+        # /<repo-name>/ subpath — so assets must be built for base '/'.
         run: pnpm build
-        env:
-          VITE_BASE_URL: /${{ github.event.repository.name }}/
 
       - uses: actions/upload-pages-artifact@v3
         with:
