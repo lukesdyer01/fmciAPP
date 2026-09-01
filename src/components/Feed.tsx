@@ -6,6 +6,7 @@ import GroupsView from './GroupsView'
 import PrayerRequestsView from './PrayerRequestsView'
 import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
+import AboutView from './AboutView'
 import OrgView from './OrgView'
 import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
@@ -153,6 +154,7 @@ export default function Feed({ activeView }: { activeView: ActiveView }) {
   if (activeView === 'prayer')    return <PrayerRequestsView />
   if (activeView === 'events')    return <EventsView />
   if (activeView === 'resources') return <ResourcesView />
+  if (activeView === 'about')     return <AboutView />
 
   return <MainFeed />
 }

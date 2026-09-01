@@ -13,6 +13,7 @@ const NAV: { id: ActiveView; icon: string; label: string }[] = [
   { id: 'prayer',    icon: '🙏', label: 'Prayer Requests' },
   { id: 'events',    icon: '📅', label: 'Events' },
   { id: 'resources', icon: '📚', label: 'Resources' },
+  { id: 'about',     icon: 'ℹ️', label: 'About FMCI' },
 ]
 
 export default function LeftSidebar({ activeView, setActiveView }: Props) {
