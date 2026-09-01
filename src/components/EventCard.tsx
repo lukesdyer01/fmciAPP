@@ -12,6 +12,9 @@ export interface EventItem {
   date: string
   time: string
   location: string
+  isRemote?: boolean
+  zoomLink?: string
+  zoomPassword?: string
   img: string
   infoUrl?: string
   type: string
@@ -138,7 +141,9 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
         <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginBottom: '16px' }}>
           {[
             { icon: '📅', text: [event.date, event.time].filter(Boolean).join(' · ') || 'Date TBA' },
-            { icon: '📍', text: event.location || 'Location TBA' },
+            event.isRemote
+              ? { icon: '💻', text: 'Remote — join via Zoom' }
+              : { icon: '📍', text: event.location || 'Location TBA' },
             { icon: '🎫', text: event.price || 'Free' },
             { icon: '🔒', text: `Access: ${event.access || 'Open to all'}` },
           ].map((row, j) => (
@@ -147,6 +152,21 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
             </div>
           ))}
         </div>
+        {event.isRemote && (event.zoomLink || event.zoomPassword) && (
+          <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+            {event.zoomLink && (
+              <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none',
+              }}>💻 Join Zoom Meeting</a>
+            )}
+            {event.zoomPassword && (
+              <div style={{ fontSize: '12px', color: 'var(--color-text-2)', marginTop: event.zoomLink ? '6px' : 0 }}>
+                Passcode: <strong style={{ color: 'var(--color-text-1)' }}>{event.zoomPassword}</strong>
+              </div>
+            )}
+          </div>
+        )}
         {event.infoUrl && (
           <div style={{ marginBottom: '16px' }}>
             <a href={event.infoUrl} target="_blank" rel="noopener noreferrer" style={{

@@ -10,6 +10,9 @@ interface AdminEvent {
   date: string
   time: string
   location: string
+  isRemote?: boolean
+  zoomLink?: string
+  zoomPassword?: string
   img: string
   infoUrl?: string
   type: string
@@ -50,6 +53,7 @@ function EditPanel({ event, onSave, onClose }: { event: AdminEvent; onSave: (upd
         method: 'PATCH',
         body: JSON.stringify({
           title: draft.title, date: draft.date, time: draft.time, location: draft.location,
+          isRemote: draft.isRemote, zoomLink: draft.isRemote ? (draft.zoomLink ?? '') : '', zoomPassword: draft.isRemote ? (draft.zoomPassword ?? '') : '',
           type: draft.type, access: draft.access, price: draft.price, img: draft.img,
           infoUrl: draft.infoUrl ?? '', speakers: draft.speakers, official: draft.official,
         }),
@@ -97,6 +101,27 @@ function EditPanel({ event, onSave, onClose }: { event: AdminEvent; onSave: (upd
           <label style={labelStyle()}>Location</label>
           <input value={draft.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="City, venue, or 'Online'" />
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#e6edf3' }}>Remote Meeting</div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>Show a Zoom link and passcode on this event</div>
+          </div>
+          <button onClick={() => set('isRemote', !draft.isRemote)} style={{ width: '42px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', backgroundColor: draft.isRemote ? '#22c55e' : 'rgba(255,255,255,0.1)' }}>
+            <span style={{ position: 'absolute', top: '3px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', left: draft.isRemote ? '21px' : '3px' }} />
+          </button>
+        </div>
+        {draft.isRemote && (
+          <>
+            <div>
+              <label style={labelStyle()}>Zoom Link</label>
+              <input value={draft.zoomLink ?? ''} onChange={e => set('zoomLink', e.target.value)} style={inputStyle()} placeholder="https://zoom.us/j/…" />
+            </div>
+            <div>
+              <label style={labelStyle()}>Zoom Password <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+              <input value={draft.zoomPassword ?? ''} onChange={e => set('zoomPassword', e.target.value)} style={inputStyle()} placeholder="Passcode" />
+            </div>
+          </>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
             <label style={labelStyle()}>Type</label>

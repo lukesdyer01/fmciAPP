@@ -556,6 +556,9 @@ app.post(`${BASE}/events`, async (c) => {
     date: body.date ?? "",
     time: body.time ?? "",
     location: body.location ?? "",
+    isRemote: !!body.isRemote,
+    zoomLink: body.zoomLink ?? "",
+    zoomPassword: body.zoomPassword ?? "",
     img: body.img ?? "",
     infoUrl: body.infoUrl ?? "",
     type: body.type ?? "Conference",
@@ -601,10 +604,10 @@ app.patch(`${BASE}/events/:id`, async (c) => {
   if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
   const body = await c.req.json();
   if (body.title !== undefined && !String(body.title).trim()) return c.json({ error: "Event title is required" }, 400);
-  const EDITABLE_FIELDS = ["title", "date", "time", "location", "img", "infoUrl", "type", "access", "price", "speakers"];
+  const EDITABLE_FIELDS = ["title", "date", "time", "location", "isRemote", "zoomLink", "zoomPassword", "img", "infoUrl", "type", "access", "price", "speakers"];
   const patch: Record<string, unknown> = {};
   for (const f of EDITABLE_FIELDS) {
-    if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : body[f];
+    if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : f === "isRemote" ? !!body[f] : body[f];
   }
   if (isAdmin && body.official !== undefined) patch.official = !!body.official;
   const updated = { ...event, ...patch, editedAt: new Date().toISOString() };

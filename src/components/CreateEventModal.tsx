@@ -19,6 +19,9 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
   const [date, setDate] = useState(event?.date ?? '')
   const [time, setTime] = useState(event?.time ?? '')
   const [location, setLocation] = useState(event?.location ?? '')
+  const [isRemote, setIsRemote] = useState(event?.isRemote ?? false)
+  const [zoomLink, setZoomLink] = useState(event?.zoomLink ?? '')
+  const [zoomPassword, setZoomPassword] = useState(event?.zoomPassword ?? '')
   const [type, setType] = useState(event?.type ?? EVENT_TYPES[0])
   const [access, setAccess] = useState(event?.access ?? 'Open to all')
   const [price, setPrice] = useState(event?.price ?? 'Free')
@@ -55,13 +58,17 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
       if (event) {
         await api(`/events/${event.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim() }),
+          body: JSON.stringify({
+            title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim(),
+            isRemote, zoomLink: isRemote ? zoomLink.trim() : '', zoomPassword: isRemote ? zoomPassword.trim() : '',
+          }),
         })
       } else {
         await api('/events', {
           method: 'POST',
           body: JSON.stringify({
             title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim(),
+            isRemote, zoomLink: isRemote ? zoomLink.trim() : '', zoomPassword: isRemote ? zoomPassword.trim() : '',
             host: orgName ?? '', orgId, orgName, official: !!orgId,
           }),
         })
@@ -138,6 +145,39 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
             <label style={labelStyle}>Location</label>
             <input value={location} onChange={e => setLocation(e.target.value)} placeholder="City, venue, or 'Online'" style={inputStyle} />
           </div>
+          <div
+            role="switch"
+            aria-checked={isRemote}
+            tabIndex={0}
+            onClick={() => setIsRemote(v => !v)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsRemote(v => !v) } }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}
+          >
+            <span style={{
+              width: '36px', height: '20px', borderRadius: '10px', position: 'relative', flexShrink: 0,
+              backgroundColor: isRemote ? 'var(--color-navy)' : 'var(--color-border)', transition: 'background 0.15s',
+            }}>
+              <span style={{
+                position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '50%',
+                backgroundColor: '#fff', transition: 'left 0.15s', left: isRemote ? '18px' : '2px',
+              }} />
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)' }}>
+              💻 This is a remote meeting
+            </span>
+          </div>
+          {isRemote && (
+            <>
+              <div>
+                <label style={labelStyle}>Zoom Link</label>
+                <input value={zoomLink} onChange={e => setZoomLink(e.target.value)} placeholder="https://zoom.us/j/…" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Zoom Password <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+                <input value={zoomPassword} onChange={e => setZoomPassword(e.target.value)} placeholder="Passcode" style={inputStyle} />
+              </div>
+            </>
+          )}
           <div className="grid-2">
             <div>
               <label style={labelStyle}>Type</label>
