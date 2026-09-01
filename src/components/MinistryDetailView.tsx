@@ -5,6 +5,7 @@ import PostCard, { type Post } from './PostCard'
 import CreateEventModal from './CreateEventModal'
 import { EventCard, UpcomingEvents, type EventItem } from './EventCard'
 import { useFeedPosts } from '../api-client/posts'
+import { typeLabel, typeStyle } from './OrgView'
 
 interface OrgMember {
   userId: string
@@ -93,6 +94,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                 <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: 'var(--color-text-1)' }}>{ministry.name}</h1>
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 10px', borderRadius: '20px', backgroundColor: typeStyle(ministry.type).bg, color: typeStyle(ministry.type).color }}>{typeLabel(ministry.type)}</span>
                 {ministry.verified && <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 10px', borderRadius: '20px', backgroundColor: '#ECFDF5', color: '#047857' }}>✓ Verified</span>}
               </div>
               <div style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>

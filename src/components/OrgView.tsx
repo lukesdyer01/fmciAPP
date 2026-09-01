@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '../api-client/server'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
+import { useUIStore } from '../store/ui'
 import MinistryDetailView from './MinistryDetailView'
 
 interface OrgMember {
@@ -50,7 +51,7 @@ const ORG_TYPES = [
   { value: 'council', label: 'Council' },
 ]
 
-function typeLabel(type: string): string {
+export function typeLabel(type: string): string {
   return ORG_TYPES.find(t => t.value === type)?.label ?? type
 }
 
@@ -61,10 +62,19 @@ const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   member:    { bg: 'var(--color-surface)',   color: 'var(--color-text-2)' },
 }
 
-const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  active:    { bg: '#ECFDF5', color: '#047857', label: 'Active' },
-  pending:   { bg: '#FBF5E6', color: '#92700A', label: 'Pending Approval' },
-  suspended: { bg: '#FEF2F2', color: '#991B1B', label: 'Suspended' },
+const TYPE_STYLE: Record<string, { bg: string; color: string }> = {
+  church:        { bg: '#EEF4FF', color: '#3552D6' },
+  network:       { bg: 'var(--color-gold-bg)', color: 'var(--color-gold)' },
+  ministry:      { bg: '#F5F3FF', color: '#6d28d9' },
+  bible_college: { bg: '#ECFDF5', color: '#047857' },
+  school:        { bg: '#FFF7ED', color: '#c2410c' },
+  nonprofit:     { bg: '#FDF2F8', color: '#be185d' },
+  headquarters:  { bg: '#F0F9FF', color: '#0369a1' },
+  region:        { bg: '#F8FAFC', color: '#475569' },
+  council:       { bg: '#FEF2F2', color: '#991B1B' },
+}
+export function typeStyle(type: string) {
+  return TYPE_STYLE[type] ?? { bg: 'var(--color-surface)', color: 'var(--color-text-2)' }
 }
 
 function label(_s?: string): React.CSSProperties {
@@ -191,6 +201,123 @@ function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
         disabled={saving || uploading}
         style={{ padding: '10px 28px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}
       >{saving ? 'Creating…' : 'Create Ministry'}</button>
+    </div>
+  )
+}
+
+// ── Edit Org Modal ────────────────────────────────────────────────────────────
+function EditOrgModal({ org, onClose, onSaved }: { org: MyOrg; onClose: () => void; onSaved: () => void }) {
+  const { currentUser } = useAuth()
+  const [form, setForm] = useState({
+    name: org.name, type: org.type, description: org.description,
+    location: org.location, address: org.address ?? '', website: org.website, img: org.img,
+  })
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [err, setErr] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  function set(key: keyof typeof form, val: string) {
+    setForm(f => ({ ...f, [key]: val }))
+  }
+
+  async function handleImageFile(file: File) {
+    if (!currentUser) return
+    setUploading(true); setErr('')
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/org-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      set('img', data.publicUrl)
+    } catch (e: any) {
+      setErr(e.message ?? 'Failed to upload image.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleSave() {
+    if (!form.name.trim()) { setErr('Organization name is required.'); return }
+    setSaving(true); setErr('')
+    try {
+      await api(`/orgs/${org.id}`, { method: 'PATCH', body: JSON.stringify(form) })
+      onSaved()
+    } catch (e: any) {
+      setErr(e.message ?? 'Failed to save changes.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 400, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' }}
+    >
+      <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '16px', border: '1px solid var(--color-border)', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Edit Ministry</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
+        </div>
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+            <div onClick={() => fileRef.current?.click()} style={{ cursor: 'pointer', position: 'relative' }}>
+              <OrgLogo org={{ name: form.name || 'Ministry', img: form.img }} size={56} />
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.15s', fontSize: '16px',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
+              >📷</div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>{uploading ? 'Uploading…' : 'Logo / Photo'}</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>Click to change</div>
+            </div>
+          </div>
+
+          <div className="grid-2-lg" style={{ marginBottom: '16px' }}>
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={label()}>Organization Name *</label>
+              <input value={form.name} onChange={e => set('name', e.target.value)} style={input()} placeholder="e.g. Grace Community Church" />
+            </div>
+            <div>
+              <label style={label()}>Type</label>
+              <select value={form.type} onChange={e => set('type', e.target.value)} style={{ ...input(), cursor: 'pointer' }}>
+                {ORG_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={label()}>Location</label>
+              <input value={form.location} onChange={e => set('location', e.target.value)} style={input()} placeholder="City, Country" />
+            </div>
+            <div>
+              <label style={label()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional — pins it precisely on the Global Map)</span></label>
+              <input value={form.address} onChange={e => set('address', e.target.value)} style={input()} placeholder="123 Main St, City, State ZIP" />
+            </div>
+            <div>
+              <label style={label()}>Website</label>
+              <input value={form.website} onChange={e => set('website', e.target.value)} style={input()} placeholder="example.org" />
+            </div>
+            <div>
+              <label style={label()}>Description</label>
+              <input value={form.description} onChange={e => set('description', e.target.value)} style={input()} placeholder="Brief description…" />
+            </div>
+          </div>
+          {err && <div style={{ fontSize: '13px', color: '#dc2626', marginBottom: '12px', fontWeight: 600 }}>{err}</div>}
+          <button
+            onClick={handleSave}
+            disabled={saving || uploading}
+            style={{ padding: '10px 28px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: saving ? 0.7 : 1 }}
+          >{saving ? 'Saving…' : 'Save Changes'}</button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -370,18 +497,18 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
 }
 
 // ── Org Card ─────────────────────────────────────────────────────────────────
-function OrgCard({ org, currentUserId, isMember, onManage, onView, onFollowToggle, followBusy }: {
+function OrgCard({ org, currentUserId, isMember, onManage, onEdit, onView, onFollowToggle, followBusy }: {
   org: MyOrg
   currentUserId: string
   isMember: boolean
   onManage: () => void
+  onEdit: () => void
   onView: () => void
   onFollowToggle: () => void
   followBusy: boolean
 }) {
   const myRole = org.members.find(m => m.userId === currentUserId)?.role
-  const rs = ROLE_STYLE[myRole ?? 'moderator']
-  const ss = STATUS_STYLE[org.status] ?? STATUS_STYLE.pending
+  const ts = typeStyle(org.type)
   const canManage = myRole === 'owner' || myRole === 'admin'
 
   return (
@@ -398,20 +525,25 @@ function OrgCard({ org, currentUserId, isMember, onManage, onView, onFollowToggl
             <div style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>{typeLabel(org.type)}{org.location ? ` · ${org.location}` : ''}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end', flexShrink: 0 }}>
-            {isMember && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 9px', borderRadius: '8px', backgroundColor: rs.bg, color: rs.color, textTransform: 'capitalize' }}>{myRole}</span>}
-            <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '8px', backgroundColor: ss.bg, color: ss.color }}>{ss.label}</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 9px', borderRadius: '8px', backgroundColor: ts.bg, color: ts.color }}>{typeLabel(org.type)}</span>
           </div>
         </div>
-        {org.description && <div style={{ fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.6, marginBottom: '12px' }}>{org.description}</div>}
         <div style={{ display: 'flex', gap: '16px', marginBottom: '14px' }}>
           <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.members.length}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Members</div></div>
           <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.followerCount}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Followers</div></div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={onView}
             style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
           >View →</button>
+          {isMember && canManage && (
+            <button
+              onClick={onEdit}
+              title="Edit ministry details & image"
+              style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+            >✏ Edit</button>
+          )}
           {isMember && canManage && (
             <button
               onClick={onManage}
@@ -439,12 +571,14 @@ function OrgCard({ org, currentUserId, isMember, onManage, onView, onFollowToggl
 
 // ── Main View ─────────────────────────────────────────────────────────────────
 export default function OrgView() {
+  const setActiveView = useUIStore(s => s.setActiveView)
   const [tab, setTab] = useState<'my' | 'following' | 'discover'>('my')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [orgs, setOrgs] = useState<MyOrg[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [managingOrg, setManagingOrg] = useState<MyOrg | null>(null)
+  const [editingOrg, setEditingOrg] = useState<MyOrg | null>(null)
   const [viewingOrgId, setViewingOrgId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string>('')
   const [followBusyId, setFollowBusyId] = useState<string | null>(null)
@@ -538,7 +672,7 @@ export default function OrgView() {
       {showCreate && <CreateOrgForm onCreated={handleOrgCreated} />}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {([
           { id: 'my' as const, label: `My Ministries (${myOrgs.length})` },
           { id: 'following' as const, label: `Following (${followingOrgs.length})` },
@@ -553,6 +687,13 @@ export default function OrgView() {
             transition: 'all 0.15s',
           }}>{t.label}</button>
         ))}
+        <button onClick={() => setActiveView('map')} style={{
+          padding: '9px 22px', borderRadius: '8px', cursor: 'pointer',
+          fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
+          backgroundColor: 'var(--color-card)', color: 'var(--color-text-2)',
+          border: '1px solid var(--color-border)', transition: 'all 0.15s',
+          marginLeft: 'auto',
+        }}>🗺️ Global Map</button>
       </div>
 
       {/* Type filter */}
@@ -612,6 +753,7 @@ export default function OrgView() {
               currentUserId={currentUserId}
               isMember={isMember(org)}
               onManage={() => setManagingOrg(managingOrg?.id === org.id ? null : org)}
+              onEdit={() => setEditingOrg(org)}
               onView={() => setViewingOrgId(org.id)}
               onFollowToggle={() => toggleFollow(org)}
               followBusy={followBusyId === org.id}
@@ -626,6 +768,14 @@ export default function OrgView() {
           currentUserId={currentUserId}
           onClose={() => setManagingOrg(null)}
           onUpdate={handleMemberUpdate}
+        />
+      )}
+
+      {editingOrg && (
+        <EditOrgModal
+          org={editingOrg}
+          onClose={() => setEditingOrg(null)}
+          onSaved={async () => { setEditingOrg(null); await load() }}
         />
       )}
     </div>

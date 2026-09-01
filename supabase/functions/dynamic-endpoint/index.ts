@@ -357,6 +357,34 @@ app.post(`${BASE}/orgs`, async (c) => {
   return c.json(serializeOrg(newOrg, caller.id), 201);
 });
 
+app.patch(`${BASE}/orgs/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === id);
+  if (!org) return c.json({ error: "Organization not found" }, 404);
+  const myRole = orgRole(org, caller.id);
+  const isPlatformAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (myRole !== "owner" && myRole !== "admin" && !isPlatformAdmin) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  if (!body.name || !String(body.name).trim()) return c.json({ error: "Organization name is required" }, 400);
+  const locationChanged = body.location !== org.location || body.address !== org.address;
+  const updated = {
+    ...org,
+    name: String(body.name).trim(),
+    type: body.type ?? org.type,
+    description: body.description ?? "",
+    location: body.location ?? "",
+    address: body.address ?? "",
+    website: body.website ?? "",
+    img: body.img ?? "",
+  };
+  if (locationChanged) { delete updated.lat; delete updated.lng; delete updated.geocodeFailed; }
+  await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
+  return c.json(serializeOrg(updated, caller.id));
+});
+
 app.post(`${BASE}/orgs/:id/members`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);

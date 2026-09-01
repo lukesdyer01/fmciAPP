@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../../../api-client/server'
+import { supabase } from '../../../lib/supabase'
+import { useAuth } from '../../../providers/AuthProvider'
 
 interface OrgMember {
   userId: string
@@ -20,6 +22,7 @@ interface Org {
   address?: string
   website: string
   description: string
+  img?: string
   verified: boolean
   status: 'active' | 'suspended' | 'pending'
   features: string[]
@@ -69,6 +72,7 @@ function labelStyle(): React.CSSProperties {
 interface EditPanelProps { org: Org; allOrgs: Org[]; onSave: (updated: Org) => void; onClose: () => void }
 
 function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
+  const { currentUser } = useAuth()
   const [draft, setDraft] = useState<Org>({ ...org })
   const [saved, setSaved] = useState(false)
   const [tab, setTab] = useState<'details' | 'members'>('details')
@@ -79,11 +83,32 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
   const [addingMember, setAddingMember] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [memberMsg, setMemberMsg] = useState('')
+  const [uploadingImg, setUploadingImg] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   function set<K extends keyof Org>(key: K, value: Org[K]) { setDraft(d => ({ ...d, [key]: value })) }
   function toggleFeature(f: string) { setDraft(d => ({ ...d, features: d.features.includes(f) ? d.features.filter(x => x !== f) : [...d.features, f] })) }
 
   function handleSave() { onSave(draft); setSaved(true); setTimeout(() => setSaved(false), 2000) }
+
+  async function handleImageFile(file: File) {
+    if (!currentUser) return
+    setUploadingImg(true)
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/org-${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type || 'image/jpeg',
+      })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      set('img', data.publicUrl)
+    } catch {
+      // Non-critical — the field just stays unset and the admin can retry.
+    } finally {
+      setUploadingImg(false)
+    }
+  }
 
   useEffect(() => {
     api<PlatformUser[]>('/members').then(setAllUsers).catch(() => {})
@@ -152,6 +177,30 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
       <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto' }}>
         {tab === 'details' && (
           <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div onClick={() => fileRef.current?.click()} style={{ cursor: 'pointer', position: 'relative' }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: 14, flexShrink: 0, overflow: 'hidden',
+                  background: draft.img ? undefined : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
+                }}>
+                  {draft.img ? <img src={draft.img} alt={draft.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (TYPE_ICON[draft.type] ?? '🏛')}
+                </div>
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'rgba(0,0,0,0)', transition: 'background 0.15s', fontSize: '16px',
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.45)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0)' }}
+                >📷</div>
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#e6edf3' }}>{uploadingImg ? 'Uploading…' : 'Logo / Photo'}</div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>Click to {draft.img ? 'change' : 'upload'}</div>
+              </div>
+            </div>
             <div>
               <label style={labelStyle()}>Organization Name</label>
               <input value={draft.name} onChange={e => set('name', e.target.value)} style={inputStyle()} />

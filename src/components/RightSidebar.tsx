@@ -134,6 +134,31 @@ function SidebarEvents() {
   )
 }
 
+function AboutFmciBox() {
+  const setActiveView = useUIStore(s => s.setActiveView)
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)', borderRadius: '12px',
+      border: '1px solid var(--color-border)', padding: '16px', marginBottom: '12px',
+    }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px' }}>ℹ️ About FMCI</div>
+      <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
+        Learn about our mission, vision, and the leadership behind the Federation of Ministers and Churches International.
+      </p>
+      <button
+        onClick={() => setActiveView('about')}
+        style={{
+          width: '100%', padding: '8px', borderRadius: '8px', cursor: 'pointer',
+          border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
+          color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700,
+          fontFamily: 'var(--font-sans)',
+        }}
+      >Learn More →</button>
+    </div>
+  )
+}
+
 function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => void; userId?: string }) {
   const userProfile = useUIStore(s => s.userProfile)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
@@ -219,6 +244,8 @@ export default function RightSidebar() {
       <ProfileChecklist />
 
       {onHomeFeed && <SidebarEvents />}
+
+      <AboutFmciBox />
 
       {!currentUser?.verified && (
         <div style={{
