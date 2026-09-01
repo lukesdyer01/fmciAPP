@@ -4,6 +4,7 @@ import PostCard, { type Post } from './PostCard'
 import DirectoryView from './DirectoryView'
 import GroupsView from './GroupsView'
 import PrayerRequestsView from './PrayerRequestsView'
+import TestimoniesView from './TestimoniesView'
 import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
 import AboutView from './AboutView'
@@ -152,6 +153,7 @@ export default function Feed({ activeView }: { activeView: ActiveView }) {
   if (activeView === 'orgs')      return <OrgView />
   if (activeView === 'groups')    return <GroupsView />
   if (activeView === 'prayer')    return <PrayerRequestsView />
+  if (activeView === 'testimonies') return <TestimoniesView />
   if (activeView === 'events')    return <EventsView />
   if (activeView === 'resources') return <ResourcesView />
   if (activeView === 'about')     return <AboutView />

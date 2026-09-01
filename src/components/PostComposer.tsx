@@ -16,13 +16,21 @@ const POST_TYPES = [
   { icon: '🙏', label: 'Prayer Request', color: '#7C3AED' },
 ]
 
+const TESTIMONY_CATEGORIES = [
+  { value: 'healing',     label: 'Healing',     icon: '🩹' },
+  { value: 'provision',   label: 'Provision',   icon: '🍞' },
+  { value: 'salvation',   label: 'Salvation',   icon: '✝️' },
+  { value: 'deliverance', label: 'Deliverance', icon: '🕊️' },
+  { value: 'other',       label: 'Other',       icon: '✨' },
+]
+
 function extractYouTubeId(url: string): string | null {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
   return m ? m[1] : null
 }
 
 interface Props {
-  type?: 'post' | 'prayer'
+  type?: 'post' | 'prayer' | 'testimony'
   placeholder?: string
   // When set, the composer posts directly to this ministry's feed (as the
   // current user, not "on behalf of" it) and skips the org-selector UI —
@@ -50,8 +58,9 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
   const [videoId, setVideoId] = useState('')
   const [showVideoInput, setShowVideoInput] = useState(false)
   const [videoUrlDraft, setVideoUrlDraft] = useState('')
-  const [mediaError, setMediaError] = useState('')
+  const [composerError, setComposerError] = useState('')
   const [anonymous, setAnonymous] = useState(false)
+  const [testimonyCategory, setTestimonyCategory] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const userProfile = useUIStore(s => s.userProfile)
   const { mutate: createPost, isPending } = useCreatePost()
@@ -72,7 +81,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
 
   async function handleImageFile(file: File) {
     if (!currentUser) return
-    setUploadingImage(true); setMediaError('')
+    setUploadingImage(true); setComposerError('')
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
       const path = `${currentUser.id}/post-${Date.now()}.${ext}`
@@ -84,7 +93,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       setImage(data.publicUrl)
       setVideoId(''); setShowVideoInput(false)
     } catch (e: any) {
-      setMediaError(e.message ?? 'Failed to upload image.')
+      setComposerError(e.message ?? 'Failed to upload image.')
     } finally {
       setUploadingImage(false)
     }
@@ -92,15 +101,16 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
 
   function confirmVideo() {
     const id = extractYouTubeId(videoUrlDraft.trim())
-    if (!id) { setMediaError('Enter a valid YouTube video URL.'); return }
+    if (!id) { setComposerError('Enter a valid YouTube video URL.'); return }
     setVideoId(id)
     setImage('')
     setShowVideoInput(false)
-    setMediaError('')
+    setComposerError('')
   }
 
   function handlePost() {
     if (!text.trim() || isPending) return
+    if (type === 'testimony' && !testimonyCategory) { setComposerError('Choose a category for this testimony.'); return }
     const selectedOrg = postAs !== 'self' ? myOrgs.find(o => o.id === postAs) : null
     // Anonymous posts still carry the real caller's authorId server-side (so the
     // poster keeps edit/delete rights), but the displayed name/avatar/details are
@@ -123,9 +133,10 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       imageAlt: image ? 'Post photo' : undefined,
       videoId: videoId || undefined,
       isAnonymous: anonymous || undefined,
+      testimonyCategory: type === 'testimony' ? testimonyCategory : undefined,
       ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
-      onSuccess: () => { setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false); setAnonymous(false) },
+      onSuccess: () => { setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false); setAnonymous(false); setTestimonyCategory('') },
     })
   }
 
@@ -278,14 +289,11 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
               padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)',
               color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
             }}>Add</button>
-            <button onClick={() => { setShowVideoInput(false); setVideoUrlDraft(''); setMediaError('') }} style={{
+            <button onClick={() => { setShowVideoInput(false); setVideoUrlDraft(''); setComposerError('') }} style={{
               padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'none',
               color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
             }}>Cancel</button>
           </div>
-        )}
-        {mediaError && (
-          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-red)' }}>{mediaError}</div>
         )}
 
         {/* Anonymous toggle — prayer requests only */}
@@ -312,6 +320,38 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
             </span>
           </div>
         )}
+
+        {/* Category picker — testimonies only */}
+        {type === 'testimony' && (
+          <div style={{ marginTop: '12px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+              What did God do? *
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {TESTIMONY_CATEGORIES.map(cat => (
+                <button
+                  key={cat.value}
+                  onClick={() => { setTestimonyCategory(cat.value); setComposerError('') }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 600,
+                    backgroundColor: testimonyCategory === cat.value ? 'var(--color-navy)' : 'var(--color-surface)',
+                    color: testimonyCategory === cat.value ? '#fff' : 'var(--color-text-2)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <span style={{ fontSize: '14px' }}>{cat.icon}</span>
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {composerError && (
+          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-red)' }}>{composerError}</div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
@@ -336,7 +376,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
               {uploadingImage ? 'Uploading…' : 'Photo'}
             </button>
             <button
-              onClick={() => { setShowVideoInput(v => !v); setMediaError('') }}
+              onClick={() => { setShowVideoInput(v => !v); setComposerError('') }}
               style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 padding: '7px 12px', borderRadius: '8px', border: 'none',

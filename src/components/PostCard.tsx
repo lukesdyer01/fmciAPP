@@ -32,6 +32,7 @@ export interface Post {
   editedAt?: string
   prayerStatus?: 'unanswered' | 'answered'
   isAnonymous?: boolean
+  testimonyCategory?: 'healing' | 'provision' | 'salvation' | 'deliverance' | 'other'
 }
 
 
@@ -41,6 +42,14 @@ const TYPE_STYLE: Record<Post['type'], { label: string; color: string; bg: strin
   prayer:       { label: 'Prayer',       color: '#6D28D9',             bg: '#F5F3FF' },
   announcement: { label: 'Announcement', color: '#92700A',             bg: '#FBF5E6' },
   resource:     { label: 'Resource',     color: '#1D4ED8',             bg: '#EFF6FF' },
+}
+
+export const TESTIMONY_CATEGORY_STYLE: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  healing:     { label: 'Healing',     icon: '🩹', color: '#B91C1C', bg: '#FEF2F2' },
+  provision:   { label: 'Provision',   icon: '🍞', color: '#92700A', bg: '#FBF5E6' },
+  salvation:   { label: 'Salvation',   icon: '✝️', color: '#047857', bg: '#ECFDF5' },
+  deliverance: { label: 'Deliverance', icon: '🕊️', color: '#6D28D9', bg: '#F5F3FF' },
+  other:       { label: 'Other',       icon: '✨', color: '#1D4ED8', bg: '#EFF6FF' },
 }
 
 export default function PostCard({ post }: { post: Post }) {
@@ -169,6 +178,14 @@ export default function PostCard({ post }: { post: Post }) {
                   borderRadius: '20px', backgroundColor: ts.bg, color: ts.color,
                   border: `1px solid ${ts.color}22`,
                 }}>{ts.label}</span>
+              )}
+              {post.type === 'testimony' && post.testimonyCategory && (
+                <span style={{
+                  fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
+                  backgroundColor: TESTIMONY_CATEGORY_STYLE[post.testimonyCategory].bg,
+                  color: TESTIMONY_CATEGORY_STYLE[post.testimonyCategory].color,
+                  border: `1px solid ${TESTIMONY_CATEGORY_STYLE[post.testimonyCategory].color}22`,
+                }}>{TESTIMONY_CATEGORY_STYLE[post.testimonyCategory].icon} {TESTIMONY_CATEGORY_STYLE[post.testimonyCategory].label}</span>
               )}
               {post.type === 'prayer' && (
                 canModify ? (
