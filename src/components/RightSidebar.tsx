@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { useOpenProfile } from './ProfileView'
 import { useUIStore } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
-import EditProfileModal from './EditProfileModal'
-import VerifiedBadge from './VerifiedBadge'
 import { api } from '../api-client/server'
 import { useFeedPosts } from '../api-client/posts'
 import { useActiveMembers } from '../api-client/presence'
@@ -291,73 +289,7 @@ function AboutFmciBox() {
   )
 }
 
-function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => void; userId?: string }) {
-  const userProfile = useUIStore(s => s.userProfile)
-  const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
-  const editProfileOpen = useUIStore(s => s.editProfileOpen)
-  const { currentUser } = useAuth()
-
-  return (
-    <>
-      <div style={{
-        backgroundColor: 'var(--color-card)',
-        borderRadius: '12px',
-        border: '1px solid var(--color-border)',
-        overflow: 'hidden',
-        marginBottom: '12px',
-      }}>
-        <div style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-            <div style={{
-              width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}>
-              {userProfile.avatarUrl
-                ? <img src={userProfile.avatarUrl} alt={userProfile.name} onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: userId ? 'pointer' : 'default' }} />
-                : <div onClick={() => userId && openProfile(userId)} style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px', cursor: userId ? 'pointer' : 'default' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
-              }
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>
-                {userProfile.name}
-                {currentUser?.verified && <VerifiedBadge size={15} />}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-2)' }}>
-                {userProfile.title} · {userProfile.church} · {userProfile.location}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => setEditProfileOpen(true)}
-            style={{
-              width: '100%', padding: '8px', borderRadius: '8px', cursor: 'pointer',
-              border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
-              color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700,
-              fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => {
-              const b = e.currentTarget as HTMLButtonElement
-              b.style.backgroundColor = 'var(--color-navy)'
-              b.style.color = '#fff'
-              b.style.borderColor = 'var(--color-navy)'
-            }}
-            onMouseLeave={e => {
-              const b = e.currentTarget as HTMLButtonElement
-              b.style.backgroundColor = 'var(--color-surface)'
-              b.style.color = 'var(--color-text-1)'
-              b.style.borderColor = 'var(--color-border)'
-            }}
-          >✏ Edit Profile</button>
-        </div>
-      </div>
-      {editProfileOpen && <EditProfileModal />}
-    </>
-  )
-}
-
 export default function RightSidebar() {
-  const openProfile = useOpenProfile()
-  const { currentUser } = useAuth()
   const activeView = useUIStore(s => s.activeView)
   const profileId = useUIStore(s => s.profileId)
   const onHomeFeed = activeView === 'feed' && profileId === null
@@ -369,8 +301,6 @@ export default function RightSidebar() {
       padding: '16px 12px 32px',
       scrollbarWidth: 'thin',
     }}>
-      <ProfileCard openProfile={openProfile} userId={currentUser?.id} />
-
       <ProfileChecklist />
 
       {onHomeFeed && <SidebarEvents />}

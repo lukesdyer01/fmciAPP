@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 import { useColorScheme } from '../providers/ThemeProvider'
 import { useUIStore } from '../store/ui'
-import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useOpenProfile } from './ProfileView'
 import EditProfileModal from './EditProfileModal'
-import { supabase } from '../lib/supabase'
+import ProfileHoverCard from './ProfileHoverCard'
 import { api } from '../api-client/server'
 import { useConversations } from '../api-client/messages'
 import type { ActiveView } from '../App'
@@ -158,11 +157,7 @@ export default function Topbar() {
   const { colorScheme, toggleColorScheme } = useColorScheme()
   const notifOpen = useUIStore(s => s.notifOpen)
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
-  const setAdminMode = useUIStore(s => s.setAdminMode)
-  const userProfile = useUIStore(s => s.userProfile)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
-  const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
-  const { role } = useSupabaseRole()
   const setActiveView = useUIStore(s => s.setActiveView)
   const closeProfile = useUIStore(s => s.closeProfile)
   const openProfile = useOpenProfile()
@@ -255,19 +250,6 @@ export default function Topbar() {
           </svg>
           {unreadTotal > 0 && <span style={badgeDot}>{unreadTotal > 9 ? '9+' : unreadTotal}</span>}
         </button>
-        {/* Admin panel — superadmin / admin only */}
-        {(role === 'superadmin' || role === 'admin') && (
-          <button onClick={() => setAdminMode(true)} title="Open Admin Panel" style={{
-            ...iconBtn,
-            backgroundColor: 'rgba(200,155,60,0.15)',
-            border: '1px solid rgba(200,155,60,0.25)',
-            color: 'var(--color-gold)',
-          }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
-            </svg>
-          </button>
-        )}
         {/* Dark mode toggle */}
         <button onClick={toggleColorScheme} title={colorScheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} style={iconBtn}>
           {colorScheme === 'dark'
@@ -282,25 +264,8 @@ export default function Topbar() {
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
         </button>
-        {/* Avatar */}
-        <button onClick={() => setEditProfileOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', marginLeft: '4px' }} title="Edit Profile">
-          {userProfile.avatarUrl
-            ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', display: 'block', border: '2px solid rgba(255,255,255,0.3)' }} />
-            : <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '13px', border: '2px solid rgba(255,255,255,0.3)' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
-          }
-        </button>
-        {/* Sign out */}
-        <button
-          onClick={() => supabase.auth.signOut()}
-          title="Sign out"
-          style={{ ...iconBtn, marginLeft: '2px' }}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-        </button>
+        {/* Avatar — hover to see profile preview, Edit Profile, Admin Panel, Sign Out */}
+        <ProfileHoverCard />
       </div>
       {editProfileOpen && <EditProfileModal />}
 
