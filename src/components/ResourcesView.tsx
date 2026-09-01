@@ -288,7 +288,7 @@ export default function ResourcesView() {
                     />
                   </div>
                 )}
-                <div style={{ padding: '20px 22px', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                <div className="resource-card-row" style={{ padding: '20px 22px' }}>
                 {/* Cover */}
                 {!videoId && (
                 <div style={{ position: 'relative', flexShrink: 0 }}>

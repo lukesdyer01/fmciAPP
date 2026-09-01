@@ -89,6 +89,8 @@ html[data-theme="dark"] #root {
 .grid-cover-280 { display: grid; grid-template-columns: 280px 1fr; }
 .grid-1         { display: grid; grid-template-columns: 1fr; }
 
+.resource-card-row { display: flex; gap: 20px; align-items: flex-start; }
+
 /* App shell: Topbar / LeftSidebar / Feed / RightSidebar */
 .app-grid {
   display: grid;
@@ -163,6 +165,12 @@ html[data-theme="dark"] #root {
   }
   .grid-2-auto {
     grid-template-columns: 1fr;
+  }
+
+  .resource-card-row {
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px !important; /* overrides the inline 20px 22px set from React */
   }
 
   .admin-sidebar {
