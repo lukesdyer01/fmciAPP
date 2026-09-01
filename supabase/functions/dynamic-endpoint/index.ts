@@ -141,9 +141,82 @@ app.get(`${BASE}/members/:id`, async (c) => {
     coverUrl: u.user_metadata?.cover_url ?? u.user_metadata?.coverUrl ?? "",
     bio: u.user_metadata?.bio ?? "",
     website: u.user_metadata?.website ?? "",
-    verified: !!(u.user_metadata?.verified ?? u.confirmed_at),
+    verified: !!u.user_metadata?.verified,
     joinedAt: u.created_at,
   });
+});
+
+app.post(`${BASE}/verification-requests`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (caller.user_metadata?.verified) return c.json({ error: "You're already verified" }, 400);
+  const requests = await kv.get("verification_requests") ?? [];
+  if (requests.some((r: any) => r.userId === caller.id && r.status === "pending")) {
+    return c.json({ error: "You already have a pending verification request" }, 400);
+  }
+  const body = await c.req.json();
+  const reason = String(body.reason ?? "").trim();
+  if (!reason) return c.json({ error: "Please tell us why you're requesting verification" }, 400);
+  const newRequest = {
+    id: `vr_${Date.now()}`,
+    userId: caller.id,
+    name: caller.user_metadata?.full_name ?? caller.user_metadata?.name ?? "",
+    avatarUrl: caller.user_metadata?.avatar_url ?? caller.user_metadata?.avatarUrl ?? "",
+    email: caller.email,
+    title: String(body.title ?? "").trim(),
+    church: String(body.church ?? "").trim(),
+    location: caller.user_metadata?.location ?? "",
+    reason,
+    submittedAt: new Date().toISOString(),
+    status: "pending",
+  };
+  await kv.set("verification_requests", [...requests, newRequest]);
+  return c.json(newRequest);
+});
+
+app.get(`${BASE}/verification-requests/mine`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const requests = await kv.get("verification_requests") ?? [];
+  const mine = requests.filter((r: any) => r.userId === caller.id).sort((a: any, b: any) => b.submittedAt.localeCompare(a.submittedAt));
+  return c.json(mine[0] ?? null);
+});
+
+app.get(`${BASE}/verification-requests`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  const requests = await kv.get("verification_requests") ?? [];
+  return c.json([...requests].sort((a: any, b: any) => b.submittedAt.localeCompare(a.submittedAt)));
+});
+
+app.post(`${BASE}/verification-requests/:id/approve`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  const { id } = c.req.param();
+  const requests = await kv.get("verification_requests") ?? [];
+  const target = requests.find((r: any) => r.id === id);
+  if (!target) return c.json({ error: "Request not found" }, 404);
+  const userRes = await fetch(`${SUPABASE_URL()}/auth/v1/admin/users/${target.userId}`, {
+    headers: { Authorization: `Bearer ${SERVICE_KEY()}`, apikey: SERVICE_KEY() },
+  });
+  if (userRes.ok) {
+    const user = await userRes.json();
+    await updateUserMeta(target.userId, { ...user.user_metadata, verified: true });
+  }
+  const updated = requests.map((r: any) => r.id === id ? { ...r, status: "approved" } : r);
+  await kv.set("verification_requests", updated);
+  return c.json({ ok: true });
+});
+
+app.post(`${BASE}/verification-requests/:id/deny`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  const { id } = c.req.param();
+  const requests = await kv.get("verification_requests") ?? [];
+  if (!requests.some((r: any) => r.id === id)) return c.json({ error: "Request not found" }, 404);
+  const updated = requests.map((r: any) => r.id === id ? { ...r, status: "denied" } : r);
+  await kv.set("verification_requests", updated);
+  return c.json({ ok: true });
 });
 
 app.get(`${BASE}/posts`, async (c) => {
@@ -869,7 +942,7 @@ app.get(`${BASE}/admin/users`, async (c) => {
     avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
     status: u.user_metadata?.status === "suspended" ? "suspended"
            : u.confirmed_at ? "active" : "pending",
-    verified: !!(u.user_metadata?.verified ?? u.confirmed_at),
+    verified: !!u.user_metadata?.verified,
     createdAt: u.created_at,
     lastSignIn: u.last_sign_in_at,
     confirmed: !!u.confirmed_at,

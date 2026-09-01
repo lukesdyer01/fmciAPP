@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
+import VerifiedBadge from './VerifiedBadge'
 import { api } from '../api-client/server'
 import { useOpenProfile } from './ProfileView'
 import { useUIStore } from '../store/ui'
@@ -168,11 +169,14 @@ function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id
           ? <img src={member.avatarUrl} alt={member.name} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', border: '3px solid #fff', display: 'block', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} />
           : <div style={{ width: '48px', height: '48px', borderRadius: '12px', border: '3px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'var(--color-navy)', color: '#fff', fontWeight: 800, fontSize: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>{(member.name || '?').slice(0, 2).toUpperCase()}</div>
         }
-        <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--color-text-1)', marginBottom: '2px' }}>{member.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 800, fontSize: '14px', color: 'var(--color-text-1)', marginBottom: '2px' }}>
+          {member.name}
+          {member.badges.includes('verified') && <VerifiedBadge size={13} />}
+        </div>
         <div style={{ fontSize: '12px', color: 'var(--color-text-2)', marginBottom: '2px' }}>{member.title}</div>
         <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginBottom: '8px' }}>{member.church} · {member.location}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '10px' }}>
-          {member.badges.map((b, j) => <Badge key={j} variant={b} size="sm" />)}
+          {member.badges.filter(b => b !== 'verified').map((b, j) => <Badge key={j} variant={b} size="sm" />)}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
           {member.callings.map((c, j) => (
@@ -212,10 +216,13 @@ function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id:
         : <div style={{ width: '52px', height: '52px', borderRadius: '12px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px' }}>{(member.name || '?').slice(0, 2).toUpperCase()}</div>
       }
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>{member.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>
+          {member.name}
+          {member.badges.includes('verified') && <VerifiedBadge size={14} />}
+        </div>
         <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '4px' }}>{member.title} · {member.church} · {member.location}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-          {member.badges.map((b, j) => <Badge key={j} variant={b} size="sm" />)}
+          {member.badges.filter(b => b !== 'verified').map((b, j) => <Badge key={j} variant={b} size="sm" />)}
           {member.callings.map((c, j) => (
             <span key={j} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', fontWeight: 500 }}>{c}</span>
           ))}

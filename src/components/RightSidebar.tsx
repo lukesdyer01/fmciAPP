@@ -3,9 +3,99 @@ import { useOpenProfile } from './ProfileView'
 import { useUIStore } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import EditProfileModal from './EditProfileModal'
+import VerifiedBadge from './VerifiedBadge'
 import { api } from '../api-client/server'
 import { useFeedPosts } from '../api-client/posts'
 import type { EventItem } from './EventCard'
+
+interface VerificationRequest {
+  id: string
+  title: string
+  church: string
+  reason: string
+  submittedAt: string
+  status: 'pending' | 'approved' | 'denied'
+}
+
+function GetVerifiedBox() {
+  const { currentUser } = useAuth()
+  const [request, setRequest] = useState<VerificationRequest | null | undefined>(undefined)
+  const [showForm, setShowForm] = useState(false)
+  const [title, setTitle] = useState('')
+  const [church, setChurch] = useState('')
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [err, setErr] = useState('')
+
+  function load() {
+    api<VerificationRequest | null>('/verification-requests/mine').then(setRequest).catch(() => setRequest(null))
+  }
+
+  useEffect(() => { if (!currentUser?.verified) load() }, [currentUser?.verified])
+
+  if (currentUser?.verified || request === undefined) return null
+
+  async function submit() {
+    if (!reason.trim()) { setErr('Please share why you\'re requesting verification.'); return }
+    setSubmitting(true); setErr('')
+    try {
+      await api('/verification-requests', { method: 'POST', body: JSON.stringify({ title: title.trim(), church: church.trim(), reason: reason.trim() }) })
+      setShowForm(false); setTitle(''); setChurch(''); setReason('')
+      load()
+    } catch (e: any) {
+      setErr(e.message ?? 'Failed to submit request.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+      borderRadius: '12px', padding: '18px',
+      border: '1px solid rgba(255,255,255,0.06)', marginBottom: '12px',
+    }}>
+      <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-gold-light)', marginBottom: '6px' }}>✦ Get Verified</div>
+
+      {request?.status === 'pending' ? (
+        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
+          ⏳ Your verification request is pending review. We'll notify you once an admin responds.
+        </p>
+      ) : showForm ? (
+        <div>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title / Role (e.g. Senior Pastor)" style={inputStyle} />
+          <input value={church} onChange={e => setChurch(e.target.value)} placeholder="Church / Ministry" style={inputStyle} />
+          <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Why are you requesting verification?" rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} />
+          {err && <div style={{ fontSize: '12px', color: '#fca5a5', marginBottom: '8px' }}>{err}</div>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Cancel</button>
+            <button onClick={submit} disabled={submitting} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)', color: '#fff', fontSize: '12px', fontWeight: 800, cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'var(--font-sans)' }}>{submitting ? 'Submitting…' : 'Submit'}</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
+            {request?.status === 'denied'
+              ? 'Your last request wasn\'t approved. You can submit a new request below.'
+              : 'Verified members gain access to leadership groups, exclusive events, and the full FMCI network directory.'}
+          </p>
+          <button onClick={() => setShowForm(true)} style={{
+            width: '100%', padding: '10px', borderRadius: '8px', border: 'none',
+            background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)',
+            color: '#fff', fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>Apply for Verification →</button>
+        </>
+      )}
+    </div>
+  )
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', padding: '8px 10px', marginBottom: '8px',
+  borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.06)',
+  color: '#fff', fontSize: '12px', fontFamily: 'var(--font-sans)', outline: 'none',
+}
 
 interface MyOrgSummary {
   id: string
@@ -163,6 +253,7 @@ function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => voi
   const userProfile = useUIStore(s => s.userProfile)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
+  const { currentUser } = useAuth()
 
   return (
     <>
@@ -193,7 +284,10 @@ function ProfileCard({ openProfile, userId }: { openProfile: (id: string) => voi
           </div>
         </div>
         <div style={{ padding: '32px 16px 16px' }}>
-          <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>{userProfile.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>
+            {userProfile.name}
+            {currentUser?.verified && <VerifiedBadge size={15} />}
+          </div>
           <div style={{ fontSize: '12px', color: 'var(--color-text-2)', marginBottom: '10px' }}>
             {userProfile.title} · {userProfile.church} · {userProfile.location}
           </div>
@@ -247,24 +341,7 @@ export default function RightSidebar() {
 
       <AboutFmciBox />
 
-      {!currentUser?.verified && (
-        <div style={{
-          background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
-          borderRadius: '12px', padding: '18px',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-gold-light)', marginBottom: '6px' }}>✦ Get Verified</div>
-          <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
-            Verified members gain access to leadership groups, exclusive events, and the full FMCI network directory.
-          </p>
-          <button style={{
-            width: '100%', padding: '10px', borderRadius: '8px', border: 'none',
-            background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)',
-            color: '#fff', fontSize: '13px', fontWeight: 800, cursor: 'pointer',
-            fontFamily: 'var(--font-sans)',
-          }}>Apply for Verification →</button>
-        </div>
-      )}
+      <GetVerifiedBox />
     </aside>
   )
 }

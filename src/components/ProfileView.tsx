@@ -6,6 +6,7 @@ import { useFeedPosts } from '../api-client/posts'
 import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
 import EditProfileModal from './EditProfileModal'
+import VerifiedBadge from './VerifiedBadge'
 
 export interface MemberProfile {
   id: string
@@ -112,7 +113,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: 'var(--color-text-1)' }}>{member.name}</h1>
-            {member.verified && <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 10px', borderRadius: '20px', backgroundColor: '#ECFDF5', color: '#047857' }}>✓ Verified</span>}
+            {member.verified && <VerifiedBadge size={18} />}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: member.bio ? '10px' : 0 }}>
             {[member.title, member.church, member.location].filter(Boolean).join(' · ')}

@@ -121,7 +121,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       title: anonymous ? '' : userProfile.title,
       church: anonymous ? '' : userProfile.church,
       location: anonymous ? '' : userProfile.location,
-      badges: [],
+      badges: !anonymous && currentUser?.verified ? ['verified'] : [],
       type,
       content: text.trim(),
       isFollowing: false,

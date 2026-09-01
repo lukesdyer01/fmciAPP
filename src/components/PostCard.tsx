@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
+import VerifiedBadge from './VerifiedBadge'
 import { useOpenProfile } from './ProfileView'
 import { useEditPost, useDeletePost, useSetPrayerStatus } from '../api-client/posts'
 import { useAuth } from '../providers/AuthProvider'
@@ -143,11 +144,12 @@ export default function PostCard({ post }: { post: Post }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
             <div>
-              <div onClick={() => !post.isAnonymous && post.authorId && openProfile(post.authorId)} style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: !post.isAnonymous && post.authorId ? 'pointer' : 'default', marginBottom: '3px' }}>
+              <div onClick={() => !post.isAnonymous && post.authorId && openProfile(post.authorId)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: !post.isAnonymous && post.authorId ? 'pointer' : 'default', marginBottom: '3px' }}>
                 {post.isAnonymous ? 'Anonymous' : post.author}
+                {!post.isAnonymous && (post.badges ?? []).includes('verified') && <VerifiedBadge size={14} />}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
-                {(post.badges ?? []).map((b, i) => <Badge key={i} variant={b} />)}
+                {(post.badges ?? []).filter(b => b !== 'verified').map((b, i) => <Badge key={i} variant={b} />)}
               </div>
               {!post.isAnonymous && (
                 <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>

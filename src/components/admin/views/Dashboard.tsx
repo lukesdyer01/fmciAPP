@@ -3,7 +3,6 @@ import { api } from '../../../api-client/server'
 
 const STATIC_STATS = [
   { label: 'Posts This Week',    value: '—',    delta: 'Via feed activity',        icon: '📝', trend: 'up'   as const },
-  { label: 'Pending Verif.',     value: '0',    delta: 'No queue',                 icon: '✓',  trend: 'up'   as const },
   { label: 'Prayer Requests',    value: '—',    delta: 'Via feed activity',        icon: '🙏', trend: 'up'   as const },
   { label: 'Flagged Content',    value: '0',    delta: 'Nothing flagged',          icon: '⚑',  trend: 'up'   as const },
 ]
@@ -35,6 +34,7 @@ export default function Dashboard() {
   const [memberCount, setMemberCount] = useState<number | null>(null)
   const [memberLoading, setMemberLoading] = useState(true)
   const [orgCount, setOrgCount] = useState<number | null>(null)
+  const [pendingVerifCount, setPendingVerifCount] = useState<number | null>(null)
 
   function loadMembers() {
     setMemberLoading(true)
@@ -49,6 +49,9 @@ export default function Dashboard() {
     api<{ id: string }[]>('/orgs')
       .then(orgs => setOrgCount(orgs.length))
       .catch(() => setOrgCount(null))
+    api<{ status: string }[]>('/verification-requests')
+      .then(reqs => setPendingVerifCount(reqs.filter(r => r.status === 'pending').length))
+      .catch(() => setPendingVerifCount(null))
   }, [])
 
   const memberValue = memberLoading ? '…' : memberCount === null ? '—' : String(memberCount)
@@ -69,6 +72,13 @@ export default function Dashboard() {
           delta={orgCount !== null ? `${orgCount} registered orgs` : 'Via Orgs panel'}
           icon="🏛"
           trend="up"
+        />
+        <StatCard
+          label="Pending Verif."
+          value={pendingVerifCount === null ? '—' : String(pendingVerifCount)}
+          delta={pendingVerifCount === null ? 'Could not load' : pendingVerifCount > 0 ? 'Awaiting review' : 'No queue'}
+          icon="✓"
+          trend={pendingVerifCount !== null && pendingVerifCount > 0 ? 'warn' : 'up'}
         />
         {STATIC_STATS.map((s, i) => <StatCard key={i} {...s} />)}
       </div>
