@@ -50,6 +50,12 @@ interface UIState {
   openProfile: (id: string) => void
   closeProfile: () => void
 
+  messagesOpen: boolean
+  messageTargetUserId: string | null
+  setMessagesOpen: (open: boolean) => void
+  openMessagesWith: (userId: string) => void
+  closeMessages: () => void
+
   userProfile: UserProfile
   updateUserProfile: (patch: Partial<UserProfile>) => void
   editProfileOpen: boolean
@@ -76,6 +82,12 @@ export const useUIStore = create<UIState>(set => ({
   profileId: null,
   openProfile: id => set({ profileId: id }),
   closeProfile: () => set({ profileId: null }),
+
+  messagesOpen: false,
+  messageTargetUserId: null,
+  setMessagesOpen: open => set({ messagesOpen: open }),
+  openMessagesWith: userId => set({ messagesOpen: true, messageTargetUserId: userId }),
+  closeMessages: () => set({ messagesOpen: false, messageTargetUserId: null }),
 
   userProfile: DEFAULT_PROFILE,
   updateUserProfile: patch => set(s => ({ userProfile: { ...s.userProfile, ...patch } })),

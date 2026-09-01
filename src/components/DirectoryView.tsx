@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import { api } from '../api-client/server'
 import { useOpenProfile } from './ProfileView'
+import { useUIStore } from '../store/ui'
 
 interface Member {
   id: string
@@ -19,6 +20,7 @@ const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', '
 
 export default function DirectoryView() {
   const openProfile = useOpenProfile()
+  const openMessagesWith = useUIStore(s => s.openMessagesWith)
   const [filter, setFilter] = useState('All Members')
   const [region, setRegion] = useState('All Regions')
   const [search, setSearch] = useState('')
@@ -141,8 +143,8 @@ export default function DirectoryView() {
         }}>
           {filtered.map((member, i) => (
             view === 'grid'
-              ? <MemberCard key={i} member={member} onOpen={openProfile} />
-              : <MemberRow key={i} member={member} onOpen={openProfile} />
+              ? <MemberCard key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} />
+              : <MemberRow key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} />
           ))}
         </div>
       )}
@@ -150,7 +152,7 @@ export default function DirectoryView() {
   )
 }
 
-function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
+function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
@@ -183,7 +185,7 @@ function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) =
             backgroundColor: 'var(--color-navy)', color: '#fff',
             fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
           }}>Connect</button>
-          <button style={{
+          <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} style={{
             flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--color-border)',
             background: 'none', color: 'var(--color-text-1)',
             fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
@@ -194,7 +196,7 @@ function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) =
   )
 }
 
-function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
+function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
@@ -225,7 +227,7 @@ function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) =>
           backgroundColor: 'var(--color-navy)', color: '#fff',
           fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
         }}>Connect</button>
-        <button style={{
+        <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} style={{
           padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--color-border)',
           background: 'none', color: 'var(--color-text-1)',
           fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',

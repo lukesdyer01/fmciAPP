@@ -12,6 +12,7 @@ import Feed from './components/Feed'
 import RightSidebar from './components/RightSidebar'
 import AdminShell from './components/admin/AdminShell'
 import ProfileView from './components/ProfileView'
+import MessagesPanel from './components/MessagesPanel'
 import AuthGate from './components/AuthGate'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -41,6 +42,7 @@ function AppShell() {
   const setAdminMode = useUIStore(s => s.setAdminMode)
   const profileId = useUIStore(s => s.profileId)
   const closeProfile = useUIStore(s => s.closeProfile)
+  const messagesOpen = useUIStore(s => s.messagesOpen)
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
   const { role } = useSupabaseRole()
   const { currentUser } = useAuth()
@@ -81,6 +83,7 @@ function AppShell() {
         </main>
         <RightSidebar />
       </div>
+      {messagesOpen && <MessagesPanel />}
     </div>
   )
 }

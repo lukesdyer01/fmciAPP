@@ -109,6 +109,7 @@ html[data-theme="dark"] #root {
 .notif-panel        { position: fixed; top: 60px; right: 60px; width: 360px; }
 .org-manage-panel   { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; }
 .admin-manage-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; }
+.messages-back-btn  { display: none; }
 .admin-sidebar      { display: flex; }
 .admin-main         { margin-left: 240px; min-width: 0; }
 .admin-topbar       { padding: 14px 32px; }
@@ -177,6 +178,19 @@ html[data-theme="dark"] #root {
   }
   .admin-content {
     padding: 20px 16px;
+  }
+
+  .messages-panel {
+    width: 100%;
+  }
+  .messages-back-btn {
+    display: inline-flex;
+  }
+  .messages-body[data-active="true"] .messages-list-pane {
+    display: none;
+  }
+  .messages-body[data-active="false"] .messages-thread-pane {
+    display: none;
   }
 }
 

@@ -573,6 +573,89 @@ app.delete(`${BASE}/resources/:id`, async (c) => {
   return c.json({ ok: true });
 });
 
+function dmConversationId(userA: string, userB: string) {
+  return `dm_${[userA, userB].sort().join("_")}`;
+}
+
+async function userSummary(userId: string) {
+  const users = await listAuthUsers();
+  const u = users.find((x: any) => x.id === userId);
+  if (!u) return { id: userId, name: "", avatarUrl: "" };
+  return {
+    id: u.id,
+    name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "",
+    avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
+  };
+}
+
+app.get(`${BASE}/conversations`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const conversations = await kv.get("conversations") ?? [];
+  const mine = conversations.filter((conv: any) => Array.isArray(conv.participantIds) && conv.participantIds.includes(caller.id));
+  const summaries = await Promise.all(mine.map(async (conv: any) => {
+    const otherId = conv.participantIds.find((id: string) => id !== caller.id);
+    const other = await userSummary(otherId);
+    const messages = Array.isArray(conv.messages) ? conv.messages : [];
+    const lastMessage = messages[messages.length - 1] ?? null;
+    const lastReadAt = conv.lastReadAt?.[caller.id] ?? null;
+    const unreadCount = messages.filter((m: any) => m.senderId !== caller.id && (!lastReadAt || m.createdAt > lastReadAt)).length;
+    return {
+      id: conv.id,
+      otherUser: other,
+      lastMessage: lastMessage ? { text: lastMessage.text, senderId: lastMessage.senderId, createdAt: lastMessage.createdAt } : null,
+      unreadCount,
+      updatedAt: conv.updatedAt,
+    };
+  }));
+  summaries.sort((a: any, b: any) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+  return c.json(summaries);
+});
+
+app.post(`${BASE}/conversations`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { otherUserId } = await c.req.json();
+  if (!otherUserId || otherUserId === caller.id) return c.json({ error: "A valid other user is required" }, 400);
+  const conversations = await kv.get("conversations") ?? [];
+  const id = dmConversationId(caller.id, otherUserId);
+  let conv = conversations.find((x: any) => x.id === id);
+  if (!conv) {
+    conv = { id, participantIds: [caller.id, otherUserId], messages: [], lastReadAt: {}, updatedAt: new Date().toISOString() };
+    await kv.set("conversations", [conv, ...conversations]);
+  }
+  const other = await userSummary(otherUserId);
+  return c.json({ id: conv.id, otherUser: other, lastMessage: null, unreadCount: 0, updatedAt: conv.updatedAt });
+});
+
+app.get(`${BASE}/conversations/:id/messages`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const conversations = await kv.get("conversations") ?? [];
+  const conv = conversations.find((x: any) => x.id === id);
+  if (!conv || !conv.participantIds.includes(caller.id)) return c.json({ error: "Conversation not found" }, 404);
+  const updated = { ...conv, lastReadAt: { ...(conv.lastReadAt ?? {}), [caller.id]: new Date().toISOString() } };
+  await kv.set("conversations", conversations.map((x: any) => x.id === id ? updated : x));
+  return c.json(Array.isArray(conv.messages) ? conv.messages : []);
+});
+
+app.post(`${BASE}/conversations/:id/messages`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const { text } = await c.req.json();
+  if (!text || !String(text).trim()) return c.json({ error: "Message text is required" }, 400);
+  const conversations = await kv.get("conversations") ?? [];
+  const conv = conversations.find((x: any) => x.id === id);
+  if (!conv || !conv.participantIds.includes(caller.id)) return c.json({ error: "Conversation not found" }, 404);
+  const message = { id: `m${Date.now()}`, senderId: caller.id, text: String(text).trim(), createdAt: new Date().toISOString() };
+  const messages = [...(Array.isArray(conv.messages) ? conv.messages : []), message];
+  const updated = { ...conv, messages, updatedAt: message.createdAt, lastReadAt: { ...(conv.lastReadAt ?? {}), [caller.id]: message.createdAt } };
+  await kv.set("conversations", conversations.map((x: any) => x.id === id ? updated : x));
+  return c.json(message, 201);
+});
+
 function serializeGroup(g: any, callerId: string) {
   const memberIds = Array.isArray(g.memberIds) ? g.memberIds : [];
   return { ...g, members: memberIds.length, joined: memberIds.includes(callerId) };

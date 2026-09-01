@@ -31,6 +31,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
   const { currentUser } = useAuth()
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
+  const openMessagesWith = useUIStore(s => s.openMessagesWith)
   const [member, setMember] = useState<MemberProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -95,12 +96,18 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
                 : <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '28px' }}>{(member.name || '?').slice(0, 2).toUpperCase()}</div>
               }
             </div>
-            {isOwnProfile && (
+            {isOwnProfile ? (
               <button onClick={() => setEditProfileOpen(true)} style={{
                 marginLeft: 'auto', padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
                 border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
                 color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
               }}>✏ Edit Profile</button>
+            ) : (
+              <button onClick={() => openMessagesWith(member.id)} style={{
+                marginLeft: 'auto', padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
+                border: 'none', backgroundColor: 'var(--color-navy)',
+                color: '#fff', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+              }}>💬 Message</button>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>

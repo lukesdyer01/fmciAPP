@@ -7,6 +7,7 @@ import { useOpenProfile } from './ProfileView'
 import EditProfileModal from './EditProfileModal'
 import { supabase } from '../lib/supabase'
 import { api } from '../api-client/server'
+import { useConversations } from '../api-client/messages'
 import type { ActiveView } from '../App'
 
 interface SearchMember { id: string; name: string; title: string; church: string; avatarUrl: string }
@@ -165,6 +166,9 @@ export default function Topbar() {
   const setActiveView = useUIStore(s => s.setActiveView)
   const closeProfile = useUIStore(s => s.closeProfile)
   const openProfile = useOpenProfile()
+  const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
+  const { data: conversations } = useConversations()
+  const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
   const [search, setSearch] = useState('')
 
   function navigateTo(view: ActiveView) {
@@ -230,10 +234,11 @@ export default function Topbar() {
       {/* Right icons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
         {/* Messages */}
-        <button className="topbar-secondary-icon" style={{ ...iconBtn, position: 'relative', display: undefined }}>
+        <button onClick={() => setMessagesOpen(true)} title="Messages" style={{ ...iconBtn, position: 'relative' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
+          {unreadTotal > 0 && <span style={badgeDot}>{unreadTotal > 9 ? '9+' : unreadTotal}</span>}
         </button>
         {/* Admin panel — superadmin / admin only */}
         {(role === 'superadmin' || role === 'admin') && (
