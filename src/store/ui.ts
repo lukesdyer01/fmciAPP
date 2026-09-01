@@ -16,6 +16,7 @@ export interface UserProfile {
   email: string
   phone: string
   ministryRoles: string[]
+  communicationPrefs: string[]
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -29,6 +30,7 @@ const DEFAULT_PROFILE: UserProfile = {
   email: '',
   phone: '',
   ministryRoles: [],
+  communicationPrefs: [],
 }
 
 interface UIState {

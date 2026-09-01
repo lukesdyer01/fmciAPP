@@ -20,6 +20,7 @@ export interface MemberProfile {
   email: string
   phone: string
   ministryRoles: string[]
+  communicationPrefs: string[]
   verified: boolean
   joinedAt: string
 }
@@ -135,6 +136,16 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
               {member.phone && (
                 <a href={`tel:${member.phone}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>📞 {member.phone}</a>
               )}
+            </div>
+          )}
+          {member.communicationPrefs.length > 0 && (
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '6px' }}>Prefers to be contacted by</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {member.communicationPrefs.map(pref => (
+                  <span key={pref} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)' }}>{pref}</span>
+                ))}
+              </div>
             </div>
           )}
         </div>

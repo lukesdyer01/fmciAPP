@@ -16,6 +16,7 @@ export interface User {
   website: string | null
   phone: string | null
   ministryRoles: string[]
+  communicationPrefs: string[]
   platformRole: PlatformRole
   verified: boolean
   createdAt: string

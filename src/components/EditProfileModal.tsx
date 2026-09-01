@@ -4,6 +4,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { supabase } from '../lib/supabase'
 
 const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
+const COMMUNICATION_PREFS = ['Phone Call', 'Text Message', 'Email']
 
 function Field({ label, value, onChange, multiline = false, placeholder = '' }: {
   label: string
@@ -68,6 +69,13 @@ export default function EditProfileModal() {
     }))
   }
 
+  function toggleCommunicationPref(pref: string) {
+    setDraft(d => ({
+      ...d,
+      communicationPrefs: d.communicationPrefs.includes(pref) ? d.communicationPrefs.filter(p => p !== pref) : [...d.communicationPrefs, pref],
+    }))
+  }
+
   async function handleImageFile(key: 'avatarUrl', file: File) {
     if (!currentUser) return
     setUploading(key)
@@ -110,6 +118,7 @@ export default function EditProfileModal() {
           website: draft.website,
           phone: draft.phone,
           ministryRoles: draft.ministryRoles,
+          communicationPrefs: draft.communicationPrefs,
         },
       })
       if (error) throw error
@@ -125,6 +134,7 @@ export default function EditProfileModal() {
         email: draft.email,
         phone: draft.phone,
         ministryRoles: draft.ministryRoles,
+        communicationPrefs: draft.communicationPrefs,
       })
       setStatus('saved')
       setTimeout(() => {
@@ -255,6 +265,31 @@ export default function EditProfileModal() {
                         transition: 'all 0.15s',
                       }}
                     >{active ? '✓ ' : ''}{role}</button>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Communication Preference <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {COMMUNICATION_PREFS.map(pref => {
+                  const active = draft.communicationPrefs.includes(pref)
+                  return (
+                    <button
+                      key={pref}
+                      type="button"
+                      onClick={() => toggleCommunicationPref(pref)}
+                      style={{
+                        padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        fontSize: '13px', fontWeight: 700,
+                        border: `1.5px solid ${active ? 'var(--color-navy)' : 'var(--color-border)'}`,
+                        backgroundColor: active ? 'var(--color-navy)' : 'var(--color-surface)',
+                        color: active ? '#fff' : 'var(--color-text-2)',
+                        transition: 'all 0.15s',
+                      }}
+                    >{active ? '✓ ' : ''}{pref}</button>
                   )
                 })}
               </div>

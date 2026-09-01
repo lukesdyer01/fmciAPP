@@ -121,6 +121,7 @@ app.get(`${BASE}/members`, async (c) => {
       badges: u.user_metadata?.verified ? ["verified"] : [],
       callings: [],
       ministryRoles: Array.isArray(u.user_metadata?.ministryRoles) ? u.user_metadata.ministryRoles : [],
+      communicationPrefs: Array.isArray(u.user_metadata?.communicationPrefs) ? u.user_metadata.communicationPrefs : [],
     }));
   return c.json(members);
 });
@@ -144,6 +145,7 @@ app.get(`${BASE}/members/:id`, async (c) => {
     email: u.email ?? "",
     phone: u.user_metadata?.phone ?? "",
     ministryRoles: Array.isArray(u.user_metadata?.ministryRoles) ? u.user_metadata.ministryRoles : [],
+    communicationPrefs: Array.isArray(u.user_metadata?.communicationPrefs) ? u.user_metadata.communicationPrefs : [],
     verified: !!u.user_metadata?.verified,
     joinedAt: u.created_at,
   });
