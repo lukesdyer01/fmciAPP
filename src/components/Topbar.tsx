@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 import { useUIStore } from '../store/ui'
 import { useOpenProfile } from './ProfileView'
@@ -6,6 +6,7 @@ import EditProfileModal from './EditProfileModal'
 import ProfileHoverCard from './ProfileHoverCard'
 import { api } from '../api-client/server'
 import { useConversations } from '../api-client/messages'
+import { playNotificationSound } from '../lib/notificationSound'
 import type { ActiveView } from '../App'
 
 interface SearchMember { id: string; name: string; title: string; church: string; avatarUrl: string }
@@ -163,6 +164,15 @@ export default function Topbar() {
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
   const { data: conversations } = useConversations()
   const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
+  const prevUnreadTotal = useRef<number | null>(null)
+  useEffect(() => {
+    // Skip the first observation (page load) — only chime when unread count
+    // actually rises from a known baseline, i.e. a genuinely new message.
+    if (prevUnreadTotal.current !== null && unreadTotal > prevUnreadTotal.current) {
+      playNotificationSound()
+    }
+    prevUnreadTotal.current = unreadTotal
+  }, [unreadTotal])
   const [search, setSearch] = useState('')
 
   function navigateTo(view: ActiveView) {
