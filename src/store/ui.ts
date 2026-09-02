@@ -8,7 +8,7 @@ import type { ActiveView } from '../App'
 // URL <-> view mapping so each page has its own address (deep-linkable,
 // back/forward-navigable) without pulling in a router dependency.
 const VIEW_TO_PATH: Record<ActiveView, string> = {
-  feed: '/', directory: '/directory', orgs: '/orgs', groups: '/groups',
+  feed: '/', directory: '/directory', orgs: '/ministries', groups: '/groups',
   prayer: '/prayer', testimonies: '/testimonies', events: '/events',
   resources: '/resources', map: '/map', about: '/about',
 }
