@@ -336,13 +336,13 @@ export default function ResourcesView() {
                   </div>
 
                   {/* Title */}
-                  <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)', lineHeight: 1.3 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)', lineHeight: 1.3, overflowWrap: 'break-word' }}>
                     {r.title}
                   </h3>
 
                   {/* Author */}
                   {r.author && (
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)', marginBottom: '2px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)', marginBottom: '2px', overflowWrap: 'break-word' }}>
                       by {r.author}
                     </div>
                   )}
@@ -359,9 +359,9 @@ export default function ResourcesView() {
                     >{r.reviews > 0 ? `${r.reviews.toLocaleString()} review${r.reviews === 1 ? '' : 's'}` : 'Write a review'}</button>
                   </div>
 
-                  {/* Description */}
+                  {/* Description — hidden on mobile to keep cards compact; still shown on desktop */}
                   {r.description && (
-                    <p style={{ margin: '0 0 12px', fontSize: '14px', color: 'var(--color-text-1)', lineHeight: 1.65 }}>
+                    <p className="resource-description" style={{ margin: '0 0 12px', fontSize: '14px', color: 'var(--color-text-1)', lineHeight: 1.65, overflowWrap: 'break-word' }}>
                       {r.description}
                     </p>
                   )}

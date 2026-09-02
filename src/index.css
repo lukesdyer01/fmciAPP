@@ -169,6 +169,10 @@ html[data-theme="dark"] #root {
 
   .resource-card-row {
     flex-direction: column;
+    align-items: stretch; /* base rule sets flex-start for desktop's row layout, which
+      in column direction means shrink-to-fit width instead of filling the card —
+      long unbroken text (a title, a pasted URL) then overflows and gets clipped
+      by the card's overflow:hidden instead of wrapping */
     gap: 14px;
     padding: 16px !important; /* overrides the inline 20px 22px set from React */
   }
@@ -178,6 +182,9 @@ html[data-theme="dark"] #root {
   .resource-add-btn {
     margin-left: 0 !important; /* overrides the inline auto set from React */
     width: 100%;
+  }
+  .resource-description {
+    display: none;
   }
 
   .admin-sidebar {
