@@ -2,6 +2,7 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+import webpush from "npm:web-push";
 
 const kvClient = () => createClient(
   Deno.env.get("SUPABASE_URL"),
@@ -71,6 +72,54 @@ async function updateUserMeta(userId: string, meta: Record<string, any>) {
     headers: { Authorization: `Bearer ${SERVICE_KEY()}`, apikey: SERVICE_KEY(), "Content-Type": "application/json" },
     body: JSON.stringify({ user_metadata: meta }),
   });
+}
+
+// Web Push (iOS 16.4+/Android for a home-screen-installed PWA). Subscriptions
+// are stored in the KV store, never in user_metadata — anything in
+// user_metadata gets embedded in every JWT the user is issued (see
+// EditProfileModal.tsx's comment on the avatar-base64 incident), and a
+// subscription object is the same risk profile, just via a different field.
+const VAPID_PUBLIC_KEY  = () => Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
+const VAPID_PRIVATE_KEY = () => Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
+const VAPID_SUBJECT     = () => Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@fmci.network";
+
+async function getUserSubscriptions(userId: string): Promise<any[]> {
+  const all = await kv.get("push_subscriptions") ?? {};
+  return Array.isArray(all[userId]) ? all[userId] : [];
+}
+
+async function saveUserSubscriptions(userId: string, subs: any[]): Promise<void> {
+  const all = await kv.get("push_subscriptions") ?? {};
+  await kv.set("push_subscriptions", { ...all, [userId]: subs });
+}
+
+// Returns false only for a definitive 404/410 (subscription expired/revoked)
+// so the caller can prune it — anything else (network blip, 5xx) throws and
+// is treated as transient, keeping the subscription for the next attempt.
+async function sendWebPush(subscription: any, payload: string): Promise<boolean> {
+  webpush.setVapidDetails(VAPID_SUBJECT(), VAPID_PUBLIC_KEY(), VAPID_PRIVATE_KEY());
+  try {
+    await webpush.sendNotification(subscription, payload);
+    return true;
+  } catch (err: any) {
+    if (err?.statusCode === 404 || err?.statusCode === 410) return false;
+    throw err;
+  }
+}
+
+async function sendPushToUser(userId: string, payload: { title: string; body: string; url?: string; tag?: string }) {
+  const subs = await getUserSubscriptions(userId);
+  if (subs.length === 0) return;
+  const survivors: any[] = [];
+  for (const sub of subs) {
+    try {
+      const ok = await sendWebPush(sub, JSON.stringify(payload));
+      if (ok) survivors.push(sub);
+    } catch {
+      survivors.push(sub);
+    }
+  }
+  if (survivors.length !== subs.length) await saveUserSubscriptions(userId, survivors);
 }
 
 const SEED_POSTS = [
@@ -877,7 +926,39 @@ app.post(`${BASE}/conversations/:id/messages`, async (c) => {
   const messages = [...(Array.isArray(conv.messages) ? conv.messages : []), message];
   const updated = { ...conv, messages, updatedAt: message.createdAt, lastReadAt: { ...(conv.lastReadAt ?? {}), [caller.id]: message.createdAt } };
   await kv.set("conversations", conversations.map((x: any) => x.id === id ? updated : x));
+  // Fire-and-forget — a slow/failed push must never delay or fail the
+  // message send itself. Only the OTHER participant(s) get notified.
+  const senderName = caller.user_metadata?.full_name ?? caller.user_metadata?.name ?? "New message";
+  for (const uid of conv.participantIds.filter((u: string) => u !== caller.id)) {
+    sendPushToUser(uid, {
+      title: senderName,
+      body: message.text.length > 120 ? message.text.slice(0, 117) + "…" : message.text,
+      url: "/",
+      tag: `dm-${id}`,
+    }).catch(() => {});
+  }
   return c.json(message, 201);
+});
+
+app.post(`${BASE}/push/subscribe`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const subscription = await c.req.json();
+  if (!subscription?.endpoint) return c.json({ error: "A valid push subscription is required" }, 400);
+  const existing = await getUserSubscriptions(caller.id);
+  const withoutThis = existing.filter((s: any) => s.endpoint !== subscription.endpoint);
+  await saveUserSubscriptions(caller.id, [...withoutThis, subscription]);
+  return c.json({ ok: true });
+});
+
+app.post(`${BASE}/push/unsubscribe`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { endpoint } = await c.req.json();
+  if (!endpoint) return c.json({ error: "endpoint is required" }, 400);
+  const existing = await getUserSubscriptions(caller.id);
+  await saveUserSubscriptions(caller.id, existing.filter((s: any) => s.endpoint !== endpoint));
+  return c.json({ ok: true });
 });
 
 function serializeGroup(g: any, callerId: string) {

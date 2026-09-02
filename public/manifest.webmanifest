@@ -1,0 +1,16 @@
+{
+  "name": "FMCI — Federation of Ministers and Churches International",
+  "short_name": "FMCI",
+  "description": "A relational network of five-fold ministries, local churches, and marketplace leaders — connected by calling, not hierarchy.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1a2a4a",
+  "theme_color": "#1a2a4a",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

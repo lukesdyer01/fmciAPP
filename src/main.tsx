@@ -11,3 +11,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </React.StrictMode>,
 )
+
+// Enables installability + Web Push (iOS 16.4+/Android for an installed
+// home-screen app). Registered here, once, independent of React/auth state.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}

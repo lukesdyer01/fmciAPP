@@ -16,6 +16,8 @@ import AdminShell from './components/admin/AdminShell'
 import ProfileView from './components/ProfileView'
 import MessagesPanel from './components/MessagesPanel'
 import MobileNavDrawer from './components/MobileNavDrawer'
+import InstallPrompt from './components/InstallPrompt'
+import PushPrompt from './components/PushPrompt'
 import AuthGate from './components/AuthGate'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -107,6 +109,8 @@ function AppShell() {
       </div>
       {messagesOpen && <MessagesPanel />}
       {mobileNavOpen && <MobileNavDrawer />}
+      <InstallPrompt />
+      <PushPrompt />
     </div>
   )
 }
