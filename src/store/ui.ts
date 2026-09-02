@@ -5,6 +5,35 @@
 import { create } from 'zustand'
 import type { ActiveView } from '../App'
 
+// URL <-> view mapping so each page has its own address (deep-linkable,
+// back/forward-navigable) without pulling in a router dependency.
+const VIEW_TO_PATH: Record<ActiveView, string> = {
+  feed: '/', directory: '/directory', orgs: '/orgs', groups: '/groups',
+  prayer: '/prayer', testimonies: '/testimonies', events: '/events',
+  resources: '/resources', map: '/map', about: '/about',
+}
+const PATH_TO_VIEW: Record<string, ActiveView> = Object.fromEntries(
+  Object.entries(VIEW_TO_PATH).map(([view, path]) => [path, view as ActiveView])
+)
+
+function pushUrl(path: string) {
+  if (typeof window === 'undefined' || window.location.pathname === path) return
+  window.history.pushState(null, '', path)
+}
+
+interface UrlState { activeView: ActiveView; profileId: string | null; adminMode: boolean }
+
+function stateFromUrl(): UrlState {
+  if (typeof window === 'undefined') return { activeView: 'feed', profileId: null, adminMode: false }
+  const path = window.location.pathname
+  const profileMatch = path.match(/^\/profile\/([^/]+)\/?$/)
+  if (profileMatch) return { activeView: 'feed', profileId: decodeURIComponent(profileMatch[1]), adminMode: false }
+  if (path === '/admin' || path.startsWith('/admin/')) return { activeView: 'feed', profileId: null, adminMode: true }
+  return { activeView: PATH_TO_VIEW[path] ?? 'feed', profileId: null, adminMode: false }
+}
+
+const INITIAL_URL_STATE = stateFromUrl()
+
 export interface UserProfile {
   name: string
   title: string
@@ -73,11 +102,16 @@ interface UIState {
   activeHashtag: string | null
   viewHashtag: (tag: string) => void
   clearHashtag: () => void
+
+  // Re-syncs view/profile/admin state from the URL — called on browser
+  // back/forward (popstate), since those change location without going
+  // through any of the actions above.
+  syncFromUrl: () => void
 }
 
-export const useUIStore = create<UIState>(set => ({
-  activeView: 'feed',
-  setActiveView: view => set({ activeView: view, notifOpen: false, mobileNavOpen: false }),
+export const useUIStore = create<UIState>((set, get) => ({
+  activeView: INITIAL_URL_STATE.activeView,
+  setActiveView: view => { pushUrl(VIEW_TO_PATH[view] ?? '/'); set({ activeView: view, profileId: null, notifOpen: false, mobileNavOpen: false }) },
 
   notifOpen: false,
   setNotifOpen: open => set({ notifOpen: open }),
@@ -92,12 +126,12 @@ export const useUIStore = create<UIState>(set => ({
   setComposerDraft: text => set({ composerDraft: text }),
   clearComposerDraft: () => set({ composerDraft: '' }),
 
-  adminMode: false,
-  setAdminMode: on => set({ adminMode: on }),
+  adminMode: INITIAL_URL_STATE.adminMode,
+  setAdminMode: on => { pushUrl(on ? '/admin' : (VIEW_TO_PATH[get().activeView] ?? '/')); set({ adminMode: on }) },
 
-  profileId: null,
-  openProfile: id => set({ profileId: id }),
-  closeProfile: () => set({ profileId: null }),
+  profileId: INITIAL_URL_STATE.profileId,
+  openProfile: id => { pushUrl(`/profile/${id}`); set({ profileId: id }) },
+  closeProfile: () => { pushUrl(VIEW_TO_PATH[get().activeView] ?? '/'); set({ profileId: null }) },
 
   messagesOpen: false,
   messageTargetUserId: null,
@@ -111,6 +145,11 @@ export const useUIStore = create<UIState>(set => ({
   setEditProfileOpen: open => set({ editProfileOpen: open }),
 
   activeHashtag: null,
-  viewHashtag: tag => set({ activeHashtag: tag, activeView: 'feed', profileId: null, notifOpen: false, mobileNavOpen: false }),
+  viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, notifOpen: false, mobileNavOpen: false }) },
   clearHashtag: () => set({ activeHashtag: null }),
+
+  syncFromUrl: () => {
+    const s = stateFromUrl()
+    set({ activeView: s.activeView, profileId: s.profileId, adminMode: s.adminMode })
+  },
 }))

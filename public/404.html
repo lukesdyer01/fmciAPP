@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>FMCI — Federation of Ministers and Churches International</title>
+    <!-- GitHub Pages serves this file for any unknown path (e.g. a direct
+         load or refresh of /resources). It has no server-side rewrites, so
+         we redirect back to index.html with the real path encoded in the
+         query string; index.html's inline script decodes it back into a
+         clean URL via history.replaceState before the app boots. -->
+    <script>
+      var l = window.location
+      l.replace(
+        l.protocol + '//' + l.host + '/?/' +
+        l.pathname.slice(1).replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      )
+    </script>
+  </head>
+  <body></body>
+</html>

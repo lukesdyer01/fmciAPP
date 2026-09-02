@@ -158,7 +158,6 @@ export default function Topbar() {
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
   const setActiveView = useUIStore(s => s.setActiveView)
-  const closeProfile = useUIStore(s => s.closeProfile)
   const openProfile = useOpenProfile()
   const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
@@ -176,7 +175,6 @@ export default function Topbar() {
   const [search, setSearch] = useState('')
 
   function navigateTo(view: ActiveView) {
-    closeProfile()
     setActiveView(view)
   }
   function goToProfile(id: string) {

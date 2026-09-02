@@ -48,10 +48,16 @@ function AppShell() {
   const messagesOpen = useUIStore(s => s.messagesOpen)
   const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
+  const syncFromUrl = useUIStore(s => s.syncFromUrl)
   const { role } = useSupabaseRole()
   const { currentUser } = useAuth()
 
   useHeartbeat()
+
+  useEffect(() => {
+    window.addEventListener('popstate', syncFromUrl)
+    return () => window.removeEventListener('popstate', syncFromUrl)
+  }, [])
 
   useEffect(() => {
     // The signed-in user's Supabase Auth record is the single source of truth for
