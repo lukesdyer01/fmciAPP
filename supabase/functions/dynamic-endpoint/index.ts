@@ -741,7 +741,7 @@ app.post(`${BASE}/resources`, async (c) => {
     id: `r${Date.now()}`,
     title: String(body.title).trim(),
     author: body.author ?? "",
-    type: ["Book", "Video", "Article"].includes(body.type) ? body.type : "Article",
+    type: ["Book", "Video", "Podcast"].includes(body.type) ? body.type : "Book",
     category: body.category ?? "Discipleship",
     description: body.description ?? "",
     tags: Array.isArray(body.tags) ? body.tags.filter(Boolean) : [],

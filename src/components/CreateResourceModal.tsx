@@ -6,7 +6,7 @@ import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
 import type { Resource } from './ResourcesView'
 
-const RESOURCE_TYPES = ['Book', 'Video', 'Article']
+const RESOURCE_TYPES = ['Book', 'Video', 'Podcast']
 const CATEGORIES = ['Apostolic Teaching', 'Leadership', 'Prayer', 'Missions', 'Marketplace', 'Discipleship']
 
 export default function CreateResourceModal({ resource, onClose, onSaved }: {

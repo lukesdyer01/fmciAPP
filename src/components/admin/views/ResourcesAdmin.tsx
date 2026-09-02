@@ -3,7 +3,7 @@ import { api } from '../../../api-client/server'
 import CreateResourceModal from '../../CreateResourceModal'
 import type { Resource } from '../../ResourcesView'
 
-const TYPES = ['Book', 'Video', 'Article']
+const TYPES = ['Book', 'Video', 'Podcast']
 
 function adminActionBtn(color: string): React.CSSProperties {
   return { flex: 1, padding: '7px 10px', borderRadius: '7px', border: `1px solid ${color}30`, backgroundColor: color + '12', color, fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'center' }
