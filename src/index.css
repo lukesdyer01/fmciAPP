@@ -36,6 +36,12 @@ html, body, #root {
   font-family: var(--font-sans);
   background-color: var(--color-surface);
   color: var(--color-text-1);
+  /* Hard backstop against page-level horizontal scroll — CSS Grid items
+     (see .app-grid > main below) default to min-width: auto, so any single
+     piece of content anywhere on the page with an intrinsic width wider
+     than the viewport would otherwise grow the whole grid track rather
+     than wrap, and this is easy to miss case-by-case. */
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -99,6 +105,14 @@ html[data-theme="dark"] #root {
   margin: 0 auto;
   padding-top: 56px;
   align-items: start;
+}
+
+/* Grid items default to min-width: auto, not 0 — without this, any single
+   piece of content in the main column wider than its intrinsic minimum
+   (a long unbroken word, an unconstrained image, etc.) grows this track
+   past the viewport instead of wrapping, taking the whole page with it. */
+.app-grid > main {
+  min-width: 0;
 }
 
 .mobile-nav-toggle { display: none; }
