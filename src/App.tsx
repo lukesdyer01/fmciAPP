@@ -74,6 +74,7 @@ function AppShell() {
       email: currentUser.email ?? '',
       phone: currentUser.phone ?? '',
       ministryRoles: currentUser.ministryRoles ?? [],
+      additionalRoles: currentUser.additionalRoles ?? [],
       communicationPrefs: currentUser.communicationPrefs ?? [],
     })
   }, [currentUser])

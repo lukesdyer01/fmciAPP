@@ -121,7 +121,9 @@ app.get(`${BASE}/members`, async (c) => {
       badges: u.user_metadata?.verified ? ["verified"] : [],
       callings: [],
       ministryRoles: Array.isArray(u.user_metadata?.ministryRoles) ? u.user_metadata.ministryRoles : [],
+      additionalRoles: Array.isArray(u.user_metadata?.additionalRoles) ? u.user_metadata.additionalRoles : [],
       communicationPrefs: Array.isArray(u.user_metadata?.communicationPrefs) ? u.user_metadata.communicationPrefs : [],
+      fmciLeadershipRole: u.user_metadata?.fmciLeadershipRole ?? "",
     }));
   return c.json(members);
 });
@@ -180,7 +182,9 @@ app.get(`${BASE}/members/:id`, async (c) => {
     email: u.email ?? "",
     phone: u.user_metadata?.phone ?? "",
     ministryRoles: Array.isArray(u.user_metadata?.ministryRoles) ? u.user_metadata.ministryRoles : [],
+    additionalRoles: Array.isArray(u.user_metadata?.additionalRoles) ? u.user_metadata.additionalRoles : [],
     communicationPrefs: Array.isArray(u.user_metadata?.communicationPrefs) ? u.user_metadata.communicationPrefs : [],
+    fmciLeadershipRole: u.user_metadata?.fmciLeadershipRole ?? "",
     verified: !!u.user_metadata?.verified,
     joinedAt: u.created_at,
   });
@@ -688,7 +692,7 @@ app.post(`${BASE}/resources`, async (c) => {
     id: `r${Date.now()}`,
     title: String(body.title).trim(),
     author: body.author ?? "",
-    type: ["Book", "Course", "Video", "Article"].includes(body.type) ? body.type : "Article",
+    type: ["Book", "Video", "Article"].includes(body.type) ? body.type : "Article",
     category: body.category ?? "Discipleship",
     description: body.description ?? "",
     tags: Array.isArray(body.tags) ? body.tags.filter(Boolean) : [],
@@ -1034,17 +1038,30 @@ app.get(`${BASE}/admin/users`, async (c) => {
     status: u.user_metadata?.status === "suspended" ? "suspended"
            : u.confirmed_at ? "active" : "pending",
     verified: !!u.user_metadata?.verified,
+    fmciLeadershipRole: u.user_metadata?.fmciLeadershipRole ?? "",
     createdAt: u.created_at,
     lastSignIn: u.last_sign_in_at,
     confirmed: !!u.confirmed_at,
   })));
 });
 
+const FMCI_LEADERSHIP_ROLES = ["Apostolic Leadership Team", "Apostolic Council", "Apostolic Team Leader"];
+
 app.post(`${BASE}/admin/update-member`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
   const { userId, patch } = await c.req.json();
   if (!userId || !patch) return c.json({ error: "userId and patch required" }, 400);
+  // FMCI Leadership Role is superadmin-only — a plain admin's request silently
+  // drops the field rather than erroring, same convention as the RPC's
+  // unknown-field handling elsewhere in this admin flow.
+  if ("fmciLeadershipRole" in patch) {
+    if (callerRole(caller) !== "superadmin") {
+      delete patch.fmciLeadershipRole;
+    } else if (patch.fmciLeadershipRole && !FMCI_LEADERSHIP_ROLES.includes(patch.fmciLeadershipRole)) {
+      return c.json({ error: "Invalid FMCI Leadership Role" }, 400);
+    }
+  }
   const userRes = await fetch(`${SUPABASE_URL()}/auth/v1/admin/users/${userId}`, {
     headers: { Authorization: `Bearer ${SERVICE_KEY()}`, apikey: SERVICE_KEY() },
   });

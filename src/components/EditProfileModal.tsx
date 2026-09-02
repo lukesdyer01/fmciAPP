@@ -4,6 +4,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { supabase } from '../lib/supabase'
 
 const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
+const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 const COMMUNICATION_PREFS = ['Phone Call', 'Text Message', 'Email']
 
 function Field({ label, value, onChange, multiline = false, placeholder = '' }: {
@@ -69,6 +70,13 @@ export default function EditProfileModal() {
     }))
   }
 
+  function toggleAdditionalRole(role: string) {
+    setDraft(d => ({
+      ...d,
+      additionalRoles: d.additionalRoles.includes(role) ? d.additionalRoles.filter(r => r !== role) : [...d.additionalRoles, role],
+    }))
+  }
+
   function toggleCommunicationPref(pref: string) {
     setDraft(d => ({
       ...d,
@@ -118,6 +126,7 @@ export default function EditProfileModal() {
           website: draft.website,
           phone: draft.phone,
           ministryRoles: draft.ministryRoles,
+          additionalRoles: draft.additionalRoles,
           communicationPrefs: draft.communicationPrefs,
         },
       })
@@ -134,6 +143,7 @@ export default function EditProfileModal() {
         email: draft.email,
         phone: draft.phone,
         ministryRoles: draft.ministryRoles,
+        additionalRoles: draft.additionalRoles,
         communicationPrefs: draft.communicationPrefs,
       })
       setStatus('saved')
@@ -246,7 +256,7 @@ export default function EditProfileModal() {
             <Field label="Phone" value={draft.phone} onChange={v => set('phone', v)} placeholder="(555) 555-5555" />
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Ministry Role <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>
+                5-fold Role <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {MINISTRY_ROLES.map(role => {
@@ -261,6 +271,31 @@ export default function EditProfileModal() {
                         fontSize: '13px', fontWeight: 700,
                         border: `1.5px solid ${active ? 'var(--color-navy)' : 'var(--color-border)'}`,
                         backgroundColor: active ? 'var(--color-navy)' : 'var(--color-surface)',
+                        color: active ? '#fff' : 'var(--color-text-2)',
+                        transition: 'all 0.15s',
+                      }}
+                    >{active ? '✓ ' : ''}{role}</button>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Additional Role <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {ADDITIONAL_ROLES.map(role => {
+                  const active = draft.additionalRoles.includes(role)
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => toggleAdditionalRole(role)}
+                      style={{
+                        padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        fontSize: '13px', fontWeight: 700,
+                        border: `1.5px solid ${active ? 'var(--color-blue)' : 'var(--color-border)'}`,
+                        backgroundColor: active ? 'var(--color-blue)' : 'var(--color-surface)',
                         color: active ? '#fff' : 'var(--color-text-2)',
                         transition: 'all 0.15s',
                       }}

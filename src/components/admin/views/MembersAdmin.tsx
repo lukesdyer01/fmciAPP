@@ -4,7 +4,9 @@ import { useSupabaseRole } from '../../../contexts/SupabaseRoleContext'
 import { api } from '../../../api-client/server'
 
 const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
+const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 const COMMUNICATION_PREFS = ['Phone Call', 'Text Message', 'Email']
+const FMCI_LEADERSHIP_ROLES = ['Apostolic Leadership Team', 'Apostolic Council', 'Apostolic Team Leader']
 
 type MemberStatus = 'active' | 'suspended' | 'pending'
 type PlatformRole = 'superadmin' | 'admin' | 'member'
@@ -29,7 +31,11 @@ interface Member {
   website?: string
   phone?: string
   ministryRoles?: string[]
+  additionalRoles?: string[]
   communicationPrefs?: string[]
+  // Superadmin-only designation, separate from the ministryRoles a member
+  // sets for themselves — only a superadmin may set or change this.
+  fmciLeadershipRole?: string
 }
 
 const PLATFORM_ROLE_META: Record<PlatformRole, { label: string; bg: string; color: string }> = {
@@ -339,11 +345,14 @@ interface EditMemberDraft {
   website: string
   phone: string
   ministryRoles: string[]
+  additionalRoles: string[]
   communicationPrefs: string[]
+  fmciLeadershipRole: string
 }
 
 function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose: () => void; onSaved: (updated: Member) => void }) {
-  const { userId: adminId } = useSupabaseRole()
+  const { userId: adminId, role: myRole } = useSupabaseRole()
+  const isSuperadmin = myRole === 'superadmin'
   const [draft, setDraft] = useState<EditMemberDraft>({
     name: member.name,
     email: member.email,
@@ -358,7 +367,9 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
     website: member.website ?? '',
     phone: member.phone ?? '',
     ministryRoles: member.ministryRoles ?? [],
+    additionalRoles: member.additionalRoles ?? [],
     communicationPrefs: member.communicationPrefs ?? [],
+    fmciLeadershipRole: member.fmciLeadershipRole ?? '',
   })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -370,14 +381,16 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
   // ministryRoles/communicationPrefs — fetch them lazily from the same route
   // the public profile page uses.
   useEffect(() => {
-    api<{ bio: string; website: string; phone: string; ministryRoles: string[]; communicationPrefs: string[] }>(`/members/${member.id}`)
+    api<{ bio: string; website: string; phone: string; ministryRoles: string[]; additionalRoles: string[]; communicationPrefs: string[]; fmciLeadershipRole?: string }>(`/members/${member.id}`)
       .then(data => setDraft(d => ({
         ...d,
         bio: data.bio ?? '',
         website: data.website ?? '',
         phone: data.phone ?? '',
         ministryRoles: data.ministryRoles ?? [],
+        additionalRoles: data.additionalRoles ?? [],
         communicationPrefs: data.communicationPrefs ?? [],
+        fmciLeadershipRole: data.fmciLeadershipRole ?? '',
       })))
       .catch(() => {})
       .finally(() => setLoadingExtra(false))
@@ -391,6 +404,13 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
     setDraft(d => ({
       ...d,
       ministryRoles: d.ministryRoles.includes(role) ? d.ministryRoles.filter(r => r !== role) : [...d.ministryRoles, role],
+    }))
+  }
+
+  function toggleAdditionalRole(role: string) {
+    setDraft(d => ({
+      ...d,
+      additionalRoles: d.additionalRoles.includes(role) ? d.additionalRoles.filter(r => r !== role) : [...d.additionalRoles, role],
     }))
   }
 
@@ -460,7 +480,12 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
             website: draft.website.trim(),
             phone: draft.phone.trim(),
             ministryRoles: draft.ministryRoles,
+            additionalRoles: draft.additionalRoles,
             communicationPrefs: draft.communicationPrefs,
+            // Server drops this for anything but a superadmin caller, regardless
+            // of what's sent — isSuperadmin here just controls whether the field
+            // was even editable in this UI.
+            ...(isSuperadmin ? { fmciLeadershipRole: draft.fmciLeadershipRole } : {}),
           },
         }),
       })
@@ -622,7 +647,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
                 </div>
               </div>
               <div>
-                <label style={labelStyle}>Ministry Role</label>
+                <label style={labelStyle}>5-fold Role</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {MINISTRY_ROLES.map(role => {
                     const active = draft.ministryRoles.includes(role)
@@ -633,6 +658,33 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
                         border: `1px solid ${active ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.1)'}`,
                         backgroundColor: active ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.03)',
                         color: active ? 'var(--color-gold)' : 'rgba(255,255,255,0.4)',
+                      }}>{active ? '✓ ' : ''}{role}</button>
+                    )
+                  })}
+                </div>
+              </div>
+              {isSuperadmin && (
+                <div>
+                  <label style={labelStyle}>FMCI Leadership Role <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.25)', textTransform: 'none', letterSpacing: 0 }}>(superadmin only)</span></label>
+                  <select value={draft.fmciLeadershipRole} onChange={e => set('fmciLeadershipRole', e.target.value)}
+                    style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="" style={{ backgroundColor: '#161b22' }}>None</option>
+                    {FMCI_LEADERSHIP_ROLES.map(r => <option key={r} value={r} style={{ backgroundColor: '#161b22' }}>{r}</option>)}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label style={labelStyle}>Additional Role</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {ADDITIONAL_ROLES.map(role => {
+                    const active = draft.additionalRoles.includes(role)
+                    return (
+                      <button key={role} type="button" onClick={() => toggleAdditionalRole(role)} style={{
+                        padding: '7px 14px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        fontSize: '12px', fontWeight: 700,
+                        border: `1px solid ${active ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                        backgroundColor: active ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)',
+                        color: active ? '#60a5fa' : 'rgba(255,255,255,0.4)',
                       }}>{active ? '✓ ' : ''}{role}</button>
                     )
                   })}

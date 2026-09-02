@@ -31,6 +31,7 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
     website: meta.website ?? null,
     phone: meta.phone ?? null,
     ministryRoles: Array.isArray(meta.ministryRoles) ? meta.ministryRoles : [],
+    additionalRoles: Array.isArray(meta.additionalRoles) ? meta.additionalRoles : [],
     communicationPrefs: Array.isArray(meta.communicationPrefs) ? meta.communicationPrefs : [],
     platformRole: role as User['platformRole'],
     verified: meta.verified ?? false,
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         website: prev.website || fresh.website,
         phone: prev.phone || fresh.phone,
         ministryRoles: prev.ministryRoles.length ? prev.ministryRoles : fresh.ministryRoles,
+        additionalRoles: prev.additionalRoles.length ? prev.additionalRoles : fresh.additionalRoles,
         communicationPrefs: prev.communicationPrefs.length ? prev.communicationPrefs : fresh.communicationPrefs,
       }
     })

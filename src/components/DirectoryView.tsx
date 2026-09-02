@@ -15,15 +15,21 @@ interface Member {
   badges: BadgeVariant[]
   callings: string[]
   ministryRoles: string[]
+  additionalRoles: string[]
+  fmciLeadershipRole: string
 }
 
-const FILTERS = ['All Members', 'Leadership', 'Pastors', 'Apostolic Council', 'Overseers', 'Missionaries', 'Intercessors']
+const FMCI_LEADERSHIP_ROLES = ['Apostolic Leadership Team', 'Apostolic Council', 'Apostolic Team Leader']
+const FIVE_FOLD_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
+const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', 'Europe', 'Asia', 'Latin America', 'Caribbean']
 
 export default function DirectoryView() {
   const openProfile = useOpenProfile()
   const openMessagesWith = useUIStore(s => s.openMessagesWith)
-  const [filter, setFilter] = useState('All Members')
+  const [leadershipFilter, setLeadershipFilter] = useState('All FMCI Leadership Roles')
+  const [fiveFoldFilter, setFiveFoldFilter] = useState('All 5-Fold Roles')
+  const [additionalFilter, setAdditionalFilter] = useState('All Additional Roles')
   const [region, setRegion] = useState('All Regions')
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
@@ -38,10 +44,13 @@ export default function DirectoryView() {
   }, [])
 
   const filtered = members.filter(m =>
-    search === '' ||
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.church.toLowerCase().includes(search.toLowerCase()) ||
-    m.callings.some(c => c.toLowerCase().includes(search.toLowerCase()))
+    (search === '' ||
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.church.toLowerCase().includes(search.toLowerCase()) ||
+      m.callings.some(c => c.toLowerCase().includes(search.toLowerCase()))) &&
+    (leadershipFilter === 'All FMCI Leadership Roles' || m.fmciLeadershipRole === leadershipFilter) &&
+    (fiveFoldFilter === 'All 5-Fold Roles' || m.ministryRoles.includes(fiveFoldFilter)) &&
+    (additionalFilter === 'All Additional Roles' || m.additionalRoles.includes(additionalFilter))
   )
 
   return (
@@ -96,18 +105,30 @@ export default function DirectoryView() {
           }}>
             {REGIONS.map(r => <option key={r}>{r}</option>)}
           </select>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {FILTERS.map(f => (
-              <button key={f} onClick={() => setFilter(f)} style={{
-                padding: '6px 14px', borderRadius: '20px',
-                border: `1.5px solid ${filter === f ? 'var(--color-navy)' : 'var(--color-border)'}`,
-                backgroundColor: filter === f ? 'var(--color-navy)' : 'transparent',
-                color: filter === f ? '#fff' : 'var(--color-text-2)',
-                fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
-              }}>{f}</button>
-            ))}
-          </div>
+          <select value={leadershipFilter} onChange={e => setLeadershipFilter(e.target.value)} style={{
+            padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
+            fontSize: '13px', fontFamily: 'var(--font-sans)', backgroundColor: '#fff',
+            color: 'var(--color-text-1)', cursor: 'pointer', outline: 'none',
+          }}>
+            <option>All FMCI Leadership Roles</option>
+            {FMCI_LEADERSHIP_ROLES.map(r => <option key={r}>{r}</option>)}
+          </select>
+          <select value={fiveFoldFilter} onChange={e => setFiveFoldFilter(e.target.value)} style={{
+            padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
+            fontSize: '13px', fontFamily: 'var(--font-sans)', backgroundColor: '#fff',
+            color: 'var(--color-text-1)', cursor: 'pointer', outline: 'none',
+          }}>
+            <option>All 5-Fold Roles</option>
+            {FIVE_FOLD_ROLES.map(r => <option key={r}>{r}</option>)}
+          </select>
+          <select value={additionalFilter} onChange={e => setAdditionalFilter(e.target.value)} style={{
+            padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
+            fontSize: '13px', fontFamily: 'var(--font-sans)', backgroundColor: '#fff',
+            color: 'var(--color-text-1)', cursor: 'pointer', outline: 'none',
+          }}>
+            <option>All Additional Roles</option>
+            {ADDITIONAL_ROLES.map(r => <option key={r}>{r}</option>)}
+          </select>
         </div>
       </div>
 
@@ -180,8 +201,14 @@ function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id
           {member.badges.filter(b => b !== 'verified').map((b, j) => <Badge key={j} variant={b} size="sm" />)}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
+          {member.fmciLeadershipRole && (
+            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-navy)', color: '#fff', fontWeight: 700 }}>👑 {member.fmciLeadershipRole}</span>
+          )}
           {member.ministryRoles.map(r => (
             <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', fontWeight: 700 }}>{r}</span>
+          ))}
+          {member.additionalRoles.map(r => (
+            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', fontWeight: 700 }}>{r}</span>
           ))}
           {member.callings.map((c, j) => (
             <span key={j} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', fontWeight: 500 }}>{c}</span>
@@ -227,8 +254,14 @@ function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id:
         <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '4px' }}>{member.title} · {member.church} · {member.location}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
           {member.badges.filter(b => b !== 'verified').map((b, j) => <Badge key={j} variant={b} size="sm" />)}
+          {member.fmciLeadershipRole && (
+            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-navy)', color: '#fff', fontWeight: 700 }}>👑 {member.fmciLeadershipRole}</span>
+          )}
           {member.ministryRoles.map(r => (
             <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', fontWeight: 700 }}>{r}</span>
+          ))}
+          {member.additionalRoles.map(r => (
+            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', fontWeight: 700 }}>{r}</span>
           ))}
           {member.callings.map((c, j) => (
             <span key={j} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', fontWeight: 500 }}>{c}</span>

@@ -20,7 +20,9 @@ export interface MemberProfile {
   email: string
   phone: string
   ministryRoles: string[]
+  additionalRoles: string[]
   communicationPrefs: string[]
+  fmciLeadershipRole?: string
   verified: boolean
   joinedAt: string
 }
@@ -115,13 +117,24 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
             <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: 'var(--color-text-1)' }}>{member.name}</h1>
             {member.verified && <VerifiedBadge size={18} />}
           </div>
+          {member.fmciLeadershipRole && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '6px',
+              padding: '3px 12px', borderRadius: '20px',
+              backgroundColor: 'var(--color-navy)', color: '#fff',
+              fontSize: '11px', fontWeight: 700,
+            }}>👑 {member.fmciLeadershipRole}</div>
+          )}
           <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: member.bio ? '10px' : 0 }}>
             {[member.title, member.church, member.location].filter(Boolean).join(' · ')}
           </div>
-          {member.ministryRoles.length > 0 && (
+          {(member.ministryRoles.length > 0 || member.additionalRoles.length > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: member.bio ? '10px' : 0 }}>
               {member.ministryRoles.map(role => (
                 <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', border: '1px solid var(--color-gold-border)' }}>{role}</span>
+              ))}
+              {member.additionalRoles.map(role => (
+                <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', border: '1px solid var(--color-blue)33' }}>{role}</span>
               ))}
             </div>
           )}
