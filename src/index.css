@@ -172,6 +172,13 @@ html[data-theme="dark"] #root {
     gap: 14px;
     padding: 16px !important; /* overrides the inline 20px 22px set from React */
   }
+  .resource-header {
+    padding: 18px !important; /* overrides the inline 24px 28px set from React */
+  }
+  .resource-add-btn {
+    margin-left: 0 !important; /* overrides the inline auto set from React */
+    width: 100%;
+  }
 
   .admin-sidebar {
     display: none;

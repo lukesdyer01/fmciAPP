@@ -197,7 +197,7 @@ export default function ResourcesView() {
   return (
     <div style={{ maxWidth: '880px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{
+      <div className="resource-header" style={{
         background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
         borderRadius: '14px', padding: '24px 28px', marginBottom: '20px',
         position: 'relative', overflow: 'hidden',
@@ -222,7 +222,7 @@ export default function ResourcesView() {
               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: '2px' }}>{s.label}</div>
             </div>
           ))}
-          <button onClick={() => setShowCreate(true)} style={{
+          <button className="resource-add-btn" onClick={() => setShowCreate(true)} style={{
             marginLeft: 'auto', padding: '10px 20px', borderRadius: '10px', border: 'none',
             backgroundColor: 'var(--color-gold)', color: '#fff', fontSize: '13px', fontWeight: 700,
             cursor: 'pointer', fontFamily: 'var(--font-sans)',
