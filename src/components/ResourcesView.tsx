@@ -33,7 +33,7 @@ export interface Resource {
 }
 
 const CATEGORIES = ['All', 'Apostolic Teaching', 'Leadership', 'Prayer', 'Missions', 'Marketplace', 'Discipleship']
-const TYPES = ['All', 'Books', 'Courses', 'Videos', 'Articles']
+const TYPES = ['All', 'Books', 'Videos', 'Articles']
 
 function extractYouTubeId(url: string): string | null {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
@@ -189,7 +189,7 @@ export default function ResourcesView() {
   }
 
   const filtered = resources.filter(r => {
-    const matchType = type === 'All' || r.type === type || (type === 'Books' && r.type === 'Book') || (type === 'Courses' && r.type === 'Course') || (type === 'Videos' && r.type === 'Video') || (type === 'Articles' && r.type === 'Article')
+    const matchType = type === 'All' || r.type === type || (type === 'Books' && r.type === 'Book') || (type === 'Videos' && r.type === 'Video') || (type === 'Articles' && r.type === 'Article')
     const matchCat = category === 'All' || r.category === category
     return matchType && matchCat
   })
