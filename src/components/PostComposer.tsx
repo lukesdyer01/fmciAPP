@@ -9,6 +9,7 @@ interface MyOrg {
   id: string
   name: string
   type: string
+  img?: string
   members: { userId: string; role: string }[]
 }
 
@@ -38,11 +39,13 @@ function extractYouTubeId(url: string): string | null {
 interface Props {
   type?: 'post' | 'prayer' | 'testimony'
   placeholder?: string
-  // When set, the composer posts directly to this ministry's feed (as the
-  // current user, not "on behalf of" it) and skips the org-selector UI —
-  // used on a ministry's own page.
+  // When set, the post always lands in this ministry's feed (orgId). If the
+  // caller is an owner/admin of it, the "Posting as" selector still appears
+  // scoped to just this one org, letting them choose to post as themselves
+  // (default — no orgName, no badge) or as the ministry (orgName set, badge
+  // + org avatar shown). Non-owner/admins never see the selector and always
+  // post as themselves — used on a ministry's own page.
   fixedOrgId?: string
-  fixedOrgName?: string
   // When set, the post is tagged to this user's wall (their profile page) —
   // used both when posting on your own page and on someone else's.
   wallUserId?: string
@@ -53,7 +56,7 @@ interface Props {
   hidePostAs?: boolean
 }
 
-export default function PostComposer({ type = 'post', placeholder, fixedOrgId, fixedOrgName, wallUserId, wallUserName, hidePostAs }: Props) {
+export default function PostComposer({ type = 'post', placeholder, fixedOrgId, wallUserId, wallUserName, hidePostAs }: Props) {
   const { currentUser } = useAuth()
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
@@ -76,18 +79,20 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
   const { mutate: createPost, isPending } = useCreatePost()
 
   useEffect(() => {
-    if (fixedOrgId || wallUserId || hidePostAs) return
+    if (wallUserId || hidePostAs) return
     api<MyOrg[]>('/orgs/my')
       .then(orgs => {
-        // Only show orgs where the user is owner or admin (can post as)
-        setMyOrgs(orgs.filter(o =>
-          Array.isArray(o.members) && o.members.some(m =>
-            m.role === 'owner' || m.role === 'admin'
-          )
-        ))
+        const isOwnerOrAdmin = (o: MyOrg) =>
+          Array.isArray(o.members) && o.members.some(m => m.userId === currentUser?.id && (m.role === 'owner' || m.role === 'admin'))
+        // On a ministry's own page, scope the selector to just that one
+        // ministry — showing every other org this person administers would
+        // be confusing here. Elsewhere (the main feed), show all of them.
+        setMyOrgs(fixedOrgId
+          ? orgs.filter(o => o.id === fixedOrgId && isOwnerOrAdmin(o))
+          : orgs.filter(isOwnerOrAdmin))
       })
       .catch(() => {})
-  }, [fixedOrgId, wallUserId, hidePostAs])
+  }, [fixedOrgId, wallUserId, hidePostAs, currentUser?.id])
 
   async function handleImageFile(file: File) {
     if (!currentUser) return
@@ -136,7 +141,11 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
   function handlePost() {
     if (!text.trim() || isPending) return
     if (type === 'testimony' && !testimonyCategory) { setComposerError('Choose a category for this testimony.'); return }
-    const selectedOrg = postAs !== 'self' ? myOrgs.find(o => o.id === postAs) : null
+    // Set only when the user has actively selected an org identity via the
+    // pill — orgId still gets set below whenever fixedOrgId is present (so
+    // the post appears in that ministry's feed either way), but orgName
+    // (which triggers the "Posted on behalf of" badge) only when this is set.
+    const orgIdentity = postAs !== 'self' ? myOrgs.find(o => o.id === postAs) : null
     // Anonymous posts still carry the real caller's authorId server-side (so the
     // poster keeps edit/delete rights), but the displayed name/avatar/details are
     // replaced so other users can't identify them.
@@ -150,8 +159,9 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
       type,
       content: text.trim(),
       isFollowing: false,
-      orgId: fixedOrgId ?? selectedOrg?.id,
-      orgName: fixedOrgName ?? selectedOrg?.name,
+      orgId: fixedOrgId ?? orgIdentity?.id,
+      orgName: orgIdentity?.name,
+      orgImg: orgIdentity?.img,
       wallUserId,
       wallUserName,
       image: image || undefined,
@@ -223,9 +233,13 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, f
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {selectedOrg ? (
-            <div style={{ width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
-              🏛
-            </div>
+            selectedOrg.img ? (
+              <img src={selectedOrg.img} alt={selectedOrg.name} style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                🏛
+              </div>
+            )
           ) : userProfile.avatarUrl ? (
             <img
               src={userProfile.avatarUrl}

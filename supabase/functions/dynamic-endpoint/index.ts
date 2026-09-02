@@ -330,6 +330,28 @@ app.post(`${BASE}/posts`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const body = await c.req.json();
+  // orgName is the "posted on behalf of" claim — only that ministry's owner
+  // or admin may make it (mirrors the same check on POST /events). Posting
+  // orgId alone (into a ministry's feed as yourself, no badge) stays open
+  // to any member, matching existing behavior.
+  if (body.orgName) {
+    const orgs = await kv.get("orgs") ?? SEED_ORGS;
+    const org = body.orgId ? orgs.find((o: any) => o.id === body.orgId) : null;
+    const myRole = org ? orgRole(org, caller.id) : undefined;
+    if (!org || (myRole !== "owner" && myRole !== "admin")) {
+      return c.json({ error: "Only that ministry's owner or admin can post on its behalf" }, 403);
+    }
+  }
+  // Writing on another member's wall is intentionally open to anyone (like a
+  // classic profile wall) — the author identity is never spoofed, only which
+  // profile the post additionally appears on — so this only guards against a
+  // fabricated/nonexistent id, not who's allowed to use a real one.
+  if (body.wallUserId) {
+    const users = await listAuthUsers();
+    if (!users.some((u: any) => u.id === body.wallUserId)) {
+      return c.json({ error: "wallUserId does not refer to a real user" }, 400);
+    }
+  }
   const posts = await kv.get("posts") ?? SEED_POSTS;
   // authorId is stamped from the verified caller, never trusted from the client —
   // it's what edit/delete ownership checks below rely on.

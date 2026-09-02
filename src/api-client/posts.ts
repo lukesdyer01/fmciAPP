@@ -27,6 +27,7 @@ export interface FeedPost {
   isFollowing?: boolean
   orgId?: string
   orgName?: string
+  orgImg?: string
   wallUserId?: string
   wallUserName?: string
   editedAt?: string
@@ -78,6 +79,7 @@ function adaptPost(raw: any, index: number): FeedPost {
     isFollowing: raw.isFollowing ?? false,
     orgId: raw.orgId,
     orgName: raw.orgName,
+    orgImg: raw.orgImg,
     wallUserId: raw.wallUserId,
     wallUserName: raw.wallUserName,
     editedAt: raw.editedAt,
@@ -121,7 +123,7 @@ export function useFeedPosts(filter: 'network' | 'following' = 'network') {
 export function useCreatePost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; wallUserId?: string; wallUserName?: string; image?: string; imageAlt?: string; videoId?: string; isAnonymous?: boolean; testimonyCategory?: string; prayerStatus?: 'unanswered' | 'answered'; taggedUsers?: { id: string; name: string }[] }) =>
+    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; orgImg?: string; wallUserId?: string; wallUserName?: string; image?: string; imageAlt?: string; videoId?: string; isAnonymous?: boolean; testimonyCategory?: string; prayerStatus?: 'unanswered' | 'answered'; taggedUsers?: { id: string; name: string }[] }) =>
       api<FeedPost>('/posts', { method: 'POST', body: JSON.stringify(post) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })

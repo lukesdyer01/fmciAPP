@@ -136,7 +136,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
       {/* Feed tab */}
       {tab === 'feed' && (
         <div>
-          <PostComposer fixedOrgId={ministry.id} fixedOrgName={ministry.name} placeholder={`Share something with ${ministry.name}…`} />
+          <PostComposer fixedOrgId={ministry.id} placeholder={`Share something with ${ministry.name}…`} />
           <UpcomingEvents events={events} onChanged={loadEvents} onEdit={setEditingEvent} showOrg={false} />
           {postsLoading && (
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading posts…</div>
