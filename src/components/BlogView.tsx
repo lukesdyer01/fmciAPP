@@ -46,6 +46,43 @@ function TagPill({ tag, active, onClick }: { tag: string; active: boolean; onCli
   )
 }
 
+// Compact card used to surface a new blog post inline in the main network
+// feed (Feed.tsx) — full reading happens on the dedicated /blog/:id page,
+// this is just a teaser that links there.
+export function BlogPostFeedCard({ post }: { post: BlogPost }) {
+  const viewBlogPost = useUIStore(s => s.viewBlogPost)
+  const snippet = snippetFor(post)
+
+  return (
+    <div onClick={() => viewBlogPost(post.id)} style={{
+      backgroundColor: 'var(--color-card)', borderRadius: '12px', marginBottom: '12px',
+      border: '1px solid var(--color-border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      overflow: 'hidden', cursor: 'pointer', display: 'flex', gap: '14px', padding: '14px',
+    }}>
+      <div style={{
+        width: '92px', height: '92px', borderRadius: '10px', flexShrink: 0, overflow: 'hidden',
+        background: post.thumbnailUrl ? undefined : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px',
+      }}>
+        {post.thumbnailUrl ? <img src={post.thumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '📝'}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '5px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)' }}>
+          <span style={{ fontSize: '11px' }}>📝</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>Blog Post</span>
+        </div>
+        <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-1)', lineHeight: 1.3, marginBottom: '4px' }}>{post.title}</div>
+        {snippet && (
+          <div style={{ fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.5, marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{snippet}…</div>
+        )}
+        <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>
+          By {post.authorName} · {formatDate(post.date)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BlogPostDetailView({ post, onBack, onChanged }: { post: BlogPost; onBack: () => void; onChanged: () => void }) {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()

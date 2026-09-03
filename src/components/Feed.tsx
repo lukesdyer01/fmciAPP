@@ -7,7 +7,7 @@ import PrayerRequestsView from './PrayerRequestsView'
 import TestimoniesView from './TestimoniesView'
 import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
-import BlogView from './BlogView'
+import BlogView, { BlogPostFeedCard, type BlogPost } from './BlogView'
 import GlobalMapView from './GlobalMapView'
 import AboutView from './AboutView'
 import OrgView from './OrgView'
@@ -21,6 +21,7 @@ import { useUIStore } from '../store/ui'
 type FeedEntry =
   | { kind: 'post'; ts: number; post: FeedPost }
   | { kind: 'event'; ts: number; event: EventItem }
+  | { kind: 'blogPost'; ts: number; blogPost: BlogPost }
 
 type FeedFilter = 'network' | 'following'
 
@@ -88,6 +89,7 @@ function MainFeed() {
   const [filter, setFilter] = useState<FeedFilter>('network')
   const { data: allPosts, isLoading, isError } = useFeedPosts(filter)
   const [events, setEvents] = useState<EventItem[]>([])
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
   const activeHashtag = useUIStore(s => s.activeHashtag)
   const clearHashtag = useUIStore(s => s.clearHashtag)
@@ -103,12 +105,17 @@ function MainFeed() {
   }
   useEffect(() => { loadEvents() }, [])
 
-  // Posts and events interleaved by when they were posted/created — a plain
-  // chronological feed rather than a separate pinned events section.
+  useEffect(() => {
+    api<BlogPost[]>('/blog-posts').then(setBlogPosts).catch(() => setBlogPosts([]))
+  }, [])
+
+  // Posts, events, and blog posts interleaved by when they were posted/created
+  // — a plain chronological feed rather than separate sections per type.
   const now = Date.now()
   let merged: FeedEntry[] = [
     ...(posts ?? []).map((post): FeedEntry => ({ kind: 'post', ts: now - post.recencyHours * 3_600_000, post })),
     ...events.map((event): FeedEntry => ({ kind: 'event', ts: event.createdAt ? new Date(event.createdAt).getTime() : 0, event })),
+    ...blogPosts.map((blogPost): FeedEntry => ({ kind: 'blogPost', ts: blogPost.createdAt ? new Date(blogPost.createdAt).getTime() : 0, blogPost })),
   ].sort((a, b) => b.ts - a.ts)
 
   if (activeHashtag) {
@@ -164,14 +171,15 @@ function MainFeed() {
           </div>
         </div>
       )}
-      {merged.map(entry => entry.kind === 'post'
-        ? <PostCard key={`p-${entry.post.id}`} post={entry.post as unknown as Post} />
-        : (
+      {merged.map(entry => {
+        if (entry.kind === 'post') return <PostCard key={`p-${entry.post.id}`} post={entry.post as unknown as Post} />
+        if (entry.kind === 'blogPost') return <BlogPostFeedCard key={`b-${entry.blogPost.id}`} post={entry.blogPost} />
+        return (
           <div key={`e-${entry.event.id}`} style={{ marginBottom: '12px' }}>
             <EventCard event={entry.event} onChanged={loadEvents} onEdit={setEditingEvent} />
           </div>
         )
-      )}
+      })}
     </div>
   )
 }
