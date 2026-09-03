@@ -40,6 +40,7 @@ export const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
   'Leadership Meeting': { color: '#C2410C', bg: '#FFF7ED' },
   'Gathering':          { color: '#047857', bg: '#ECFDF5' },
   'Book Study':         { color: '#BE185D', bg: '#FDF2F8' },
+  'Movement':           { color: '#0E7490', bg: '#ECFEFF' },
 }
 
 // A multi-day event (endDate set and different from startDate) shows as a

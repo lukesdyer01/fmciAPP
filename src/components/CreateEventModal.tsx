@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import type { EventItem } from './EventCard'
 
-const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study']
+const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study', 'Movement']
 
 export default function CreateEventModal({ orgId, orgName, event, onClose, onCreated }: {
   orgId?: string
