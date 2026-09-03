@@ -472,7 +472,7 @@ export default function OrgsAdmin() {
       <div className="grid-stats-4" style={{ marginBottom: '24px' }}>
         {[
           { label: 'Total Orgs',       value: orgs.length,                                   color: 'var(--color-gold)' },
-          { label: 'Networks',         value: orgs.filter(o => o.type === 'network').length,  color: '#60a5fa' },
+          { label: 'Ministries',       value: orgs.filter(o => o.type === 'network').length,  color: '#60a5fa' },
           { label: 'Churches',         value: orgs.filter(o => o.type === 'church').length,   color: '#a78bfa' },
           { label: 'Pending Approval', value: orgs.filter(o => o.status === 'pending').length, color: '#f59e0b' },
         ].map((s, i) => (
