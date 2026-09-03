@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../api-client/server'
 import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
+import { useUIStore } from '../store/ui'
 
 const FILTERS = ['All', 'Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting']
 
@@ -11,6 +12,8 @@ export default function EventsView() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
+  const focusEventId = useUIStore(s => s.focusEventId)
+  const clearFocusEvent = useUIStore(s => s.clearFocusEvent)
 
   async function load() {
     try {
@@ -26,6 +29,25 @@ export default function EventsView() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Arriving here from a widget link (e.g. the homepage Upcoming Events
+  // list) — make sure the filter isn't hiding the target, then scroll to
+  // and briefly highlight its card. There's no standalone event-detail
+  // page, so this is the "link to the specific event" destination.
+  useEffect(() => {
+    if (!focusEventId || loading) return
+    setFilter('All')
+    const el = document.getElementById(`event-${focusEventId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const prevTransition = el.style.transition
+      const prevShadow = el.style.boxShadow
+      el.style.transition = 'box-shadow 0.3s'
+      el.style.boxShadow = '0 0 0 3px var(--color-gold)'
+      setTimeout(() => { el.style.boxShadow = prevShadow; el.style.transition = prevTransition }, 2200)
+    }
+    clearFocusEvent()
+  }, [focusEventId, loading])
 
   const filtered = events.filter(e => filter === 'All' || e.type === filter)
 

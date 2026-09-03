@@ -88,7 +88,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
   }
 
   return (
-    <div className="grid-cover-280" style={{
+    <div id={`event-${event.id}`} className="grid-cover-280" style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
       border: `1px solid ${event.official ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
       boxShadow: event.official ? '0 2px 12px rgba(184,145,42,0.1)' : '0 1px 4px rgba(0,0,0,0.05)',

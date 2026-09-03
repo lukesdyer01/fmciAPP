@@ -178,6 +178,7 @@ function ProfileChecklist() {
 
 function SidebarEvents() {
   const [events, setEvents] = useState<EventItem[]>([])
+  const focusEvent = useUIStore(s => s.focusEvent)
 
   useEffect(() => {
     api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
@@ -198,7 +199,7 @@ function SidebarEvents() {
       <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>📅 Upcoming Events</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {upcoming.map(e => (
-          <div key={e.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <div key={e.id} onClick={() => focusEvent(e.id)} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
             <div style={{
               width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0, overflow: 'hidden',
               background: e.img ? undefined : 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',

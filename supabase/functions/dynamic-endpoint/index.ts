@@ -312,10 +312,17 @@ app.post(`${BASE}/verification-requests/:id/deny`, async (c) => {
   return c.json({ ok: true });
 });
 
+// `pinned` is never trusted as a stored flag — it's derived from pinnedUntil
+// every time posts are read, so a 7-day pin expires on its own with no cron
+// cleanup needed.
+function withComputedPinned(p: any) {
+  return { ...p, pinned: !!p.pinnedUntil && new Date(p.pinnedUntil).getTime() > Date.now() };
+}
+
 app.get(`${BASE}/posts`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json(posts.filter((p: any) => p.visibility !== "private"));
+  if (!caller) return c.json(posts.filter((p: any) => p.visibility !== "private").map(withComputedPinned));
   // isFollowing is computed from real org-follow relationships, not trusted
   // from however the post was created — that's what powers the feed's
   // "Following" tab for posts made on behalf of an org.
@@ -328,7 +335,7 @@ app.get(`${BASE}/posts`, async (c) => {
   // not even a filtered-out placeholder.
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
-  return c.json(visible.map((p: any) => p.orgId ? { ...p, isFollowing: followedOrgIds.has(p.orgId) } : p));
+  return c.json(visible.map((p: any) => withComputedPinned(p.orgId ? { ...p, isFollowing: followedOrgIds.has(p.orgId) } : p)));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -346,7 +353,15 @@ app.post(`${BASE}/posts`, async (c) => {
     if (!org || (myRole !== "owner" && myRole !== "admin")) {
       return c.json({ error: "Only that ministry's owner or admin can post on its behalf" }, 403);
     }
+    // Pinning ("sticky for 7 days") is restricted to FMCI's own official
+    // announcements — org.type "headquarters" is unique to FMCI itself, not
+    // any individual ministry — same owner/admin check as posting on its
+    // behalf, already verified above.
+    if (body.pinned && org.type === "headquarters") {
+      body.pinnedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    }
   }
+  delete body.pinned;
   if (body.visibility && !["public", "private"].includes(body.visibility)) {
     return c.json({ error: "Invalid visibility" }, 400);
   }
@@ -379,7 +394,7 @@ app.post(`${BASE}/posts`, async (c) => {
     ...body, authorId: caller.id,
   };
   await kv.set("posts", [newPost, ...posts]);
-  return c.json(newPost, 201);
+  return c.json(withComputedPinned(newPost), 201);
 });
 
 function canModifyPost(post: any, caller: any): boolean {

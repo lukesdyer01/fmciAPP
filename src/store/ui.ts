@@ -114,6 +114,13 @@ interface UIState {
   viewHashtag: (tag: string) => void
   clearHashtag: () => void
 
+  // Clicking an event in a widget (e.g. the homepage Upcoming Events list)
+  // jumps to the network Events page and scrolls/highlights that specific
+  // card there — there's no standalone single-event detail page in the app.
+  focusEventId: string | null
+  focusEvent: (id: string) => void
+  clearFocusEvent: () => void
+
   // Re-syncs view/profile/admin state from the URL — called on browser
   // back/forward (popstate), since those change location without going
   // through any of the actions above.
@@ -162,6 +169,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   activeHashtag: null,
   viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
   clearHashtag: () => set({ activeHashtag: null }),
+
+  focusEventId: null,
+  focusEvent: id => { pushUrl(VIEW_TO_PATH.events); set({ focusEventId: id, activeView: 'events', profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
+  clearFocusEvent: () => set({ focusEventId: null }),
 
   syncFromUrl: () => {
     const s = stateFromUrl()

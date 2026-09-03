@@ -68,6 +68,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
   const [postAs, setPostAs] = useState<'self' | string>('self')
   const [isOrgMember, setIsOrgMember] = useState(false)
   const [visibility, setVisibility] = useState<'public' | 'private'>('public')
+  const [pin, setPin] = useState(false)
   const [image, setImage] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
   const [videoId, setVideoId] = useState('')
@@ -175,6 +176,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       orgName: orgIdentity?.name,
       orgImg: orgIdentity?.img,
       visibility: forcedVisibility ?? (fixedOrgId && isOrgMember ? visibility : undefined),
+      pinned: orgIdentity?.type === 'headquarters' && pin ? true : undefined,
       wallUserId,
       wallUserName,
       image: image || undefined,
@@ -188,7 +190,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       onSuccess: () => {
         setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false)
         setAnonymous(false); setTestimonyCategory(''); setTaggedUsers([]); setShowTagPicker(false); setTagQuery('')
-        setVisibility('public')
+        setVisibility('public'); setPin(false)
       },
     })
   }
@@ -272,6 +274,32 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
                 {v.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Pin toggle — FMCI's own official announcements only (org.type
+            "headquarters" is unique to FMCI), not any individual ministry. */}
+        {selectedOrg?.type === 'headquarters' && (
+          <div
+            role="switch"
+            aria-checked={pin}
+            tabIndex={0}
+            onClick={() => setPin(p => !p)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPin(p => !p) } }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', cursor: 'pointer', userSelect: 'none' }}
+          >
+            <span style={{
+              width: '36px', height: '20px', borderRadius: '10px', position: 'relative', flexShrink: 0,
+              backgroundColor: pin ? 'var(--color-gold)' : 'var(--color-border)', transition: 'background 0.15s',
+            }}>
+              <span style={{
+                position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '50%',
+                backgroundColor: '#fff', transition: 'left 0.15s', left: pin ? '18px' : '2px',
+              }} />
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)' }}>
+              📌 Pin to top of feed for 7 days
+            </span>
           </div>
         )}
 
