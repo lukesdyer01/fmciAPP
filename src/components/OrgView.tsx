@@ -572,6 +572,9 @@ function OrgCard({ org, currentUserId, isMember, onManage, onEdit, onView, onFol
 // ── Main View ─────────────────────────────────────────────────────────────────
 export default function OrgView() {
   const setActiveView = useUIStore(s => s.setActiveView)
+  const viewingOrgId = useUIStore(s => s.viewingOrgId)
+  const viewOrg = useUIStore(s => s.viewOrg)
+  const closeOrgView = useUIStore(s => s.closeOrgView)
   const [tab, setTab] = useState<'my' | 'following' | 'discover'>('my')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [orgs, setOrgs] = useState<MyOrg[]>([])
@@ -579,7 +582,6 @@ export default function OrgView() {
   const [showCreate, setShowCreate] = useState(false)
   const [managingOrg, setManagingOrg] = useState<MyOrg | null>(null)
   const [editingOrg, setEditingOrg] = useState<MyOrg | null>(null)
-  const [viewingOrgId, setViewingOrgId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string>('')
   const [followBusyId, setFollowBusyId] = useState<string | null>(null)
 
@@ -648,7 +650,7 @@ export default function OrgView() {
       <MinistryDetailView
         ministry={viewingOrg}
         currentUserId={currentUserId}
-        onBack={() => setViewingOrgId(null)}
+        onBack={closeOrgView}
         onFollowToggle={() => toggleFollow(viewingOrg)}
         followBusy={followBusyId === viewingOrg.id}
       />
@@ -754,7 +756,7 @@ export default function OrgView() {
               isMember={isMember(org)}
               onManage={() => setManagingOrg(managingOrg?.id === org.id ? null : org)}
               onEdit={() => setEditingOrg(org)}
-              onView={() => setViewingOrgId(org.id)}
+              onView={() => viewOrg(org.id)}
               onFollowToggle={() => toggleFollow(org)}
               followBusy={followBusyId === org.id}
             />

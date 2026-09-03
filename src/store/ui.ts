@@ -21,15 +21,17 @@ function pushUrl(path: string) {
   window.history.pushState(null, '', path)
 }
 
-interface UrlState { activeView: ActiveView; profileId: string | null; adminMode: boolean }
+interface UrlState { activeView: ActiveView; profileId: string | null; viewingOrgId: string | null; adminMode: boolean }
 
 function stateFromUrl(): UrlState {
-  if (typeof window === 'undefined') return { activeView: 'feed', profileId: null, adminMode: false }
+  if (typeof window === 'undefined') return { activeView: 'feed', profileId: null, viewingOrgId: null, adminMode: false }
   const path = window.location.pathname
   const profileMatch = path.match(/^\/profile\/([^/]+)\/?$/)
-  if (profileMatch) return { activeView: 'feed', profileId: decodeURIComponent(profileMatch[1]), adminMode: false }
-  if (path === '/admin' || path.startsWith('/admin/')) return { activeView: 'feed', profileId: null, adminMode: true }
-  return { activeView: PATH_TO_VIEW[path] ?? 'feed', profileId: null, adminMode: false }
+  if (profileMatch) return { activeView: 'feed', profileId: decodeURIComponent(profileMatch[1]), viewingOrgId: null, adminMode: false }
+  const orgMatch = path.match(/^\/ministries\/([^/]+)\/?$/)
+  if (orgMatch) return { activeView: 'orgs', profileId: null, viewingOrgId: decodeURIComponent(orgMatch[1]), adminMode: false }
+  if (path === '/admin' || path.startsWith('/admin/')) return { activeView: 'feed', profileId: null, viewingOrgId: null, adminMode: true }
+  return { activeView: PATH_TO_VIEW[path] ?? 'feed', profileId: null, viewingOrgId: null, adminMode: false }
 }
 
 const INITIAL_URL_STATE = stateFromUrl()
@@ -88,6 +90,13 @@ interface UIState {
   openProfile: (id: string) => void
   closeProfile: () => void
 
+  // Jumping to a specific ministry's page — from anywhere (the Ministries
+  // list, the Recent Ministries widget, etc.), not just via local component
+  // state, so it's deep-linkable and back/forward-navigable like a profile.
+  viewingOrgId: string | null
+  viewOrg: (id: string) => void
+  closeOrgView: () => void
+
   messagesOpen: boolean
   messageTargetUserId: string | null
   setMessagesOpen: (open: boolean) => void
@@ -113,7 +122,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set, get) => ({
   activeView: INITIAL_URL_STATE.activeView,
-  setActiveView: view => { pushUrl(VIEW_TO_PATH[view] ?? '/'); set({ activeView: view, profileId: null, notifOpen: false, mobileNavOpen: false }) },
+  setActiveView: view => { pushUrl(VIEW_TO_PATH[view] ?? '/'); set({ activeView: view, profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
 
   notifOpen: false,
   setNotifOpen: open => set({ notifOpen: open }),
@@ -132,8 +141,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   setAdminMode: on => { pushUrl(on ? '/admin' : (VIEW_TO_PATH[get().activeView] ?? '/')); set({ adminMode: on }) },
 
   profileId: INITIAL_URL_STATE.profileId,
-  openProfile: id => { pushUrl(`/profile/${id}`); set({ profileId: id }) },
+  openProfile: id => { pushUrl(`/profile/${id}`); set({ profileId: id, viewingOrgId: null }) },
   closeProfile: () => { pushUrl(VIEW_TO_PATH[get().activeView] ?? '/'); set({ profileId: null }) },
+
+  viewingOrgId: INITIAL_URL_STATE.viewingOrgId,
+  viewOrg: id => { pushUrl(`/ministries/${id}`); set({ viewingOrgId: id, activeView: 'orgs', profileId: null, notifOpen: false, mobileNavOpen: false }) },
+  closeOrgView: () => { pushUrl(VIEW_TO_PATH.orgs); set({ viewingOrgId: null }) },
 
   messagesOpen: false,
   messageTargetUserId: null,
@@ -147,11 +160,11 @@ export const useUIStore = create<UIState>((set, get) => ({
   setEditProfileOpen: open => set({ editProfileOpen: open }),
 
   activeHashtag: null,
-  viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
   clearHashtag: () => set({ activeHashtag: null }),
 
   syncFromUrl: () => {
     const s = stateFromUrl()
-    set({ activeView: s.activeView, profileId: s.profileId, adminMode: s.adminMode })
+    set({ activeView: s.activeView, profileId: s.profileId, viewingOrgId: s.viewingOrgId, adminMode: s.adminMode })
   },
 }))

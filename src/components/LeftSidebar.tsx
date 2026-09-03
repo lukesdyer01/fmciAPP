@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { ActiveView } from '../App'
 import { api } from '../api-client/server'
+import { useUIStore } from '../store/ui'
 
 interface Props {
   activeView: ActiveView
@@ -16,7 +17,8 @@ interface RecentOrg {
   createdAt?: string
 }
 
-function RecentMinistries({ setActiveView }: { setActiveView: (v: ActiveView) => void }) {
+function RecentMinistries() {
+  const viewOrg = useUIStore(s => s.viewOrg)
   const [orgs, setOrgs] = useState<RecentOrg[] | null>(null)
 
   useEffect(() => {
@@ -40,7 +42,7 @@ function RecentMinistries({ setActiveView }: { setActiveView: (v: ActiveView) =>
       <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>🏛 Recent Ministries</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {recent.map(o => (
-          <div key={o.id} onClick={() => setActiveView('orgs')} style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer' }}>
+          <div key={o.id} onClick={() => viewOrg(o.id)} style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, overflow: 'hidden' }}>
               {o.img
                 ? <img src={o.img} alt={o.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -108,7 +110,7 @@ export default function LeftSidebar({ activeView, setActiveView }: Props) {
         })}
       </div>
 
-      <RecentMinistries setActiveView={setActiveView} />
+      <RecentMinistries />
     </aside>
   )
 }
