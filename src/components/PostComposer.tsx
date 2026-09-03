@@ -54,9 +54,13 @@ interface Props {
   // could post as — used on the main feed, which the user asked to keep
   // personal-only.
   hidePostAs?: boolean
+  // Forces every post from this composer instance to this visibility and
+  // hides the Public/Members Only picker entirely — used for a ministry's
+  // Prayer/Testimonies tabs, which are always members-only, not a choice.
+  forcedVisibility?: 'private'
 }
 
-export default function PostComposer({ type = 'post', placeholder, fixedOrgId, wallUserId, wallUserName, hidePostAs }: Props) {
+export default function PostComposer({ type = 'post', placeholder, fixedOrgId, wallUserId, wallUserName, hidePostAs, forcedVisibility }: Props) {
   const { currentUser } = useAuth()
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
@@ -170,7 +174,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       orgId: fixedOrgId ?? orgIdentity?.id,
       orgName: orgIdentity?.name,
       orgImg: orgIdentity?.img,
-      visibility: fixedOrgId && isOrgMember ? visibility : undefined,
+      visibility: forcedVisibility ?? (fixedOrgId && isOrgMember ? visibility : undefined),
       wallUserId,
       wallUserName,
       image: image || undefined,
@@ -242,8 +246,10 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
         )}
 
         {/* Visibility selector — only for actual members of this ministry,
-            so a non-member can never post anything but a public post here. */}
-        {fixedOrgId && isOrgMember && (
+            so a non-member can never post anything but a public post here.
+            Hidden entirely when the caller (e.g. a ministry's Prayer/
+            Testimonies tab) has forced a specific visibility already. */}
+        {!forcedVisibility && fixedOrgId && isOrgMember && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-3)' }}>Visibility:</span>
             {([

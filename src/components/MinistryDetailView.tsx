@@ -5,7 +5,8 @@ import PostCard, { type Post } from './PostCard'
 import CreateEventModal from './CreateEventModal'
 import { EventCard, UpcomingEvents, type EventItem } from './EventCard'
 import { useFeedPosts } from '../api-client/posts'
-import { typeLabel, typeStyle } from './OrgView'
+import { typeLabel, typeStyle, ROLE_STYLE } from './OrgView'
+import { useOpenProfile } from './ProfileView'
 
 interface OrgMember {
   userId: string
@@ -33,6 +34,34 @@ export interface MinistrySummary {
   pendingRequestCount: number
 }
 
+function MembersOnlyGate({ ministryName, onRequestJoin, requestJoinBusy, hasPendingRequest }: {
+  ministryName: string
+  onRequestJoin: () => void
+  requestJoinBusy: boolean
+  hasPendingRequest: boolean
+}) {
+  return (
+    <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+      <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔒</div>
+      <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-text-1)', marginBottom: '8px' }}>Members Only</div>
+      <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.6, marginBottom: '18px' }}>
+        This is shared privately with {ministryName}'s members. Request to join to see and take part.
+      </div>
+      <button
+        onClick={onRequestJoin}
+        disabled={requestJoinBusy || hasPendingRequest}
+        style={{
+          padding: '9px 22px', borderRadius: '8px', cursor: (requestJoinBusy || hasPendingRequest) ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
+          border: '1px solid var(--color-gold-border)',
+          backgroundColor: hasPendingRequest ? 'var(--color-surface)' : 'var(--color-gold-bg)',
+          color: 'var(--color-gold)',
+          opacity: requestJoinBusy ? 0.6 : 1,
+        }}
+      >{requestJoinBusy ? '…' : hasPendingRequest ? 'Request Pending' : 'Request to Join'}</button>
+    </div>
+  )
+}
+
 function MinistryLogo({ ministry, size }: { ministry: Pick<MinistrySummary, 'name' | 'img'>; size: number }) {
   return ministry.img
     ? <img src={ministry.img} alt={ministry.name} style={{ width: size, height: size, borderRadius: size / 4, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
@@ -54,11 +83,12 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
   onRequestJoin: () => void
   requestJoinBusy: boolean
 }) {
-  const [tab, setTab] = useState<'feed' | 'events' | 'about'>('feed')
+  const [tab, setTab] = useState<'feed' | 'prayer' | 'testimonies' | 'events' | 'members' | 'about'>('feed')
   const [events, setEvents] = useState<EventItem[]>([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
+  const openProfile = useOpenProfile()
 
   const isMember = ministry.members.some(m => m.userId === currentUserId)
   const myRole = ministry.members.find(m => m.userId === currentUserId)?.role
@@ -66,6 +96,15 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
 
   const { data: allPosts, isLoading: postsLoading } = useFeedPosts('network')
   const ministryPosts = (allPosts ?? []).filter(p => p.orgId === ministry.id && p.author && p.author.trim() !== '')
+  // Prayer requests and testimonies get their own tabs, so the general feed
+  // tab excludes them to avoid showing the same posts twice within one page.
+  const feedPosts = ministryPosts.filter(p => p.type !== 'prayer' && p.type !== 'testimony')
+  const prayerPosts = ministryPosts.filter(p => p.type === 'prayer')
+  const testimonyPosts = ministryPosts.filter(p => p.type === 'testimony')
+  const sortedMembers = [...ministry.members].sort((a, b) => {
+    const order: Record<string, number> = { owner: 0, admin: 1, moderator: 2, member: 3 }
+    return (order[a.role] ?? 4) - (order[b.role] ?? 4)
+  })
 
   async function loadEvents() {
     setEventsLoading(true)
@@ -137,10 +176,10 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderTop: '1px solid var(--color-border)', padding: '0 20px' }}>
-          {(['feed', 'events', 'about'] as const).map(t => (
+        <div style={{ display: 'flex', borderTop: '1px solid var(--color-border)', padding: '0 20px', overflowX: 'auto' }}>
+          {(['feed', 'prayer', 'testimonies', 'events', 'members', 'about'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              padding: '12px 18px', border: 'none', background: 'none', cursor: 'pointer',
+              padding: '12px 18px', border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0,
               fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-sans)',
               color: tab === t ? 'var(--color-navy)' : 'var(--color-text-2)',
               borderBottom: tab === t ? '2px solid var(--color-navy)' : '2px solid transparent',
@@ -158,14 +197,93 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
           {postsLoading && (
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading posts…</div>
           )}
-          {!postsLoading && ministryPosts.length === 0 && (
+          {!postsLoading && feedPosts.length === 0 && (
             <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontSize: '14px' }}>
               No posts yet. Be the first to post here.
             </div>
           )}
-          {ministryPosts.map(post => (
+          {feedPosts.map(post => (
             <PostCard key={post.id} post={post as unknown as Post} />
           ))}
+        </div>
+      )}
+
+      {/* Prayer tab — members only */}
+      {tab === 'prayer' && (
+        <div>
+          {!isMember ? (
+            <MembersOnlyGate ministryName={ministry.name} onRequestJoin={onRequestJoin} requestJoinBusy={requestJoinBusy} hasPendingRequest={ministry.hasPendingRequest} />
+          ) : (
+            <div>
+              <PostComposer type="prayer" fixedOrgId={ministry.id} forcedVisibility="private" placeholder={`Share a prayer request with ${ministry.name} members…`} />
+              {postsLoading && (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading…</div>
+              )}
+              {!postsLoading && prayerPosts.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontSize: '14px' }}>
+                  No prayer requests yet. Be the first to share one with the members.
+                </div>
+              )}
+              {prayerPosts.map(post => (
+                <PostCard key={post.id} post={post as unknown as Post} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Testimonies tab — members only */}
+      {tab === 'testimonies' && (
+        <div>
+          {!isMember ? (
+            <MembersOnlyGate ministryName={ministry.name} onRequestJoin={onRequestJoin} requestJoinBusy={requestJoinBusy} hasPendingRequest={ministry.hasPendingRequest} />
+          ) : (
+            <div>
+              <PostComposer type="testimony" fixedOrgId={ministry.id} forcedVisibility="private" placeholder={`Share what God has done, with ${ministry.name} members…`} />
+              {postsLoading && (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading…</div>
+              )}
+              {!postsLoading && testimonyPosts.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontSize: '14px' }}>
+                  No testimonies yet. Be the first to share one with the members.
+                </div>
+              )}
+              {testimonyPosts.map(post => (
+                <PostCard key={post.id} post={post as unknown as Post} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Members tab */}
+      {tab === 'members' && (
+        <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--color-border)', fontSize: '14px', fontWeight: 700, color: 'var(--color-text-1)' }}>
+            {ministry.members.length} Members
+          </div>
+          {sortedMembers.map(m => {
+            const rs = ROLE_STYLE[m.role] ?? ROLE_STYLE.member
+            return (
+              <div key={m.userId} onClick={() => openProfile(m.userId)} style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
+                borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--color-hover)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent' }}
+              >
+                {m.avatarUrl
+                  ? <img src={m.avatarUrl} alt={m.name} style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+                  : <div style={{ width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '15px' }}>{(m.name || m.email || '?').slice(0, 2).toUpperCase()}</div>
+                }
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-1)' }}>{m.name || m.email}</div>
+                  {m.email && <div style={{ fontSize: '12px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>}
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: rs.bg, color: rs.color, textTransform: 'capitalize', flexShrink: 0 }}>{m.role}</span>
+              </div>
+            )
+          })}
         </div>
       )}
 

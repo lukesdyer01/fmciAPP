@@ -57,7 +57,7 @@ export function typeLabel(type: string): string {
   return ORG_TYPES.find(t => t.value === type)?.label ?? type
 }
 
-const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
+export const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   owner:     { bg: 'rgba(200,155,60,0.1)',   color: 'var(--color-gold)' },
   admin:     { bg: 'rgba(96,165,250,0.1)',   color: '#60a5fa' },
   moderator: { bg: 'rgba(167,139,250,0.1)', color: '#a78bfa' },
