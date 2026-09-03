@@ -167,11 +167,10 @@ export default function PostCard({ post }: { post: Post }) {
               )}
               {post.orgName && (
                 <div
-                  onClick={() => post.authorId && openProfile(post.authorId)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)', cursor: post.authorId ? 'pointer' : 'default' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)' }}
                 >
                   <span style={{ fontSize: '11px' }}>🏛</span>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>Official post · by {post.author}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>Official Ministry Post</span>
                 </div>
               )}
               {post.visibility === 'private' && (
