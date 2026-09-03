@@ -1404,9 +1404,14 @@ app.put(`${BASE}/settings`, async (c) => {
 
 const ANALYTICS_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 
-function pruneAnalytics<T extends { ts: string }>(events: T[]): T[] {
+// Sessions are keyed off lastSeenAt (most recent activity) and pageviews off
+// ts — a single {ts} assumption here previously caused every session record
+// to read as instantly expired (missing field -> Invalid Date -> NaN, which
+// always fails > cutoff), wiping analytics_sessions down to nothing on every
+// write.
+function pruneAnalytics<T>(events: T[], getTs: (e: T) => string): T[] {
   const cutoff = Date.now() - ANALYTICS_WINDOW_MS;
-  return events.filter(e => new Date(e.ts).getTime() > cutoff);
+  return events.filter(e => new Date(getTs(e)).getTime() > cutoff);
 }
 
 async function isExcludedFromAnalytics(authHeader: string | undefined): Promise<boolean> {
@@ -1447,7 +1452,7 @@ app.post(`${BASE}/analytics/session`, async (c) => {
   const sessionId = String(body.sessionId ?? "").trim();
   if (!sessionId) return c.json({ error: "sessionId is required" }, 400);
   const country = await geolocateIp(clientIp(c));
-  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? [], (s: any) => s.lastSeenAt);
   const now = new Date().toISOString();
   const existing = sessions.find((s: any) => s.sessionId === sessionId);
   const record = {
@@ -1472,14 +1477,14 @@ app.post(`${BASE}/analytics/pageview`, async (c) => {
   const view = String(body.view ?? "").trim();
   if (!sessionId || !view) return c.json({ ok: true });
   const now = new Date().toISOString();
-  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? [], (s: any) => s.lastSeenAt);
   const sessionExists = sessions.some((s: any) => s.sessionId === sessionId);
   if (sessionExists) {
     await kv.set("analytics_sessions", sessions.map((s: any) =>
       s.sessionId === sessionId ? { ...s, lastSeenAt: now, pageViews: (s.pageViews ?? 0) + 1 } : s
     ));
   }
-  const pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? []);
+  const pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? [], (p: any) => p.ts);
   await kv.set("analytics_pageviews", [{ sessionId, view, ts: now }, ...pageviews]);
   return c.json({ ok: true });
 });
@@ -1489,7 +1494,7 @@ app.post(`${BASE}/analytics/heartbeat`, async (c) => {
   const body = await c.req.json();
   const sessionId = String(body.sessionId ?? "").trim();
   if (!sessionId) return c.json({ ok: true });
-  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? [], (s: any) => s.lastSeenAt);
   await kv.set("analytics_sessions", sessions.map((s: any) =>
     s.sessionId === sessionId ? { ...s, lastSeenAt: new Date().toISOString() } : s
   ));
@@ -1568,8 +1573,8 @@ app.get(`${BASE}/analytics/summary`, async (c) => {
   if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
 
   const userId = c.req.query("userId");
-  let sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
-  let pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? []);
+  let sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? [], (s: any) => s.lastSeenAt);
+  let pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? [], (p: any) => p.ts);
   if (userId) {
     sessions = sessions.filter((s: any) => s.userId === userId);
     const sessionIds = new Set(sessions.map((s: any) => s.sessionId));
@@ -1587,7 +1592,7 @@ app.get(`${BASE}/analytics/users`, async (c) => {
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
 
-  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []).filter((s: any) => s.userId);
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? [], (s: any) => s.lastSeenAt).filter((s: any) => s.userId);
   const byUser = new Map<string, { sessions: number; pageViews: number; lastSeenAt: string }>();
   for (const s of sessions) {
     const entry = byUser.get(s.userId) ?? { sessions: 0, pageViews: 0, lastSeenAt: s.lastSeenAt };
