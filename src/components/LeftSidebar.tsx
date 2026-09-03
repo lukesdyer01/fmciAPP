@@ -67,6 +67,7 @@ export const NAV: { id: ActiveView; icon: string; label: string }[] = [
   { id: 'directory', icon: '👤', label: 'Member Directory' },
   { id: 'orgs',      icon: '🏛', label: 'Ministries' },
   { id: 'groups',    icon: '👥', label: 'Groups' },
+  { id: 'blog',      icon: '📝', label: 'Blog' },
   { id: 'prayer',    icon: '🙏', label: 'Prayer Requests' },
   { id: 'testimonies', icon: '✨', label: 'Testimony Wall' },
   { id: 'events',    icon: '📅', label: 'Events' },

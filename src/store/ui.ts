@@ -8,7 +8,7 @@ import type { ActiveView } from '../App'
 // URL <-> view mapping so each page has its own address (deep-linkable,
 // back/forward-navigable) without pulling in a router dependency.
 const VIEW_TO_PATH: Record<ActiveView, string> = {
-  feed: '/', directory: '/directory', orgs: '/ministries', groups: '/groups',
+  feed: '/', directory: '/directory', orgs: '/ministries', groups: '/groups', blog: '/blog',
   prayer: '/prayer', testimonies: '/testimonies', events: '/events',
   resources: '/resources', map: '/map', about: '/about',
 }
@@ -21,17 +21,19 @@ function pushUrl(path: string) {
   window.history.pushState(null, '', path)
 }
 
-interface UrlState { activeView: ActiveView; profileId: string | null; viewingOrgId: string | null; adminMode: boolean }
+interface UrlState { activeView: ActiveView; profileId: string | null; viewingOrgId: string | null; viewingBlogPostId: string | null; adminMode: boolean }
 
 function stateFromUrl(): UrlState {
-  if (typeof window === 'undefined') return { activeView: 'feed', profileId: null, viewingOrgId: null, adminMode: false }
+  if (typeof window === 'undefined') return { activeView: 'feed', profileId: null, viewingOrgId: null, viewingBlogPostId: null, adminMode: false }
   const path = window.location.pathname
   const profileMatch = path.match(/^\/profile\/([^/]+)\/?$/)
-  if (profileMatch) return { activeView: 'feed', profileId: decodeURIComponent(profileMatch[1]), viewingOrgId: null, adminMode: false }
+  if (profileMatch) return { activeView: 'feed', profileId: decodeURIComponent(profileMatch[1]), viewingOrgId: null, viewingBlogPostId: null, adminMode: false }
   const orgMatch = path.match(/^\/ministries\/([^/]+)\/?$/)
-  if (orgMatch) return { activeView: 'orgs', profileId: null, viewingOrgId: decodeURIComponent(orgMatch[1]), adminMode: false }
-  if (path === '/admin' || path.startsWith('/admin/')) return { activeView: 'feed', profileId: null, viewingOrgId: null, adminMode: true }
-  return { activeView: PATH_TO_VIEW[path] ?? 'feed', profileId: null, viewingOrgId: null, adminMode: false }
+  if (orgMatch) return { activeView: 'orgs', profileId: null, viewingOrgId: decodeURIComponent(orgMatch[1]), viewingBlogPostId: null, adminMode: false }
+  const blogMatch = path.match(/^\/blog\/([^/]+)\/?$/)
+  if (blogMatch) return { activeView: 'blog', profileId: null, viewingOrgId: null, viewingBlogPostId: decodeURIComponent(blogMatch[1]), adminMode: false }
+  if (path === '/admin' || path.startsWith('/admin/')) return { activeView: 'feed', profileId: null, viewingOrgId: null, viewingBlogPostId: null, adminMode: true }
+  return { activeView: PATH_TO_VIEW[path] ?? 'feed', profileId: null, viewingOrgId: null, viewingBlogPostId: null, adminMode: false }
 }
 
 const INITIAL_URL_STATE = stateFromUrl()
@@ -99,6 +101,11 @@ interface UIState {
   viewOrg: (id: string) => void
   closeOrgView: () => void
 
+  // Same deep-linkable pattern as viewingOrgId, for a single blog article.
+  viewingBlogPostId: string | null
+  viewBlogPost: (id: string) => void
+  closeBlogPostView: () => void
+
   messagesOpen: boolean
   messageTargetUserId: string | null
   setMessagesOpen: (open: boolean) => void
@@ -131,7 +138,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set, get) => ({
   activeView: INITIAL_URL_STATE.activeView,
-  setActiveView: view => { pushUrl(VIEW_TO_PATH[view] ?? '/'); set({ activeView: view, profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
+  setActiveView: view => { pushUrl(VIEW_TO_PATH[view] ?? '/'); set({ activeView: view, profileId: null, viewingOrgId: null, viewingBlogPostId: null, notifOpen: false, mobileNavOpen: false }) },
 
   notifOpen: false,
   setNotifOpen: open => set({ notifOpen: open }),
@@ -150,12 +157,16 @@ export const useUIStore = create<UIState>((set, get) => ({
   setAdminMode: on => { pushUrl(on ? '/admin' : (VIEW_TO_PATH[get().activeView] ?? '/')); set({ adminMode: on }) },
 
   profileId: INITIAL_URL_STATE.profileId,
-  openProfile: id => { pushUrl(`/profile/${id}`); set({ profileId: id, viewingOrgId: null }) },
+  openProfile: id => { pushUrl(`/profile/${id}`); set({ profileId: id, viewingOrgId: null, viewingBlogPostId: null }) },
   closeProfile: () => { pushUrl(VIEW_TO_PATH[get().activeView] ?? '/'); set({ profileId: null }) },
 
   viewingOrgId: INITIAL_URL_STATE.viewingOrgId,
-  viewOrg: id => { pushUrl(`/ministries/${id}`); set({ viewingOrgId: id, activeView: 'orgs', profileId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewOrg: id => { pushUrl(`/ministries/${id}`); set({ viewingOrgId: id, activeView: 'orgs', profileId: null, viewingBlogPostId: null, notifOpen: false, mobileNavOpen: false }) },
   closeOrgView: () => { pushUrl(VIEW_TO_PATH.orgs); set({ viewingOrgId: null }) },
+
+  viewingBlogPostId: INITIAL_URL_STATE.viewingBlogPostId,
+  viewBlogPost: id => { pushUrl(`/blog/${id}`); set({ viewingBlogPostId: id, activeView: 'blog', profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
+  closeBlogPostView: () => { pushUrl(VIEW_TO_PATH.blog); set({ viewingBlogPostId: null }) },
 
   messagesOpen: false,
   messageTargetUserId: null,
@@ -169,15 +180,15 @@ export const useUIStore = create<UIState>((set, get) => ({
   setEditProfileOpen: open => set({ editProfileOpen: open }),
 
   activeHashtag: null,
-  viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, viewingOrgId: null, viewingBlogPostId: null, notifOpen: false, mobileNavOpen: false }) },
   clearHashtag: () => set({ activeHashtag: null }),
 
   focusEventId: null,
-  focusEvent: id => { pushUrl(VIEW_TO_PATH.events); set({ focusEventId: id, activeView: 'events', profileId: null, viewingOrgId: null, notifOpen: false, mobileNavOpen: false }) },
+  focusEvent: id => { pushUrl(VIEW_TO_PATH.events); set({ focusEventId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, notifOpen: false, mobileNavOpen: false }) },
   clearFocusEvent: () => set({ focusEventId: null }),
 
   syncFromUrl: () => {
     const s = stateFromUrl()
-    set({ activeView: s.activeView, profileId: s.profileId, viewingOrgId: s.viewingOrgId, adminMode: s.adminMode })
+    set({ activeView: s.activeView, profileId: s.profileId, viewingOrgId: s.viewingOrgId, viewingBlogPostId: s.viewingBlogPostId, adminMode: s.adminMode })
   },
 }))

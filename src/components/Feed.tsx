@@ -7,6 +7,7 @@ import PrayerRequestsView from './PrayerRequestsView'
 import TestimoniesView from './TestimoniesView'
 import EventsView from './EventsView'
 import ResourcesView from './ResourcesView'
+import BlogView from './BlogView'
 import GlobalMapView from './GlobalMapView'
 import AboutView from './AboutView'
 import OrgView from './OrgView'
@@ -179,6 +180,7 @@ export default function Feed({ activeView }: { activeView: ActiveView }) {
   if (activeView === 'directory') return <DirectoryView />
   if (activeView === 'orgs')      return <OrgView />
   if (activeView === 'groups')    return <GroupsView />
+  if (activeView === 'blog')      return <BlogView />
   if (activeView === 'prayer')    return <PrayerRequestsView />
   if (activeView === 'testimonies') return <TestimoniesView />
   if (activeView === 'events')    return <EventsView />

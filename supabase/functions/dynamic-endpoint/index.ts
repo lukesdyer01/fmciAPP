@@ -1023,6 +1023,90 @@ app.delete(`${BASE}/resources/:id`, async (c) => {
   return c.json({ ok: true });
 });
 
+// ── Blog ─────────────────────────────────────────────────────────────────
+const BLOG_TAGS = ["Leadership", "Prophetic", "Creative", "Marketplace", "Newsletter", "Missions", "Discipleship", "Testimony", "Youth"];
+const BLOG_BLOCK_TYPES = ["heading", "paragraph", "image", "quote"];
+
+function sanitizeBlogBlocks(blocks: any): any[] {
+  if (!Array.isArray(blocks)) return [];
+  return blocks
+    .filter((b: any) => b && BLOG_BLOCK_TYPES.includes(b.type))
+    .map((b: any) => b.type === "image"
+      ? { type: "image", url: String(b.url ?? ""), caption: String(b.caption ?? "") }
+      : { type: b.type, text: String(b.text ?? "") });
+}
+
+app.get(`${BASE}/blog-posts`, async (c) => {
+  const posts = await kv.get("blog_posts") ?? [];
+  const users = await listAuthUsers();
+  const enriched = posts.map((p: any) => {
+    const u = users.find((x: any) => x.id === p.authorId);
+    return {
+      ...p,
+      authorName: u?.user_metadata?.full_name ?? u?.user_metadata?.name ?? "Unknown",
+      authorAvatarUrl: u?.user_metadata?.avatar_url ?? u?.user_metadata?.avatarUrl ?? "",
+    };
+  });
+  return c.json(enriched);
+});
+
+app.post(`${BASE}/blog-posts`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const body = await c.req.json();
+  if (!body.title || !String(body.title).trim()) return c.json({ error: "Title is required" }, 400);
+  const posts = await kv.get("blog_posts") ?? [];
+  const newPost = {
+    id: `bp${Date.now()}`,
+    title: String(body.title).trim(),
+    date: body.date && String(body.date).trim() ? String(body.date).trim() : new Date().toISOString().slice(0, 10),
+    blocks: sanitizeBlogBlocks(body.blocks),
+    thumbnailUrl: body.thumbnailUrl ?? "",
+    tags: Array.isArray(body.tags) ? body.tags.filter((t: any) => BLOG_TAGS.includes(t)) : [],
+    authorId: caller.id,
+    createdAt: new Date().toISOString(),
+  };
+  await kv.set("blog_posts", [newPost, ...posts]);
+  return c.json(newPost, 201);
+});
+
+app.patch(`${BASE}/blog-posts/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const posts = await kv.get("blog_posts") ?? [];
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  const isCreator = post.authorId === caller.id;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  if (body.title !== undefined && !String(body.title).trim()) return c.json({ error: "Title is required" }, 400);
+  const patch: Record<string, unknown> = {};
+  if (body.title !== undefined) patch.title = String(body.title).trim();
+  if (body.date !== undefined) patch.date = String(body.date).trim();
+  if (body.blocks !== undefined) patch.blocks = sanitizeBlogBlocks(body.blocks);
+  if (body.thumbnailUrl !== undefined) patch.thumbnailUrl = body.thumbnailUrl;
+  if (body.tags !== undefined) patch.tags = Array.isArray(body.tags) ? body.tags.filter((t: any) => BLOG_TAGS.includes(t)) : [];
+  const updated = { ...post, ...patch, updatedAt: new Date().toISOString() };
+  await kv.set("blog_posts", posts.map((p: any) => p.id === id ? updated : p));
+  return c.json(updated);
+});
+
+app.delete(`${BASE}/blog-posts/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const posts = await kv.get("blog_posts") ?? [];
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  const isCreator = post.authorId === caller.id;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  await kv.set("blog_posts", posts.filter((p: any) => p.id !== id));
+  return c.json({ ok: true });
+});
+
 function dmConversationId(userA: string, userB: string) {
   return `dm_${[userA, userB].sort().join("_")}`;
 }
