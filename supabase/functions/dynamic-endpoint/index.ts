@@ -445,7 +445,16 @@ app.put(`${BASE}/profile`, async (c) => {
   return c.json(body);
 });
 
-app.get(`${BASE}/orgs`, async (c) => c.json(await kv.get("orgs") ?? SEED_ORGS));
+// Used by the admin Ministries screen — unauthenticated like the rest of
+// that admin data-fetching (see PUT /orgs below), but still needs member
+// enrichment so the admin's member list shows real names/avatars too, not
+// just the front-end's (which goes through GET /orgs/my instead).
+app.get(`${BASE}/orgs`, async (c) => {
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const users = await listAuthUsers();
+  const enriched = await Promise.all(orgs.map((o: any) => serializeOrg(o, "", users)));
+  return c.json(enriched);
+});
 
 // Geocodes each active org's address (or city/state) once via Nominatim and
 // caches lat/lng permanently on the org record — later calls just read the
