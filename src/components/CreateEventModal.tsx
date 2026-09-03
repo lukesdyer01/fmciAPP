@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import type { EventItem } from './EventCard'
 
-const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting']
+const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study']
 
 export default function CreateEventModal({ orgId, orgName, event, onClose, onCreated }: {
   orgId?: string
@@ -16,8 +16,10 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
 }) {
   const { currentUser } = useAuth()
   const [title, setTitle] = useState(event?.title ?? '')
-  const [date, setDate] = useState(event?.date ?? '')
-  const [time, setTime] = useState(event?.time ?? '')
+  const [startDate, setStartDate] = useState(event?.startDate ?? '')
+  const [startTime, setStartTime] = useState(event?.startTime ?? '')
+  const [endDate, setEndDate] = useState(event?.endDate ?? '')
+  const [endTime, setEndTime] = useState(event?.endTime ?? '')
   const [location, setLocation] = useState(event?.location ?? '')
   const [isRemote, setIsRemote] = useState(event?.isRemote ?? false)
   const [zoomLink, setZoomLink] = useState(event?.zoomLink ?? '')
@@ -60,7 +62,7 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
         await api(`/events/${event.id}`, {
           method: 'PATCH',
           body: JSON.stringify({
-            title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim(),
+            title: title.trim(), startDate, startTime, endDate, endTime, location, type, access, price, img, infoUrl: infoUrl.trim(),
             isRemote, zoomLink: isRemote ? zoomLink.trim() : '', zoomPassword: isRemote ? zoomPassword.trim() : '',
             ...(orgId ? { visibility } : {}),
           }),
@@ -69,7 +71,7 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
         await api('/events', {
           method: 'POST',
           body: JSON.stringify({
-            title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim(),
+            title: title.trim(), startDate, startTime, endDate, endTime, location, type, access, price, img, infoUrl: infoUrl.trim(),
             isRemote, zoomLink: isRemote ? zoomLink.trim() : '', zoomPassword: isRemote ? zoomPassword.trim() : '',
             host: orgName ?? '', orgId, orgName, official: !!orgId,
             ...(orgId ? { visibility } : {}),
@@ -136,12 +138,22 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
           </div>
           <div className="grid-2">
             <div>
-              <label style={labelStyle}>Date</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>Start Date</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Time</label>
-              <input type="time" value={time} onChange={e => setTime(e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>Start Time</label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div>
+              <label style={labelStyle}>End Date <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>End Time <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={inputStyle} />
             </div>
           </div>
           <div>

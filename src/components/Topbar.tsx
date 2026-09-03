@@ -10,7 +10,7 @@ import { playNotificationSound } from '../lib/notificationSound'
 import type { ActiveView } from '../App'
 
 interface SearchMember { id: string; name: string; title: string; church: string; avatarUrl: string }
-interface SearchEvent { id: string; title: string; date: string; location: string }
+interface SearchEvent { id: string; title: string; startDate: string; location: string }
 interface SearchOrg { id: string; name: string; type: string; location: string; img: string }
 interface SearchGroup { id: string; name: string; type: string; img: string }
 interface SearchResource { id: string; title: string; author: string; type: string }
@@ -125,7 +125,7 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
                 <div style={{ width: '28px', height: '28px', borderRadius: '7px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px' }}>📅</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>{ev.title}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--color-text-3)' }}>{[ev.date, ev.location].filter(Boolean).join(' · ')}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-3)' }}>{[ev.startDate, ev.location].filter(Boolean).join(' · ')}</div>
                 </div>
               </button>
             ))}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../../../api-client/server'
+import { formatEventWhen } from '../../EventCard'
 
 interface AdminEvent {
   id: string
@@ -7,8 +8,10 @@ interface AdminEvent {
   host: string
   orgId?: string | null
   orgName?: string | null
-  date: string
-  time: string
+  startDate: string
+  startTime: string
+  endDate?: string
+  endTime?: string
   location: string
   isRemote?: boolean
   zoomLink?: string
@@ -25,7 +28,7 @@ interface AdminEvent {
   interestedCount: number
 }
 
-const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting']
+const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study']
 
 function adminActionBtn(color: string): React.CSSProperties {
   return { flex: 1, padding: '7px 10px', borderRadius: '7px', border: `1px solid ${color}30`, backgroundColor: color + '12', color, fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'center' }
@@ -52,7 +55,7 @@ function EditPanel({ event, onSave, onClose }: { event: AdminEvent; onSave: (upd
       const updated = await api<AdminEvent>(`/events/${event.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          title: draft.title, date: draft.date, time: draft.time, location: draft.location,
+          title: draft.title, startDate: draft.startDate, startTime: draft.startTime, endDate: draft.endDate ?? '', endTime: draft.endTime ?? '', location: draft.location,
           isRemote: draft.isRemote, zoomLink: draft.isRemote ? (draft.zoomLink ?? '') : '', zoomPassword: draft.isRemote ? (draft.zoomPassword ?? '') : '',
           type: draft.type, access: draft.access, price: draft.price, img: draft.img,
           infoUrl: draft.infoUrl ?? '', speakers: draft.speakers, official: draft.official,
@@ -89,12 +92,22 @@ function EditPanel({ event, onSave, onClose }: { event: AdminEvent; onSave: (upd
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
-            <label style={labelStyle()}>Date</label>
-            <input type="date" value={draft.date} onChange={e => set('date', e.target.value)} style={inputStyle()} />
+            <label style={labelStyle()}>Start Date</label>
+            <input type="date" value={draft.startDate} onChange={e => set('startDate', e.target.value)} style={inputStyle()} />
           </div>
           <div>
-            <label style={labelStyle()}>Time</label>
-            <input type="time" value={draft.time} onChange={e => set('time', e.target.value)} style={inputStyle()} />
+            <label style={labelStyle()}>Start Time</label>
+            <input type="time" value={draft.startTime} onChange={e => set('startTime', e.target.value)} style={inputStyle()} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div>
+            <label style={labelStyle()}>End Date <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+            <input type="date" value={draft.endDate ?? ''} onChange={e => set('endDate', e.target.value)} style={inputStyle()} />
+          </div>
+          <div>
+            <label style={labelStyle()}>End Time <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+            <input type="time" value={draft.endTime ?? ''} onChange={e => set('endTime', e.target.value)} style={inputStyle()} />
           </div>
         </div>
         <div>
@@ -271,7 +284,7 @@ export default function EventsAdmin() {
                       {event.official && <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '8px', backgroundColor: 'rgba(200,155,60,0.15)', color: 'var(--color-gold)' }}>★ Official</span>}
                     </div>
                     <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
-                      {[event.date || 'Date TBA', event.time].filter(Boolean).join(' · ')} · {event.location || 'Location TBA'}
+                      {formatEventWhen(event)} · {event.location || 'Location TBA'}
                     </div>
                     {(event.orgName ?? event.host) && <div style={{ fontSize: '11px', color: 'var(--color-gold)', marginTop: '2px' }}>Hosted by {event.orgName ?? event.host}</div>}
                   </div>

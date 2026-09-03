@@ -9,8 +9,10 @@ export interface EventItem {
   host: string
   orgId?: string | null
   orgName?: string | null
-  date: string
-  time: string
+  startDate: string
+  startTime: string
+  endDate?: string
+  endTime?: string
   location: string
   isRemote?: boolean
   zoomLink?: string
@@ -36,13 +38,27 @@ export const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
   'Prayer Call':        { color: '#6D28D9', bg: '#F5F3FF' },
   'Teaching':           { color: '#92700A', bg: '#FBF5E6' },
   'Leadership Meeting': { color: '#C2410C', bg: '#FFF7ED' },
+  'Gathering':          { color: '#047857', bg: '#ECFDF5' },
+  'Book Study':         { color: '#BE185D', bg: '#FDF2F8' },
+}
+
+// A multi-day event (endDate set and different from startDate) shows as a
+// range; otherwise this matches the original single date/time display.
+// Structurally typed (not EventItem) so admin-side event shapes that don't
+// carry every EventItem field (e.g. isGoing/isInterested) can use it too.
+export function formatEventWhen(e: { startDate: string; startTime: string; endDate?: string; endTime?: string }): string {
+  if (!e.startDate) return 'Date TBA'
+  const start = [e.startDate, e.startTime].filter(Boolean).join(' · ')
+  if (!e.endDate || e.endDate === e.startDate) return start
+  const end = [e.endDate, e.endTime].filter(Boolean).join(' · ')
+  return `${start} → ${end}`
 }
 
 export function UpcomingEvents({ events, onChanged, onEdit, showOrg = true }: { events: EventItem[]; onChanged: () => void; onEdit?: (event: EventItem) => void; showOrg?: boolean }) {
   const todayStr = new Date().toISOString().slice(0, 10)
   const upcoming = events
-    .filter(e => !e.date || e.date >= todayStr)
-    .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
+    .filter(e => !e.startDate || e.startDate >= todayStr)
+    .sort((a, b) => (a.startDate || '9999').localeCompare(b.startDate || '9999'))
     .slice(0, 2)
 
   if (upcoming.length === 0) return null
@@ -149,7 +165,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginBottom: '16px' }}>
           {[
-            { icon: '📅', text: [event.date, event.time].filter(Boolean).join(' · ') || 'Date TBA' },
+            { icon: '📅', text: formatEventWhen(event) },
             event.isRemote
               ? { icon: '💻', text: 'Remote — join via Zoom' }
               : { icon: '📍', text: event.location || 'Location TBA' },

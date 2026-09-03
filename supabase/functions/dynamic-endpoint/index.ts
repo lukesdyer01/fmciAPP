@@ -776,16 +776,33 @@ app.post(`${BASE}/orgs/:id/unfollow`, async (c) => {
   return c.json(await serializeOrg(updated, caller.id));
 });
 
+// Events created before startDate/startTime existed only had date/time —
+// fall back to those at read time rather than migrating stored data. Used
+// by both the authenticated and unauthenticated GET /events branches, since
+// the unauthenticated one doesn't otherwise call serializeEvent.
+function normalizeEventDates(e: any) {
+  return {
+    ...e,
+    startDate: e.startDate ?? e.date ?? "",
+    startTime: e.startTime ?? e.time ?? "",
+    endDate: e.endDate ?? "",
+    endTime: e.endTime ?? "",
+  };
+}
+
 function serializeEvent(e: any, callerId: string) {
   const going = Array.isArray(e.going) ? e.going : [];
   const interested = Array.isArray(e.interested) ? e.interested : [];
-  return { ...e, attending: going.length, interestedCount: interested.length, isGoing: going.includes(callerId), isInterested: interested.includes(callerId) };
+  return {
+    ...normalizeEventDates(e),
+    attending: going.length, interestedCount: interested.length, isGoing: going.includes(callerId), isInterested: interested.includes(callerId),
+  };
 }
 
 app.get(`${BASE}/events`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   const events = await kv.get("events") ?? [];
-  if (!caller) return c.json(events.filter((e: any) => e.visibility !== "private"));
+  if (!caller) return c.json(events.filter((e: any) => e.visibility !== "private").map(normalizeEventDates));
   const orgs = await kv.get("orgs") ?? SEED_ORGS;
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = events.filter((e: any) => e.visibility !== "private" || memberOrgIds.has(e.orgId));
@@ -817,8 +834,10 @@ app.post(`${BASE}/events`, async (c) => {
     host: body.host ?? "",
     orgId: body.orgId ?? null,
     orgName: body.orgName ?? null,
-    date: body.date ?? "",
-    time: body.time ?? "",
+    startDate: body.startDate ?? "",
+    startTime: body.startTime ?? "",
+    endDate: body.endDate ?? "",
+    endTime: body.endTime ?? "",
     location: body.location ?? "",
     isRemote: !!body.isRemote,
     zoomLink: body.zoomLink ?? "",
@@ -869,7 +888,7 @@ app.patch(`${BASE}/events/:id`, async (c) => {
   if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
   const body = await c.req.json();
   if (body.title !== undefined && !String(body.title).trim()) return c.json({ error: "Event title is required" }, 400);
-  const EDITABLE_FIELDS = ["title", "date", "time", "location", "isRemote", "zoomLink", "zoomPassword", "img", "infoUrl", "type", "access", "price", "speakers"];
+  const EDITABLE_FIELDS = ["title", "startDate", "startTime", "endDate", "endTime", "location", "isRemote", "zoomLink", "zoomPassword", "img", "infoUrl", "type", "access", "price", "speakers"];
   const patch: Record<string, unknown> = {};
   for (const f of EDITABLE_FIELDS) {
     if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : f === "isRemote" ? !!body[f] : body[f];

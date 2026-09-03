@@ -4,7 +4,7 @@ import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
 import { useUIStore } from '../store/ui'
 
-const FILTERS = ['All', 'Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting']
+const FILTERS = ['All', 'Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study']
 
 export default function EventsView() {
   const [filter, setFilter] = useState('All')

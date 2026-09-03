@@ -5,7 +5,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { api } from '../api-client/server'
 import { useFeedPosts } from '../api-client/posts'
 import { useActiveMembers } from '../api-client/presence'
-import type { EventItem } from './EventCard'
+import { formatEventWhen, type EventItem } from './EventCard'
 
 interface VerificationRequest {
   id: string
@@ -186,8 +186,8 @@ function SidebarEvents() {
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const upcoming = events
-    .filter(e => !e.date || e.date >= todayStr)
-    .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
+    .filter(e => !e.startDate || e.startDate >= todayStr)
+    .sort((a, b) => (a.startDate || '9999').localeCompare(b.startDate || '9999'))
 
   if (upcoming.length === 0) return null
 
@@ -210,7 +210,7 @@ function SidebarEvents() {
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1.35 }}>{e.title}</div>
               <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginTop: '2px' }}>
-                {e.date || 'Date TBA'}{e.location ? ` · ${e.location}` : ''}
+                {formatEventWhen(e)}{e.location ? ` · ${e.location}` : ''}
               </div>
               {(e.orgName ?? e.host) && (
                 <div style={{ fontSize: '11px', color: 'var(--color-gold)', marginTop: '1px', fontWeight: 600 }}>{e.orgName ?? e.host}</div>
