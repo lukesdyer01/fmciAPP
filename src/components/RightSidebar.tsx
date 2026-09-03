@@ -289,6 +289,55 @@ function AboutFmciBox() {
   )
 }
 
+interface NewMemberProfile {
+  id: string
+  name: string
+  title: string
+  church: string
+  avatarUrl: string
+  createdAt: string
+}
+
+function NewMembersWidget() {
+  const openProfile = useOpenProfile()
+  const [members, setMembers] = useState<NewMemberProfile[] | null>(null)
+
+  useEffect(() => {
+    api<NewMemberProfile[]>('/members').then(setMembers).catch(() => setMembers([]))
+  }, [])
+
+  const newest = [...(members ?? [])]
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    .slice(0, 5)
+
+  if (newest.length === 0) return null
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)', borderRadius: '12px',
+      border: '1px solid var(--color-border)', padding: '14px 16px', marginBottom: '12px',
+    }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>🆕 New Members</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {newest.map(m => (
+          <div key={m.id} onClick={() => openProfile(m.id)} style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer' }}>
+            {m.avatarUrl
+              ? <img src={m.avatarUrl} alt={m.name} style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+              : <div style={{ width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '13px' }}>{(m.name || '?').slice(0, 2).toUpperCase()}</div>
+            }
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {(m.title || m.church) ? [m.title, m.church].filter(Boolean).join(' · ') : (m.createdAt ? `Joined ${new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : '')}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function RightSidebar() {
   const activeView = useUIStore(s => s.activeView)
   const profileId = useUIStore(s => s.profileId)
@@ -308,6 +357,8 @@ export default function RightSidebar() {
       {onHomeFeed && <ActiveUsersWidget />}
 
       <AboutFmciBox />
+
+      {onHomeFeed && <NewMembersWidget />}
 
       <GetVerifiedBox />
     </aside>

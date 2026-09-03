@@ -23,6 +23,7 @@ export interface MemberProfile {
   additionalRoles: string[]
   communicationPrefs: string[]
   fmciLeadershipRole?: string
+  memberSince?: string
   verified: boolean
   joinedAt: string
 }
@@ -125,9 +126,18 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
               fontSize: '11px', fontWeight: 700,
             }}>👑 {member.fmciLeadershipRole}</div>
           )}
-          <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: member.bio ? '10px' : 0 }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: member.bio || member.memberSince ? '10px' : 0 }}>
             {[member.title, member.church, member.location].filter(Boolean).join(' · ')}
           </div>
+          {member.memberSince && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: member.bio ? '10px' : 0,
+              padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)',
+            }}>
+              <span style={{ fontSize: '11px' }}>⭐</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>Member since {member.memberSince}</span>
+            </div>
+          )}
           {(member.ministryRoles.length > 0 || member.additionalRoles.length > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: member.bio ? '10px' : 0 }}>
               {member.ministryRoles.map(role => (

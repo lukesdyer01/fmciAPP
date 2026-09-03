@@ -78,6 +78,7 @@ function AppShell() {
       ministryRoles: currentUser.ministryRoles ?? [],
       additionalRoles: currentUser.additionalRoles ?? [],
       communicationPrefs: currentUser.communicationPrefs ?? [],
+      memberSince: currentUser.memberSince ?? '',
     })
   }, [currentUser])
 

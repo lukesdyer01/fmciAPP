@@ -173,6 +173,8 @@ app.get(`${BASE}/members`, async (c) => {
       additionalRoles: Array.isArray(u.user_metadata?.additionalRoles) ? u.user_metadata.additionalRoles : [],
       communicationPrefs: Array.isArray(u.user_metadata?.communicationPrefs) ? u.user_metadata.communicationPrefs : [],
       fmciLeadershipRole: u.user_metadata?.fmciLeadershipRole ?? "",
+      memberSince: u.user_metadata?.memberSince ?? "",
+      createdAt: u.created_at,
     }));
   return c.json(members);
 });
@@ -234,6 +236,7 @@ app.get(`${BASE}/members/:id`, async (c) => {
     additionalRoles: Array.isArray(u.user_metadata?.additionalRoles) ? u.user_metadata.additionalRoles : [],
     communicationPrefs: Array.isArray(u.user_metadata?.communicationPrefs) ? u.user_metadata.communicationPrefs : [],
     fmciLeadershipRole: u.user_metadata?.fmciLeadershipRole ?? "",
+    memberSince: u.user_metadata?.memberSince ?? "",
     verified: !!u.user_metadata?.verified,
     joinedAt: u.created_at,
   });

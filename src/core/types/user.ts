@@ -18,6 +18,10 @@ export interface User {
   ministryRoles: string[]
   additionalRoles: string[]
   communicationPrefs: string[]
+  // Self-reported year the person considers themselves an FMCI member since
+  // — distinct from `createdAt` (the app account's creation date), since
+  // someone may have been part of the movement long before signing up here.
+  memberSince: string | null
   platformRole: PlatformRole
   verified: boolean
   createdAt: string

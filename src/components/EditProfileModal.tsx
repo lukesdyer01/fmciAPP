@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabase'
 const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
 const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 const COMMUNICATION_PREFS = ['Phone Call', 'Text Message', 'Email']
+const CURRENT_YEAR = new Date().getFullYear()
+// Covers a long-tenured minister who joined FMCI well before the app existed.
+const MEMBER_SINCE_YEARS = Array.from({ length: CURRENT_YEAR - 1950 + 1 }, (_, i) => String(CURRENT_YEAR - i))
 
 function Field({ label, value, onChange, multiline = false, placeholder = '' }: {
   label: string
@@ -128,6 +131,7 @@ export default function EditProfileModal() {
           ministryRoles: draft.ministryRoles,
           additionalRoles: draft.additionalRoles,
           communicationPrefs: draft.communicationPrefs,
+          memberSince: draft.memberSince,
         },
       })
       if (error) throw error
@@ -145,6 +149,7 @@ export default function EditProfileModal() {
         ministryRoles: draft.ministryRoles,
         additionalRoles: draft.additionalRoles,
         communicationPrefs: draft.communicationPrefs,
+        memberSince: draft.memberSince,
       })
       setStatus('saved')
       setTimeout(() => {
@@ -254,6 +259,24 @@ export default function EditProfileModal() {
               <Field label="Email" value={draft.email} onChange={v => set('email', v)} />
             </div>
             <Field label="Phone" value={draft.phone} onChange={v => set('phone', v)} placeholder="(555) 555-5555" />
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Member Since
+              </label>
+              <select
+                value={draft.memberSince}
+                onChange={e => set('memberSince', e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                  border: '1px solid var(--color-border)', borderRadius: '8px',
+                  fontSize: '14px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)',
+                  backgroundColor: 'var(--color-surface)', outline: 'none',
+                }}
+              >
+                <option value="">Not set</option>
+                {MEMBER_SINCE_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 5-fold Role <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>

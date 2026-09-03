@@ -33,6 +33,7 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
     ministryRoles: Array.isArray(meta.ministryRoles) ? meta.ministryRoles : [],
     additionalRoles: Array.isArray(meta.additionalRoles) ? meta.additionalRoles : [],
     communicationPrefs: Array.isArray(meta.communicationPrefs) ? meta.communicationPrefs : [],
+    memberSince: meta.memberSince ?? null,
     platformRole: role as User['platformRole'],
     verified: meta.verified ?? false,
     createdAt: su.created_at ?? new Date().toISOString(),
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ministryRoles: prev.ministryRoles.length ? prev.ministryRoles : fresh.ministryRoles,
         additionalRoles: prev.additionalRoles.length ? prev.additionalRoles : fresh.additionalRoles,
         communicationPrefs: prev.communicationPrefs.length ? prev.communicationPrefs : fresh.communicationPrefs,
+        memberSince: prev.memberSince || fresh.memberSince,
       }
     })
   }, [session.user.id, role])
