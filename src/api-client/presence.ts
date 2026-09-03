@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './server'
+import { trackHeartbeat } from '../lib/analytics'
 
 export interface ActiveMember {
   id: string
@@ -16,7 +17,9 @@ export interface ActiveMember {
 export function useHeartbeat() {
   useQuery({
     queryKey: ['heartbeat'],
-    queryFn: () => api('/heartbeat', { method: 'POST' }),
+    // Piggybacks the analytics time-on-site heartbeat on this same 60s tick
+    // rather than running a second interval.
+    queryFn: () => Promise.all([api('/heartbeat', { method: 'POST' }), trackHeartbeat()]),
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
     retry: false,

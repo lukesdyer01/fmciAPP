@@ -8,6 +8,7 @@ import { useSupabaseRole } from './contexts/SupabaseRoleContext'
 import { useAuth } from './providers/AuthProvider'
 import { api } from './api-client/server'
 import { useHeartbeat } from './api-client/presence'
+import { trackSessionStart, trackPageView } from './lib/analytics'
 import Topbar from './components/Topbar'
 import LeftSidebar from './components/LeftSidebar'
 import Feed from './components/Feed'
@@ -93,6 +94,16 @@ function AppShell() {
   useEffect(() => {
     if (adminMode && role === 'member') setAdminMode(false)
   }, [adminMode, role])
+
+  // Usage analytics — deliberately excludes admin/superadmin activity so the
+  // numbers reflect real audience behavior, not admin testing.
+  useEffect(() => {
+    if (role === 'member') trackSessionStart()
+  }, [role])
+
+  useEffect(() => {
+    if (role === 'member') trackPageView(activeView)
+  }, [activeView, role])
 
   if (adminMode && (role === 'superadmin' || role === 'admin')) return <AdminShell />
 

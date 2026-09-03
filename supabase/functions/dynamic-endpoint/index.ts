@@ -1395,4 +1395,175 @@ app.put(`${BASE}/settings`, async (c) => {
   return c.json(updated);
 });
 
+// ── Analytics ────────────────────────────────────────────────────────────
+// From-scratch usage tracking: sessions + pageviews as flat KV blobs
+// (same pattern as posts/orgs), pruned to a rolling 90 days on every write
+// so they stay bounded with no cron job. Admin/superadmin activity is
+// excluded — the client never calls these routes while signed in as one
+// (see src/lib/analytics.ts), and these routes double-check server-side.
+
+const ANALYTICS_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+
+function pruneAnalytics<T extends { ts: string }>(events: T[]): T[] {
+  const cutoff = Date.now() - ANALYTICS_WINDOW_MS;
+  return events.filter(e => new Date(e.ts).getTime() > cutoff);
+}
+
+async function isExcludedFromAnalytics(authHeader: string | undefined): Promise<boolean> {
+  if (!authHeader) return false;
+  const caller = await getCallerUser(authHeader);
+  return !!caller && ["superadmin", "admin"].includes(callerRole(caller));
+}
+
+async function geolocateIp(ip: string | null): Promise<string> {
+  if (!ip) return "Unknown";
+  const cache = await kv.get("analytics_geo_cache") ?? {};
+  const cached = cache[ip];
+  if (cached && Date.now() - new Date(cached.ts).getTime() < 24 * 60 * 60 * 1000) {
+    return cached.country;
+  }
+  try {
+    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country`);
+    const data = await res.json();
+    const country = data.status === "success" && data.country ? data.country : "Unknown";
+    cache[ip] = { country, ts: new Date().toISOString() };
+    await kv.set("analytics_geo_cache", cache);
+    return country;
+  } catch {
+    return "Unknown";
+  }
+}
+
+function clientIp(c: any): string | null {
+  const fwd = c.req.header("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return c.req.header("x-real-ip") ?? null;
+}
+
+app.post(`${BASE}/analytics/session`, async (c) => {
+  if (await isExcludedFromAnalytics(c.req.header("Authorization"))) return c.json({ ok: true });
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  const body = await c.req.json();
+  const sessionId = String(body.sessionId ?? "").trim();
+  if (!sessionId) return c.json({ error: "sessionId is required" }, 400);
+  const country = await geolocateIp(clientIp(c));
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  const now = new Date().toISOString();
+  const existing = sessions.find((s: any) => s.sessionId === sessionId);
+  const record = {
+    sessionId,
+    userId: caller?.id ?? null,
+    startedAt: existing?.startedAt ?? now,
+    lastSeenAt: now,
+    deviceType: ["mobile", "tablet", "desktop"].includes(body.deviceType) ? body.deviceType : "desktop",
+    os: String(body.os ?? "Other"),
+    browser: String(body.browser ?? "Other"),
+    country,
+    pageViews: existing?.pageViews ?? 0,
+  };
+  await kv.set("analytics_sessions", [record, ...sessions.filter((s: any) => s.sessionId !== sessionId)]);
+  return c.json({ ok: true });
+});
+
+app.post(`${BASE}/analytics/pageview`, async (c) => {
+  if (await isExcludedFromAnalytics(c.req.header("Authorization"))) return c.json({ ok: true });
+  const body = await c.req.json();
+  const sessionId = String(body.sessionId ?? "").trim();
+  const view = String(body.view ?? "").trim();
+  if (!sessionId || !view) return c.json({ ok: true });
+  const now = new Date().toISOString();
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  const sessionExists = sessions.some((s: any) => s.sessionId === sessionId);
+  if (sessionExists) {
+    await kv.set("analytics_sessions", sessions.map((s: any) =>
+      s.sessionId === sessionId ? { ...s, lastSeenAt: now, pageViews: (s.pageViews ?? 0) + 1 } : s
+    ));
+  }
+  const pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? []);
+  await kv.set("analytics_pageviews", [{ sessionId, view, ts: now }, ...pageviews]);
+  return c.json({ ok: true });
+});
+
+app.post(`${BASE}/analytics/heartbeat`, async (c) => {
+  if (await isExcludedFromAnalytics(c.req.header("Authorization"))) return c.json({ ok: true });
+  const body = await c.req.json();
+  const sessionId = String(body.sessionId ?? "").trim();
+  if (!sessionId) return c.json({ ok: true });
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  await kv.set("analytics_sessions", sessions.map((s: any) =>
+    s.sessionId === sessionId ? { ...s, lastSeenAt: new Date().toISOString() } : s
+  ));
+  return c.json({ ok: true });
+});
+
+app.get(`${BASE}/analytics/summary`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  const pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? []);
+
+  const totalMinutes = sessions.reduce((sum: number, s: any) => {
+    const mins = (new Date(s.lastSeenAt).getTime() - new Date(s.startedAt).getTime()) / 60000;
+    return sum + Math.max(0, mins);
+  }, 0);
+
+  function countBy(items: any[], key: string): { name: string; count: number }[] {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      const k = item[key] || "Unknown";
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  }
+
+  const byDevice = { desktop: 0, mobile: 0, tablet: 0 };
+  for (const s of sessions) {
+    if (s.deviceType === "mobile") byDevice.mobile++;
+    else if (s.deviceType === "tablet") byDevice.tablet++;
+    else byDevice.desktop++;
+  }
+
+  const topPagesCounts = new Map<string, number>();
+  for (const p of pageviews) {
+    topPagesCounts.set(p.view, (topPagesCounts.get(p.view) ?? 0) + 1);
+  }
+  const topPages = [...topPagesCounts.entries()].map(([view, count]) => ({ view, count })).sort((a, b) => b.count - a.count).slice(0, 10);
+
+  const dailyMap = new Map<string, { sessions: Set<string>; pageViews: number }>();
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    dailyMap.set(d, { sessions: new Set(), pageViews: 0 });
+  }
+  for (const s of sessions) {
+    const d = s.startedAt.slice(0, 10);
+    if (dailyMap.has(d)) dailyMap.get(d)!.sessions.add(s.sessionId);
+  }
+  for (const p of pageviews) {
+    const d = p.ts.slice(0, 10);
+    if (dailyMap.has(d)) dailyMap.get(d)!.pageViews++;
+  }
+  const dailyTrend = [...dailyMap.entries()]
+    .map(([date, v]) => ({ date, sessions: v.sessions.size, pageViews: v.pageViews }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const uniqueVisitors = new Set(sessions.map((s: any) => s.userId ?? s.sessionId)).size;
+
+  return c.json({
+    totals: {
+      sessions: sessions.length,
+      pageViews: pageviews.length,
+      uniqueVisitors,
+      avgSessionMinutes: sessions.length > 0 ? Math.round((totalMinutes / sessions.length) * 10) / 10 : 0,
+    },
+    byDevice,
+    byBrowser: countBy(sessions, "browser").slice(0, 8),
+    byOS: countBy(sessions, "os").slice(0, 8),
+    byCountry: countBy(sessions, "country").slice(0, 10),
+    topPages,
+    dailyTrend,
+  });
+});
+
 Deno.serve(app.fetch);
