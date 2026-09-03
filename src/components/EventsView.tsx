@@ -15,7 +15,9 @@ export default function EventsView() {
   async function load() {
     try {
       const data = await api<EventItem[]>('/events')
-      setEvents(data)
+      // Members-only ministry events only ever appear on the ministry's own
+      // page, never here — same scoping rule as the main network feed.
+      setEvents(data.filter(e => e.visibility !== 'private'))
     } catch {
       setEvents([])
     } finally {

@@ -22,6 +22,7 @@ export interface EventItem {
   price: string
   speakers: string[]
   official: boolean
+  visibility?: 'public' | 'private'
   createdBy: string
   createdAt?: string
   attending: number
@@ -106,6 +107,14 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
             borderRadius: '20px', backgroundColor: 'var(--color-gold)',
             color: '#fff', display: 'flex', alignItems: 'center', gap: '4px',
           }}>★ FMCI Official</div>
+        )}
+        {event.visibility === 'private' && (
+          <div style={{
+            position: 'absolute', top: '12px', right: '12px',
+            fontSize: '11px', fontWeight: 800, padding: '4px 10px',
+            borderRadius: '20px', backgroundColor: 'rgba(17,24,39,0.75)',
+            color: '#fff', display: 'flex', alignItems: 'center', gap: '4px',
+          }}>🔒 Members Only</div>
         )}
         <div style={{
           position: 'absolute', bottom: '12px', left: '12px',

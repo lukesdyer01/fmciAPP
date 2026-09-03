@@ -29,6 +29,8 @@ interface MyOrg {
   members: OrgMember[]
   following: boolean
   followerCount: number
+  hasPendingRequest: boolean
+  pendingRequestCount: number
   createdAt: string
 }
 
@@ -323,6 +325,13 @@ function EditOrgModal({ org, onClose, onSaved }: { org: MyOrg; onClose: () => vo
 }
 
 // ── Members Panel ────────────────────────────────────────────────────────────
+interface JoinRequest {
+  userId: string
+  requestedAt: string
+  name: string
+  avatarUrl: string
+}
+
 function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
   org: MyOrg
   currentUserId: string
@@ -335,6 +344,8 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
   const [selectedRole, setSelectedRole] = useState<'admin' | 'moderator'>('moderator')
   const [adding, setAdding] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[] | null>(null)
+  const [requestBusy, setRequestBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
 
   const myRole = org.members.find(m => m.userId === currentUserId)?.role
@@ -343,6 +354,38 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
   useEffect(() => {
     api<PlatformUser[]>('/members').then(setAllUsers).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!canManage) return
+    api<JoinRequest[]>(`/orgs/${org.id}/join-requests`).then(setJoinRequests).catch(() => setJoinRequests([]))
+  }, [canManage, org.id])
+
+  async function approveRequest(userId: string, name: string) {
+    setRequestBusy(userId); setMsg('')
+    try {
+      await api(`/orgs/${org.id}/join-requests/${userId}/approve`, { method: 'POST' })
+      setJoinRequests(prev => (prev ?? []).filter(r => r.userId !== userId))
+      onUpdate()
+      setMsg(`${name || 'Member'} approved.`)
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`)
+    } finally {
+      setRequestBusy(null)
+    }
+  }
+
+  async function denyRequest(userId: string, name: string) {
+    setRequestBusy(userId); setMsg('')
+    try {
+      await api(`/orgs/${org.id}/join-requests/${userId}/deny`, { method: 'POST' })
+      setJoinRequests(prev => (prev ?? []).filter(r => r.userId !== userId))
+      setMsg(`${name || 'Request'} denied.`)
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`)
+    } finally {
+      setRequestBusy(null)
+    }
+  }
 
   const filteredUsers = allUsers.filter(u =>
     !org.members.some(m => m.userId === u.id) && (
@@ -398,6 +441,38 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
 
       <div style={{ padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {msg && <div style={{ fontSize: '13px', fontWeight: 600, color: msg.startsWith('Error') ? '#dc2626' : '#047857', padding: '10px 14px', backgroundColor: msg.startsWith('Error') ? '#FEF2F2' : '#ECFDF5', borderRadius: '8px' }}>{msg}</div>}
+
+        {/* Pending join requests */}
+        {canManage && joinRequests !== null && joinRequests.length > 0 && (
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: '10px' }}>
+              Pending Requests ({joinRequests.length})
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {joinRequests.map(r => (
+                <div key={r.userId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', backgroundColor: 'var(--color-gold-bg)', borderRadius: '8px', border: '1px solid var(--color-gold-border)' }}>
+                  {r.avatarUrl
+                    ? <img src={r.avatarUrl} alt={r.name} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '13px' }}>{(r.name || '?').slice(0, 2).toUpperCase()}</div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)' }}>{r.name || '(no name)'}</div>
+                  </div>
+                  <button
+                    onClick={() => approveRequest(r.userId, r.name)}
+                    disabled={requestBusy === r.userId}
+                    style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', backgroundColor: '#047857', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: requestBusy === r.userId ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: requestBusy === r.userId ? 0.6 : 1 }}
+                  >✓ Approve</button>
+                  <button
+                    onClick={() => denyRequest(r.userId, r.name)}
+                    disabled={requestBusy === r.userId}
+                    style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-2)', fontSize: '12px', fontWeight: 700, cursor: requestBusy === r.userId ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: requestBusy === r.userId ? 0.6 : 1 }}
+                  >✕ Deny</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Current members */}
         <div>
@@ -584,6 +659,7 @@ export default function OrgView() {
   const [editingOrg, setEditingOrg] = useState<MyOrg | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string>('')
   const [followBusyId, setFollowBusyId] = useState<string | null>(null)
+  const [requestJoinBusyId, setRequestJoinBusyId] = useState<string | null>(null)
 
   async function load() {
     try {
@@ -631,6 +707,16 @@ export default function OrgView() {
     }
   }
 
+  async function requestJoin(org: MyOrg) {
+    setRequestJoinBusyId(org.id)
+    try {
+      await api(`/orgs/${org.id}/request-join`, { method: 'POST' })
+      await load()
+    } finally {
+      setRequestJoinBusyId(null)
+    }
+  }
+
   const isMember = (org: MyOrg) => org.members.some(m => m.userId === currentUserId)
   const myOrgs = orgs.filter(isMember)
   const followingOrgs = orgs.filter(o => o.following)
@@ -653,6 +739,8 @@ export default function OrgView() {
         onBack={closeOrgView}
         onFollowToggle={() => toggleFollow(viewingOrg)}
         followBusy={followBusyId === viewingOrg.id}
+        onRequestJoin={() => requestJoin(viewingOrg)}
+        requestJoinBusy={requestJoinBusyId === viewingOrg.id}
       />
     )
   }

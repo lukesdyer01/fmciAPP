@@ -315,7 +315,7 @@ app.post(`${BASE}/verification-requests/:id/deny`, async (c) => {
 app.get(`${BASE}/posts`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json(posts);
+  if (!caller) return c.json(posts.filter((p: any) => p.visibility !== "private"));
   // isFollowing is computed from real org-follow relationships, not trusted
   // from however the post was created — that's what powers the feed's
   // "Following" tab for posts made on behalf of an org.
@@ -323,7 +323,12 @@ app.get(`${BASE}/posts`, async (c) => {
   const followedOrgIds = new Set(
     orgs.filter((o: any) => Array.isArray(o.followerIds) && o.followerIds.includes(caller.id)).map((o: any) => o.id)
   );
-  return c.json(posts.map((p: any) => p.orgId ? { ...p, isFollowing: followedOrgIds.has(p.orgId) } : p));
+  // Private posts are members-only — only visible to a caller who belongs to
+  // (any role in) the post's org. Everyone else never receives them at all,
+  // not even a filtered-out placeholder.
+  const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
+  const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
+  return c.json(visible.map((p: any) => p.orgId ? { ...p, isFollowing: followedOrgIds.has(p.orgId) } : p));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -340,6 +345,19 @@ app.post(`${BASE}/posts`, async (c) => {
     const myRole = org ? orgRole(org, caller.id) : undefined;
     if (!org || (myRole !== "owner" && myRole !== "admin")) {
       return c.json({ error: "Only that ministry's owner or admin can post on its behalf" }, 403);
+    }
+  }
+  if (body.visibility && !["public", "private"].includes(body.visibility)) {
+    return c.json({ error: "Invalid visibility" }, 400);
+  }
+  // A private (members-only) post requires the caller to actually belong to
+  // that ministry — any role, not just owner/admin, unlike posting *as* the
+  // ministry above, which is a much higher-trust action.
+  if (body.visibility === "private") {
+    const orgs = await kv.get("orgs") ?? SEED_ORGS;
+    const org = body.orgId ? orgs.find((o: any) => o.id === body.orgId) : null;
+    if (!org || !orgRole(org, caller.id)) {
+      return c.json({ error: "Only that ministry's members can post privately to it" }, 403);
     }
   }
   // Writing on another member's wall is intentionally open to anyone (like a
@@ -478,7 +496,17 @@ app.get(`${BASE}/orgs/locations`, async (c) => {
 function serializeOrg(o: any, callerId: string) {
   const members = Array.isArray(o.members) ? o.members : [];
   const followerIds = Array.isArray(o.followerIds) ? o.followerIds : [];
-  return { ...o, members, following: followerIds.includes(callerId), followerCount: followerIds.length };
+  const joinRequests = Array.isArray(o.joinRequests) ? o.joinRequests : [];
+  return {
+    ...o, members,
+    following: followerIds.includes(callerId), followerCount: followerIds.length,
+    // Only whether *this caller* has a pending request, plus a bare count —
+    // the full requester list (names) is deliberately not exposed here, that
+    // would leak who's requesting to every viewer. Owner/admin fetch the
+    // full list via GET /orgs/:id/join-requests instead.
+    hasPendingRequest: joinRequests.some((r: any) => r.userId === callerId),
+    pendingRequestCount: joinRequests.length,
+  };
 }
 
 function orgRole(org: any, userId: string): string | undefined {
@@ -607,6 +635,77 @@ app.delete(`${BASE}/orgs/:id/members/:userId`, async (c) => {
   return c.json(serializeOrg(updated, caller.id));
 });
 
+app.post(`${BASE}/orgs/:id/request-join`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === id);
+  if (!org) return c.json({ error: "Organization not found" }, 404);
+  if (orgRole(org, caller.id)) return c.json({ error: "Already a member" }, 400);
+  const joinRequests = Array.isArray(org.joinRequests) ? org.joinRequests : [];
+  if (joinRequests.some((r: any) => r.userId === caller.id)) return c.json(serializeOrg(org, caller.id));
+  const updated = { ...org, joinRequests: [...joinRequests, { userId: caller.id, requestedAt: new Date().toISOString() }] };
+  await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
+  return c.json(serializeOrg(updated, caller.id));
+});
+
+app.get(`${BASE}/orgs/:id/join-requests`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === id);
+  if (!org) return c.json({ error: "Organization not found" }, 404);
+  const myRole = orgRole(org, caller.id);
+  if (myRole !== "owner" && myRole !== "admin") return c.json({ error: "Forbidden" }, 403);
+  const joinRequests = Array.isArray(org.joinRequests) ? org.joinRequests : [];
+  const users = await listAuthUsers();
+  const resolved = joinRequests.map((r: any) => {
+    const u = users.find((x: any) => x.id === r.userId);
+    return {
+      userId: r.userId,
+      requestedAt: r.requestedAt,
+      name: u?.user_metadata?.full_name ?? u?.user_metadata?.name ?? "",
+      avatarUrl: u?.user_metadata?.avatar_url ?? u?.user_metadata?.avatarUrl ?? "",
+    };
+  });
+  return c.json(resolved);
+});
+
+app.post(`${BASE}/orgs/:id/join-requests/:userId/approve`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id, userId } = c.req.param();
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === id);
+  if (!org) return c.json({ error: "Organization not found" }, 404);
+  const myRole = orgRole(org, caller.id);
+  if (myRole !== "owner" && myRole !== "admin") return c.json({ error: "Forbidden" }, 403);
+  const joinRequests = (Array.isArray(org.joinRequests) ? org.joinRequests : []).filter((r: any) => r.userId !== userId);
+  const members = Array.isArray(org.members) ? org.members : [];
+  const updated = {
+    ...org, joinRequests,
+    members: members.some((m: any) => m.userId === userId) ? members : [...members, { userId, role: "member", addedAt: new Date().toISOString() }],
+  };
+  await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
+  return c.json(serializeOrg(updated, caller.id));
+});
+
+app.post(`${BASE}/orgs/:id/join-requests/:userId/deny`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id, userId } = c.req.param();
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === id);
+  if (!org) return c.json({ error: "Organization not found" }, 404);
+  const myRole = orgRole(org, caller.id);
+  if (myRole !== "owner" && myRole !== "admin") return c.json({ error: "Forbidden" }, 403);
+  const updated = { ...org, joinRequests: (Array.isArray(org.joinRequests) ? org.joinRequests : []).filter((r: any) => r.userId !== userId) };
+  await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
+  return c.json(serializeOrg(updated, caller.id));
+});
+
 app.post(`${BASE}/orgs/:id/follow`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
@@ -642,8 +741,11 @@ function serializeEvent(e: any, callerId: string) {
 app.get(`${BASE}/events`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   const events = await kv.get("events") ?? [];
-  if (!caller) return c.json(events);
-  return c.json(events.map((e: any) => serializeEvent(e, caller.id)));
+  if (!caller) return c.json(events.filter((e: any) => e.visibility !== "private"));
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
+  const visible = events.filter((e: any) => e.visibility !== "private" || memberOrgIds.has(e.orgId));
+  return c.json(visible.map((e: any) => serializeEvent(e, caller.id)));
 });
 
 app.post(`${BASE}/events`, async (c) => {
@@ -660,6 +762,9 @@ app.post(`${BASE}/events`, async (c) => {
     if (!org || (myRole !== "owner" && myRole !== "admin")) {
       return c.json({ error: "Only that ministry's owner or admin can post events on its behalf" }, 403);
     }
+  }
+  if (body.visibility && !["public", "private"].includes(body.visibility)) {
+    return c.json({ error: "Invalid visibility" }, 400);
   }
   const events = await kv.get("events") ?? [];
   const newEvent = {
@@ -681,6 +786,7 @@ app.post(`${BASE}/events`, async (c) => {
     price: body.price ?? "Free",
     speakers: Array.isArray(body.speakers) ? body.speakers.filter(Boolean) : [],
     official: !!body.official,
+    visibility: body.orgId && body.visibility === "private" ? "private" : "public",
     createdBy: caller.id,
     createdAt: new Date().toISOString(),
     going: [caller.id],
@@ -725,6 +831,11 @@ app.patch(`${BASE}/events/:id`, async (c) => {
     if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : f === "isRemote" ? !!body[f] : body[f];
   }
   if (isAdmin && body.official !== undefined) patch.official = !!body.official;
+  if (body.visibility !== undefined) {
+    if (!["public", "private"].includes(body.visibility)) return c.json({ error: "Invalid visibility" }, 400);
+    if (body.visibility === "private" && !event.orgId) return c.json({ error: "Only a ministry event can be members-only" }, 400);
+    patch.visibility = body.visibility;
+  }
   const updated = { ...event, ...patch, editedAt: new Date().toISOString() };
   await kv.set("events", events.map((e: any) => e.id === id ? updated : e));
   return c.json(serializeEvent(updated, caller.id));

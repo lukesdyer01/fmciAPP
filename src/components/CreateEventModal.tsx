@@ -27,6 +27,7 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
   const [price, setPrice] = useState(event?.price ?? 'Free')
   const [img, setImg] = useState(event?.img ?? '')
   const [infoUrl, setInfoUrl] = useState(event?.infoUrl ?? '')
+  const [visibility, setVisibility] = useState<'public' | 'private'>(event?.visibility ?? 'public')
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -61,6 +62,7 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
           body: JSON.stringify({
             title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim(),
             isRemote, zoomLink: isRemote ? zoomLink.trim() : '', zoomPassword: isRemote ? zoomPassword.trim() : '',
+            ...(orgId ? { visibility } : {}),
           }),
         })
       } else {
@@ -70,6 +72,7 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
             title: title.trim(), date, time, location, type, access, price, img, infoUrl: infoUrl.trim(),
             isRemote, zoomLink: isRemote ? zoomLink.trim() : '', zoomPassword: isRemote ? zoomPassword.trim() : '',
             host: orgName ?? '', orgId, orgName, official: !!orgId,
+            ...(orgId ? { visibility } : {}),
           }),
         })
       }
@@ -177,6 +180,29 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
                 <input value={zoomPassword} onChange={e => setZoomPassword(e.target.value)} placeholder="Passcode" style={inputStyle} />
               </div>
             </>
+          )}
+          {orgId && (
+            <div
+              role="switch"
+              aria-checked={visibility === 'private'}
+              tabIndex={0}
+              onClick={() => setVisibility(v => v === 'public' ? 'private' : 'public')}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setVisibility(v => v === 'public' ? 'private' : 'public') } }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}
+            >
+              <span style={{
+                width: '36px', height: '20px', borderRadius: '10px', position: 'relative', flexShrink: 0,
+                backgroundColor: visibility === 'private' ? 'var(--color-navy)' : 'var(--color-border)', transition: 'background 0.15s',
+              }}>
+                <span style={{
+                  position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '50%',
+                  backgroundColor: '#fff', transition: 'left 0.15s', left: visibility === 'private' ? '18px' : '2px',
+                }} />
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)' }}>
+                🔒 Members only — hide from non-members and the network Events page
+              </span>
+            </div>
           )}
           <div className="grid-2">
             <div>

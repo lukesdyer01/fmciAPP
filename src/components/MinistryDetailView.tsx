@@ -29,6 +29,8 @@ export interface MinistrySummary {
   members: OrgMember[]
   following: boolean
   followerCount: number
+  hasPendingRequest: boolean
+  pendingRequestCount: number
 }
 
 function MinistryLogo({ ministry, size }: { ministry: Pick<MinistrySummary, 'name' | 'img'>; size: number }) {
@@ -43,12 +45,14 @@ function MinistryLogo({ ministry, size }: { ministry: Pick<MinistrySummary, 'nam
     )
 }
 
-export default function MinistryDetailView({ ministry, currentUserId, onBack, onFollowToggle, followBusy }: {
+export default function MinistryDetailView({ ministry, currentUserId, onBack, onFollowToggle, followBusy, onRequestJoin, requestJoinBusy }: {
   ministry: MinistrySummary
   currentUserId: string
   onBack: () => void
   onFollowToggle: () => void
   followBusy: boolean
+  onRequestJoin: () => void
+  requestJoinBusy: boolean
 }) {
   const [tab, setTab] = useState<'feed' | 'events' | 'about'>('feed')
   const [events, setEvents] = useState<EventItem[]>([])
@@ -104,17 +108,30 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
               </div>
             </div>
             {!isMember && (
-              <button
-                onClick={onFollowToggle}
-                disabled={followBusy}
-                style={{
-                  padding: '9px 20px', borderRadius: '8px', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
-                  border: ministry.following ? '1px solid var(--color-border)' : 'none',
-                  backgroundColor: ministry.following ? 'var(--color-surface)' : 'var(--color-navy)',
-                  color: ministry.following ? 'var(--color-text-1)' : '#fff',
-                  opacity: followBusy ? 0.6 : 1,
-                }}
-              >{followBusy ? '…' : ministry.following ? '✓ Following' : '+ Follow'}</button>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                <button
+                  onClick={onFollowToggle}
+                  disabled={followBusy}
+                  style={{
+                    padding: '9px 20px', borderRadius: '8px', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
+                    border: ministry.following ? '1px solid var(--color-border)' : 'none',
+                    backgroundColor: ministry.following ? 'var(--color-surface)' : 'var(--color-navy)',
+                    color: ministry.following ? 'var(--color-text-1)' : '#fff',
+                    opacity: followBusy ? 0.6 : 1,
+                  }}
+                >{followBusy ? '…' : ministry.following ? '✓ Following' : '+ Follow'}</button>
+                <button
+                  onClick={onRequestJoin}
+                  disabled={requestJoinBusy || ministry.hasPendingRequest}
+                  style={{
+                    padding: '9px 20px', borderRadius: '8px', cursor: (requestJoinBusy || ministry.hasPendingRequest) ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
+                    border: '1px solid var(--color-gold-border)',
+                    backgroundColor: ministry.hasPendingRequest ? 'var(--color-surface)' : 'var(--color-gold-bg)',
+                    color: 'var(--color-gold)',
+                    opacity: requestJoinBusy ? 0.6 : 1,
+                  }}
+                >{requestJoinBusy ? '…' : ministry.hasPendingRequest ? 'Request Pending' : 'Request to Join'}</button>
+              </div>
             )}
           </div>
         </div>

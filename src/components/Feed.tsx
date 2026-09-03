@@ -91,11 +91,14 @@ function MainFeed() {
   const activeHashtag = useUIStore(s => s.activeHashtag)
   const clearHashtag = useUIStore(s => s.clearHashtag)
 
-  // Filter out truly orphaned posts (completely missing author)
-  const posts = allPosts?.filter(p => p.author && p.author.trim() !== '')
+  // Filter out truly orphaned posts (completely missing author). Members-only
+  // ministry posts are also excluded here even though the backend may have
+  // sent them to this caller — private content only ever surfaces on the
+  // ministry's own page, never the main network feed.
+  const posts = allPosts?.filter(p => p.author && p.author.trim() !== '' && p.visibility !== 'private')
 
   function loadEvents() {
-    api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
+    api<EventItem[]>('/events').then(events => setEvents(events.filter(e => e.visibility !== 'private'))).catch(() => setEvents([]))
   }
   useEffect(() => { loadEvents() }, [])
 

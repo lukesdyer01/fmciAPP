@@ -37,6 +37,7 @@ export interface Post {
   isAnonymous?: boolean
   testimonyCategory?: 'healing' | 'provision' | 'salvation' | 'deliverance' | 'other'
   taggedUsers?: { id: string; name: string }[]
+  visibility?: 'public' | 'private'
 }
 
 
@@ -171,6 +172,12 @@ export default function PostCard({ post }: { post: Post }) {
                 >
                   <span style={{ fontSize: '11px' }}>🏛</span>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>Official post · by {post.author}</span>
+                </div>
+              )}
+              {post.visibility === 'private' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                  <span style={{ fontSize: '11px' }}>🔒</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-2)' }}>Members Only</span>
                 </div>
               )}
               {post.wallUserId && post.wallUserId !== post.authorId && post.wallUserName && (

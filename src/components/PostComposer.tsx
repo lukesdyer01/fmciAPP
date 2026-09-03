@@ -62,6 +62,8 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
   const [focused, setFocused] = useState(false)
   const [myOrgs, setMyOrgs] = useState<MyOrg[]>([])
   const [postAs, setPostAs] = useState<'self' | string>('self')
+  const [isOrgMember, setIsOrgMember] = useState(false)
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public')
   const [image, setImage] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
   const [videoId, setVideoId] = useState('')
@@ -90,6 +92,12 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
         setMyOrgs(fixedOrgId
           ? orgs.filter(o => o.id === fixedOrgId && isOwnerOrAdmin(o))
           : orgs.filter(isOwnerOrAdmin))
+        // Any role (not just owner/admin) counts as membership for the
+        // purposes of being allowed to post privately to this one ministry.
+        if (fixedOrgId) {
+          const org = orgs.find(o => o.id === fixedOrgId)
+          setIsOrgMember(!!org?.members?.some(m => m.userId === currentUser?.id))
+        }
       })
       .catch(() => {})
   }, [fixedOrgId, wallUserId, hidePostAs, currentUser?.id])
@@ -162,6 +170,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       orgId: fixedOrgId ?? orgIdentity?.id,
       orgName: orgIdentity?.name,
       orgImg: orgIdentity?.img,
+      visibility: fixedOrgId && isOrgMember ? visibility : undefined,
       wallUserId,
       wallUserName,
       image: image || undefined,
@@ -175,6 +184,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       onSuccess: () => {
         setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false)
         setAnonymous(false); setTestimonyCategory(''); setTaggedUsers([]); setShowTagPicker(false); setTagQuery('')
+        setVisibility('public')
       },
     })
   }
@@ -226,6 +236,34 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
               >
                 <span style={{ fontSize: '14px' }}>🏛</span>
                 {org.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Visibility selector — only for actual members of this ministry,
+            so a non-member can never post anything but a public post here. */}
+        {fixedOrgId && isOrgMember && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-3)' }}>Visibility:</span>
+            {([
+              { id: 'public' as const, icon: '🌐', label: 'Public' },
+              { id: 'private' as const, icon: '🔒', label: 'Members Only' },
+            ]).map(v => (
+              <button
+                key={v.id}
+                onClick={() => setVisibility(v.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '5px 12px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 600,
+                  backgroundColor: visibility === v.id ? 'var(--color-navy)' : 'var(--color-surface)',
+                  color: visibility === v.id ? '#fff' : 'var(--color-text-2)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <span style={{ fontSize: '14px' }}>{v.icon}</span>
+                {v.label}
               </button>
             ))}
           </div>
