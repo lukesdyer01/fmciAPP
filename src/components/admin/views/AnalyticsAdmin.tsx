@@ -11,6 +11,15 @@ interface AnalyticsSummary {
   dailyTrend: { date: string; sessions: number; pageViews: number }[]
 }
 
+interface UserActivity {
+  userId: string
+  name: string
+  avatarUrl: string
+  sessions: number
+  pageViews: number
+  lastSeenAt: string
+}
+
 const CARD_STYLE: React.CSSProperties = {
   backgroundColor: '#161b22', borderRadius: '12px',
   border: '1px solid rgba(255,255,255,0.06)', padding: '18px 20px',
@@ -50,21 +59,10 @@ function BarList({ title, rows, color }: { title: string; rows: { name: string; 
   )
 }
 
-export default function AnalyticsAdmin() {
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    api<AnalyticsSummary>('/analytics/summary').then(setSummary).catch(e => setError(e.message ?? 'Failed to load analytics'))
-  }, [])
-
-  if (error) {
-    return <div style={{ padding: '48px', textAlign: 'center', color: '#f87171', fontSize: '14px' }}>{error}</div>
-  }
-  if (!summary) {
-    return <div style={{ padding: '48px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading analytics…</div>
-  }
-
+// Shared by the network-wide overview and a single user's detail panel —
+// both are fed by the same backend shape (GET /analytics/summary, optionally
+// scoped with ?userId=), so this is the one place that renders it.
+function SummaryPanels({ summary }: { summary: AnalyticsSummary }) {
   const deviceRows = [
     { name: 'Desktop', count: summary.byDevice.desktop },
     { name: 'Mobile', count: summary.byDevice.mobile },
@@ -77,7 +75,7 @@ export default function AnalyticsAdmin() {
   const trendMax = Math.max(1, ...recentTrend.map(d => d.sessions))
 
   return (
-    <div>
+    <>
       <div className="grid-stats-4" style={{ marginBottom: '20px' }}>
         <StatCard label="Sessions" value={summary.totals.sessions} color="var(--color-gold)" />
         <StatCard label="Page Views" value={summary.totals.pageViews} color="#60a5fa" />
@@ -109,6 +107,112 @@ export default function AnalyticsAdmin() {
       </div>
 
       <BarList title="Top Pages" rows={summary.topPages.map(p => ({ name: p.view, count: p.count }))} color="#f87171" />
+    </>
+  )
+}
+
+function UserDetail({ user, onBack }: { user: UserActivity; onBack: () => void }) {
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    setSummary(null); setError('')
+    api<AnalyticsSummary>(`/analytics/summary?userId=${encodeURIComponent(user.userId)}`)
+      .then(setSummary)
+      .catch(e => setError(e.message ?? 'Failed to load this member’s analytics'))
+  }, [user.userId])
+
+  return (
+    <div>
+      <button onClick={onBack} style={{
+        display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '16px',
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', fontFamily: 'var(--font-sans)',
+      }}>← Back to overview</button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        {user.avatarUrl
+          ? <img src={user.avatarUrl} alt={user.name} style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover' }} />
+          : <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: 'var(--color-navy-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800 }}>{(user.name || '?').slice(0, 2).toUpperCase()}</div>
+        }
+        <div>
+          <div style={{ fontSize: '17px', fontWeight: 800, color: '#e6edf3' }}>{user.name}</div>
+          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Last active {new Date(user.lastSeenAt).toLocaleString()}</div>
+        </div>
+      </div>
+
+      {error && <div style={{ padding: '32px', textAlign: 'center', color: '#f87171', fontSize: '14px' }}>{error}</div>}
+      {!error && !summary && <div style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading…</div>}
+      {summary && <SummaryPanels summary={summary} />}
+    </div>
+  )
+}
+
+function UserActivityTable({ users, onSelect }: { users: UserActivity[]; onSelect: (u: UserActivity) => void }) {
+  return (
+    <div style={CARD_STYLE}>
+      <div style={{ fontSize: '13px', fontWeight: 800, color: '#e6edf3', marginBottom: '14px' }}>By Member</div>
+      {users.length === 0 ? (
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>No attributed activity yet</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 140px', gap: '8px', padding: '0 8px 8px', fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div>Member</div><div>Sessions</div><div>Page Views</div><div>Last Active</div>
+          </div>
+          {users.map(u => (
+            <div key={u.userId} onClick={() => onSelect(u)} style={{
+              display: 'grid', gridTemplateColumns: '1fr 90px 90px 140px', gap: '8px', alignItems: 'center',
+              padding: '10px 8px', borderRadius: '8px', cursor: 'pointer',
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(255,255,255,0.04)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                {u.avatarUrl
+                  ? <img src={u.avatarUrl} alt="" style={{ width: '26px', height: '26px', borderRadius: '7px', objectFit: 'cover', flexShrink: 0 }} />
+                  : <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, backgroundColor: 'var(--color-navy-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '10px' }}>{(u.name || '?').slice(0, 2).toUpperCase()}</div>
+                }
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#e6edf3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name}</span>
+              </div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>{u.sessions}</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>{u.pageViews}</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{new Date(u.lastSeenAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function AnalyticsAdmin() {
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  const [users, setUsers] = useState<UserActivity[]>([])
+  const [selectedUser, setSelectedUser] = useState<UserActivity | null>(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api<AnalyticsSummary>('/analytics/summary').then(setSummary).catch(e => setError(e.message ?? 'Failed to load analytics'))
+    api<UserActivity[]>('/analytics/users').then(setUsers).catch(() => setUsers([]))
+  }, [])
+
+  if (error) {
+    return <div style={{ padding: '48px', textAlign: 'center', color: '#f87171', fontSize: '14px' }}>{error}</div>
+  }
+  if (!summary) {
+    return <div style={{ padding: '48px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading analytics…</div>
+  }
+
+  if (selectedUser) {
+    return <UserDetail user={selectedUser} onBack={() => setSelectedUser(null)} />
+  }
+
+  return (
+    <div>
+      <SummaryPanels summary={summary} />
+      <div style={{ marginTop: '20px' }}>
+        <UserActivityTable users={users} onSelect={setSelectedUser} />
+      </div>
     </div>
   )
 }

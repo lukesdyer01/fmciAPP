@@ -1496,14 +1496,10 @@ app.post(`${BASE}/analytics/heartbeat`, async (c) => {
   return c.json({ ok: true });
 });
 
-app.get(`${BASE}/analytics/summary`, async (c) => {
-  const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json({ error: "Must be signed in" }, 401);
-  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
-
-  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
-  const pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? []);
-
+// Shared by GET /analytics/summary (network-wide, or scoped to one user via
+// ?userId=) — factored out so per-user analytics reuses the exact same
+// aggregation instead of a parallel implementation drifting out of sync.
+function buildAnalyticsSummary(sessions: any[], pageviews: any[]) {
   const totalMinutes = sessions.reduce((sum: number, s: any) => {
     const mins = (new Date(s.lastSeenAt).getTime() - new Date(s.startedAt).getTime()) / 60000;
     return sum + Math.max(0, mins);
@@ -1550,7 +1546,7 @@ app.get(`${BASE}/analytics/summary`, async (c) => {
 
   const uniqueVisitors = new Set(sessions.map((s: any) => s.userId ?? s.sessionId)).size;
 
-  return c.json({
+  return {
     totals: {
       sessions: sessions.length,
       pageViews: pageviews.length,
@@ -1563,7 +1559,56 @@ app.get(`${BASE}/analytics/summary`, async (c) => {
     byCountry: countBy(sessions, "country").slice(0, 10),
     topPages,
     dailyTrend,
-  });
+  };
+}
+
+app.get(`${BASE}/analytics/summary`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+
+  const userId = c.req.query("userId");
+  let sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []);
+  let pageviews = pruneAnalytics(await kv.get("analytics_pageviews") ?? []);
+  if (userId) {
+    sessions = sessions.filter((s: any) => s.userId === userId);
+    const sessionIds = new Set(sessions.map((s: any) => s.sessionId));
+    pageviews = pageviews.filter((p: any) => sessionIds.has(p.sessionId));
+  }
+
+  return c.json(buildAnalyticsSummary(sessions, pageviews));
+});
+
+// Ranked list of signed-in users by activity — anonymous/signed-out
+// sessions have no userId and are excluded here (they still count toward
+// the network-wide totals above, just can't be attributed to a person).
+app.get(`${BASE}/analytics/users`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+
+  const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? []).filter((s: any) => s.userId);
+  const byUser = new Map<string, { sessions: number; pageViews: number; lastSeenAt: string }>();
+  for (const s of sessions) {
+    const entry = byUser.get(s.userId) ?? { sessions: 0, pageViews: 0, lastSeenAt: s.lastSeenAt };
+    entry.sessions += 1;
+    entry.pageViews += s.pageViews ?? 0;
+    if (s.lastSeenAt > entry.lastSeenAt) entry.lastSeenAt = s.lastSeenAt;
+    byUser.set(s.userId, entry);
+  }
+
+  const users = await listAuthUsers();
+  const rows = [...byUser.entries()].map(([userId, stats]) => {
+    const u = users.find((x: any) => x.id === userId);
+    return {
+      userId,
+      name: u?.user_metadata?.full_name ?? u?.user_metadata?.name ?? "Unknown",
+      avatarUrl: u?.user_metadata?.avatar_url ?? u?.user_metadata?.avatarUrl ?? "",
+      ...stats,
+    };
+  }).sort((a, b) => b.pageViews - a.pageViews);
+
+  return c.json(rows);
 });
 
 Deno.serve(app.fetch);
