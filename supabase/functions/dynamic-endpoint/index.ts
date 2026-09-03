@@ -493,8 +493,22 @@ app.get(`${BASE}/orgs/locations`, async (c) => {
   return c.json(results);
 });
 
-function serializeOrg(o: any, callerId: string) {
-  const members = Array.isArray(o.members) ? o.members : [];
+// org.members only ever stores {userId, role, addedAt} — name/email/avatarUrl
+// are resolved here from the real auth user record, same convention as
+// GET /members and GET /orgs/:id/join-requests. `users` can be pre-fetched
+// once by a caller that's serializing many orgs (GET /orgs/my) to avoid a
+// redundant listAuthUsers() call per org; otherwise it's fetched here.
+async function serializeOrg(o: any, callerId: string, users?: any[]) {
+  const resolvedUsers = users ?? await listAuthUsers();
+  const members = (Array.isArray(o.members) ? o.members : []).map((m: any) => {
+    const u = resolvedUsers.find((x: any) => x.id === m.userId);
+    return {
+      ...m,
+      name: u?.user_metadata?.full_name ?? u?.user_metadata?.name ?? "",
+      email: u?.email ?? "",
+      avatarUrl: u?.user_metadata?.avatar_url ?? u?.user_metadata?.avatarUrl ?? "",
+    };
+  });
   const followerIds = Array.isArray(o.followerIds) ? o.followerIds : [];
   const joinRequests = Array.isArray(o.joinRequests) ? o.joinRequests : [];
   return {
@@ -517,10 +531,13 @@ app.get(`${BASE}/orgs/my`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const users = await listAuthUsers();
   // "My Organizations" surfaces every active org on the platform, not just
   // ones the caller belongs to — membership/ownership is still tracked per
   // org (for Manage Members) and following is tracked separately.
-  const active = orgs.filter((o: any) => o.status === "active").map((o: any) => serializeOrg(o, caller.id));
+  const active = await Promise.all(
+    orgs.filter((o: any) => o.status === "active").map((o: any) => serializeOrg(o, caller.id, users))
+  );
   return c.json(active);
 });
 
@@ -536,14 +553,14 @@ app.post(`${BASE}/orgs/fmci-bootstrap`, async (c) => {
   const followerIds = Array.isArray(fmci.followerIds) ? fmci.followerIds : [];
   const needsMember = !members.some((m: any) => m.userId === caller.id);
   const needsFollow = !followerIds.includes(caller.id);
-  if (!needsMember && !needsFollow) return c.json(serializeOrg(fmci, caller.id));
+  if (!needsMember && !needsFollow) return c.json(await serializeOrg(fmci, caller.id));
   const updated = {
     ...fmci,
     members: needsMember ? [...members, { userId: caller.id, role: "member", addedAt: new Date().toISOString() }] : members,
     followerIds: needsFollow ? [...followerIds, caller.id] : followerIds,
   };
   await kv.set("orgs", orgs.map((o: any) => o.id === "org_fmci" ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.post(`${BASE}/orgs`, async (c) => {
@@ -570,7 +587,7 @@ app.post(`${BASE}/orgs`, async (c) => {
     followerIds: [],
   };
   await kv.set("orgs", [newOrg, ...orgs]);
-  return c.json(serializeOrg(newOrg, caller.id), 201);
+  return c.json(await serializeOrg(newOrg, caller.id), 201);
 });
 
 app.patch(`${BASE}/orgs/:id`, async (c) => {
@@ -598,7 +615,7 @@ app.patch(`${BASE}/orgs/:id`, async (c) => {
   };
   if (locationChanged) { delete updated.lat; delete updated.lng; delete updated.geocodeFailed; }
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.post(`${BASE}/orgs/:id/members`, async (c) => {
@@ -616,7 +633,7 @@ app.post(`${BASE}/orgs/:id/members`, async (c) => {
   if (members.some((m: any) => m.userId === userId)) return c.json({ error: "Already a member" }, 400);
   const updated = { ...org, members: [...members, { userId, role, addedAt: new Date().toISOString() }] };
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.delete(`${BASE}/orgs/:id/members/:userId`, async (c) => {
@@ -632,7 +649,7 @@ app.delete(`${BASE}/orgs/:id/members/:userId`, async (c) => {
   if (target?.role === "owner") return c.json({ error: "Cannot remove the owner" }, 400);
   const updated = { ...org, members: (org.members ?? []).filter((m: any) => m.userId !== userId) };
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.post(`${BASE}/orgs/:id/request-join`, async (c) => {
@@ -644,10 +661,10 @@ app.post(`${BASE}/orgs/:id/request-join`, async (c) => {
   if (!org) return c.json({ error: "Organization not found" }, 404);
   if (orgRole(org, caller.id)) return c.json({ error: "Already a member" }, 400);
   const joinRequests = Array.isArray(org.joinRequests) ? org.joinRequests : [];
-  if (joinRequests.some((r: any) => r.userId === caller.id)) return c.json(serializeOrg(org, caller.id));
+  if (joinRequests.some((r: any) => r.userId === caller.id)) return c.json(await serializeOrg(org, caller.id));
   const updated = { ...org, joinRequests: [...joinRequests, { userId: caller.id, requestedAt: new Date().toISOString() }] };
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.get(`${BASE}/orgs/:id/join-requests`, async (c) => {
@@ -689,7 +706,7 @@ app.post(`${BASE}/orgs/:id/join-requests/:userId/approve`, async (c) => {
     members: members.some((m: any) => m.userId === userId) ? members : [...members, { userId, role: "member", addedAt: new Date().toISOString() }],
   };
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.post(`${BASE}/orgs/:id/join-requests/:userId/deny`, async (c) => {
@@ -703,7 +720,7 @@ app.post(`${BASE}/orgs/:id/join-requests/:userId/deny`, async (c) => {
   if (myRole !== "owner" && myRole !== "admin") return c.json({ error: "Forbidden" }, 403);
   const updated = { ...org, joinRequests: (Array.isArray(org.joinRequests) ? org.joinRequests : []).filter((r: any) => r.userId !== userId) };
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.post(`${BASE}/orgs/:id/follow`, async (c) => {
@@ -716,7 +733,7 @@ app.post(`${BASE}/orgs/:id/follow`, async (c) => {
   const followerIds = Array.isArray(org.followerIds) ? org.followerIds : [];
   const updated = { ...org, followerIds: followerIds.includes(caller.id) ? followerIds : [...followerIds, caller.id] };
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 app.post(`${BASE}/orgs/:id/unfollow`, async (c) => {
@@ -729,7 +746,7 @@ app.post(`${BASE}/orgs/:id/unfollow`, async (c) => {
   const followerIds = (Array.isArray(org.followerIds) ? org.followerIds : []).filter((uid: string) => uid !== caller.id);
   const updated = { ...org, followerIds };
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(serializeOrg(updated, caller.id));
+  return c.json(await serializeOrg(updated, caller.id));
 });
 
 function serializeEvent(e: any, callerId: string) {
