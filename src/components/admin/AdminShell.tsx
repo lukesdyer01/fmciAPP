@@ -11,10 +11,9 @@ import EventsAdmin from './views/EventsAdmin'
 import AnalyticsAdmin from './views/AnalyticsAdmin'
 import ResourcesAdmin from './views/ResourcesAdmin'
 import VerificationAdmin from './views/VerificationAdmin'
-import FeatureFlagsAdmin from './views/FeatureFlagsAdmin'
 import SettingsAdmin from './views/SettingsAdmin'
 
-export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'events' | 'resources' | 'verification' | 'analytics' | 'feature-flags' | 'settings'
+export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'events' | 'resources' | 'verification' | 'analytics' | 'settings'
 
 const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'dashboard',     icon: '◈',  label: 'Dashboard' },
@@ -26,7 +25,6 @@ const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'resources',     icon: '📚', label: 'Resources' },
   { id: 'verification',  icon: '✓',  label: 'Verification' },
   { id: 'analytics',     icon: '📊', label: 'Analytics' },
-  { id: 'feature-flags', icon: '⚑',  label: 'Feature Flags' },
   { id: 'settings',      icon: '⚙', label: 'Settings' },
 ]
 
@@ -48,7 +46,6 @@ export default function AdminShell() {
       case 'resources':     return <ResourcesAdmin />
       case 'verification':  return <VerificationAdmin />
       case 'analytics':     return <AnalyticsAdmin />
-      case 'feature-flags': return <FeatureFlagsAdmin />
       case 'settings':      return <SettingsAdmin />
     }
   })()
