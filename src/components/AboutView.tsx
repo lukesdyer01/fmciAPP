@@ -133,6 +133,38 @@ const FAITH_SECTIONS: { title: string; paragraphs: string[]; note?: string }[] =
   },
 ]
 
+const APOSTOLIC_LEADERSHIP_TEAM = [
+  { name: 'Dr. Hope Taylor', ministry: 'International Leadership Embassy', location: 'LaGrange, GA' },
+  { name: 'Rodney Lord', ministry: 'Freedom Gate Church', location: 'Marietta, OH' },
+  { name: 'Bob Long', ministry: 'Rally Call Ministries', location: 'San Marcos, TX' },
+  { name: 'Dennis & Patti Amsden', ministry: 'Patti Amsden Ministries', location: 'Collinsville, IL' },
+  { name: 'Larry Burden', ministry: 'Kingdom Life Christian Center', location: 'Frisco, TX' },
+  { name: 'Dr. Dutch Sheets', ministry: 'Dutch Sheets Ministries', location: 'Batesburg, SC' },
+  { name: 'Dr. Barbara Wentroble', ministry: 'International Breakthrough Ministries', location: 'Argyle, TX' },
+]
+
+const APOSTOLIC_COUNCIL = [
+  { name: 'Joe Bogue', ministry: 'Grace Church', location: 'Willis, TX' },
+  { name: 'Merrie Cardin', ministry: 'Brazos Covenant Ministries', location: 'Granbury, TX' },
+  { name: 'Nathan Isaacs', ministry: 'The Riders', location: 'Konawa, OK' },
+  { name: 'Tricia Miller', ministry: 'Miller International Ministries', location: 'Tyler, TX' },
+  { name: 'Steve Pauwels', ministry: 'Church of the King', location: 'Londonderry, NH' },
+]
+
+function LeaderGrid({ leaders }: { leaders: { name: string; ministry: string; location: string }[] }) {
+  return (
+    <div className="grid-2-lg">
+      {leaders.map((l, i) => (
+        <div key={i} style={{ padding: '14px 16px', backgroundColor: 'var(--color-surface)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-1)', marginBottom: '2px' }}>{l.name}</div>
+          <div style={{ fontSize: '13px', color: 'var(--color-gold)', fontWeight: 600, marginBottom: '2px' }}>{l.ministry}</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>{l.location}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const REACH = [
   { n: '17+', label: 'Nations with relational connections' },
   { n: '6', label: 'Countries with apostolic linkages' },
@@ -297,6 +329,16 @@ export default function AboutView() {
             </p>
           </div>
         </div>
+      </Section>
+
+      {/* Apostolic Leadership Team */}
+      <Section eyebrow="Leadership" title="Apostolic Leadership Team">
+        <LeaderGrid leaders={APOSTOLIC_LEADERSHIP_TEAM} />
+      </Section>
+
+      {/* Apostolic Council */}
+      <Section eyebrow="Leadership" title="Apostolic Council">
+        <LeaderGrid leaders={APOSTOLIC_COUNCIL} />
       </Section>
 
       <div style={{ textAlign: 'center', padding: '4px 0 16px', fontSize: '12px', color: 'var(--color-text-3)' }}>
