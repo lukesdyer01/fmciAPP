@@ -170,7 +170,7 @@ export default function PostCard({ post }: { post: Post }) {
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)' }}
                 >
                   <span style={{ fontSize: '11px' }}>🏛</span>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>Official Ministry Post</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>{post.orgId === 'org_fmci' ? 'FMCI Official' : 'Official'}</span>
                 </div>
               )}
               {post.visibility === 'private' && (

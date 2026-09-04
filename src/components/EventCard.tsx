@@ -123,7 +123,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
             fontSize: '11px', fontWeight: 800, padding: '4px 10px',
             borderRadius: '20px', backgroundColor: 'var(--color-gold)',
             color: '#fff', display: 'flex', alignItems: 'center', gap: '4px',
-          }}>★ FMCI Official</div>
+          }}>★ {event.orgId === 'org_fmci' ? 'FMCI Official' : 'Official'}</div>
         )}
         {event.visibility === 'private' && (
           <div style={{
