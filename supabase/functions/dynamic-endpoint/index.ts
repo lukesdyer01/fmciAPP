@@ -322,10 +322,23 @@ function withComputedPinned(p: any) {
   return { ...p, pinned: !!p.pinnedUntil && new Date(p.pinnedUntil).getTime() > Date.now() };
 }
 
+// A post with orgId but no orgName was made by a member as themselves on a
+// ministry's page (not on the ministry's behalf, which is what orgName/the
+// "Official" badge signals) — resolved here so the feed can show "Posted on
+// X's page" the same way it already shows "Wrote on X's wall".
+function withPostedOnOrgName(p: any, orgs: any[]) {
+  if (!p.orgId || p.orgName) return p;
+  const org = orgs.find((o: any) => o.id === p.orgId);
+  return org ? { ...p, postedOnOrgName: org.name } : p;
+}
+
 app.get(`${BASE}/posts`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json(posts.filter((p: any) => p.visibility !== "private").map(withComputedPinned));
+  if (!caller) {
+    const orgs = await kv.get("orgs") ?? SEED_ORGS;
+    return c.json(posts.filter((p: any) => p.visibility !== "private").map((p: any) => withComputedPinned(withPostedOnOrgName(p, orgs))));
+  }
   // isFollowing is computed from real org-follow relationships, not trusted
   // from however the post was created — that's what powers the feed's
   // "Following" tab for posts made on behalf of an org.
@@ -338,7 +351,7 @@ app.get(`${BASE}/posts`, async (c) => {
   // not even a filtered-out placeholder.
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
-  return c.json(visible.map((p: any) => withComputedPinned(p.orgId ? { ...p, isFollowing: followedOrgIds.has(p.orgId) } : p)));
+  return c.json(visible.map((p: any) => withComputedPinned(withPostedOnOrgName(p.orgId ? { ...p, isFollowing: followedOrgIds.has(p.orgId) } : p, orgs))));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -397,7 +410,8 @@ app.post(`${BASE}/posts`, async (c) => {
     ...body, authorId: caller.id,
   };
   await kv.set("posts", [newPost, ...posts]);
-  return c.json(withComputedPinned(newPost), 201);
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  return c.json(withComputedPinned(withPostedOnOrgName(newPost, orgs)), 201);
 });
 
 function canModifyPost(post: any, caller: any): boolean {

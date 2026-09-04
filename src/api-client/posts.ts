@@ -28,6 +28,7 @@ export interface FeedPost {
   orgId?: string
   orgName?: string
   orgImg?: string
+  postedOnOrgName?: string
   wallUserId?: string
   wallUserName?: string
   editedAt?: string
@@ -81,6 +82,7 @@ function adaptPost(raw: any, index: number): FeedPost {
     orgId: raw.orgId,
     orgName: raw.orgName,
     orgImg: raw.orgImg,
+    postedOnOrgName: raw.postedOnOrgName,
     wallUserId: raw.wallUserId,
     wallUserName: raw.wallUserName,
     editedAt: raw.editedAt,

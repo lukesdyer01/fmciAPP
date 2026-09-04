@@ -30,6 +30,7 @@ export interface Post {
   orgId?: string
   orgName?: string
   orgImg?: string
+  postedOnOrgName?: string
   wallUserId?: string
   wallUserName?: string
   editedAt?: string
@@ -67,6 +68,7 @@ export default function PostCard({ post }: { post: Post }) {
   const [editText, setEditText] = useState(post.content ?? '')
   const openProfile = useOpenProfile()
   const viewHashtag = useUIStore(s => s.viewHashtag)
+  const viewOrg = useUIStore(s => s.viewOrg)
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
   const editPost = useEditPost()
@@ -171,6 +173,15 @@ export default function PostCard({ post }: { post: Post }) {
                 >
                   <span style={{ fontSize: '11px' }}>🏛</span>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-gold)' }}>{post.orgId === 'org_fmci' ? 'FMCI Official' : 'Official'}</span>
+                </div>
+              )}
+              {post.postedOnOrgName && (
+                <div
+                  onClick={() => post.orgId && viewOrg(post.orgId)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', cursor: post.orgId ? 'pointer' : 'default' }}
+                >
+                  <span style={{ fontSize: '11px' }}>🏛</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-2)' }}>Posted on {post.postedOnOrgName}'s page</span>
                 </div>
               )}
               {post.visibility === 'private' && (
