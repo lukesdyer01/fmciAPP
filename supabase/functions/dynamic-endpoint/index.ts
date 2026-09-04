@@ -1055,18 +1055,43 @@ function sanitizeBlogBlocks(blocks: any): any[] {
       : { type: b.type, text: String(b.text ?? "") });
 }
 
-app.get(`${BASE}/blog-posts`, async (c) => {
-  const posts = await kv.get("blog_posts") ?? [];
-  const users = await listAuthUsers();
-  const enriched = posts.map((p: any) => {
-    const u = users.find((x: any) => x.id === p.authorId);
+const BLOG_REACTION_TYPES = ["amen", "pray", "heart"];
+
+// Reactions are per-user toggleable (arrays of userIds, like event RSVPs),
+// not the increment-only counters posts use — a blog reaction can be
+// switched or removed, and myReaction reflects the caller's own state.
+// Comments are resolved to real name/avatar at read time, same convention
+// as the post author itself, never trusted from the client.
+function serializeBlogPost(p: any, callerId: string, users: any[]) {
+  const u = users.find((x: any) => x.id === p.authorId);
+  const reactions = p.reactions && typeof p.reactions === "object" ? p.reactions : {};
+  const amen = Array.isArray(reactions.amen) ? reactions.amen : [];
+  const pray = Array.isArray(reactions.pray) ? reactions.pray : [];
+  const heart = Array.isArray(reactions.heart) ? reactions.heart : [];
+  const comments = (Array.isArray(p.comments) ? p.comments : []).map((cm: any) => {
+    const cu = users.find((x: any) => x.id === cm.authorId);
     return {
-      ...p,
-      authorName: u?.user_metadata?.full_name ?? u?.user_metadata?.name ?? "Unknown",
-      authorAvatarUrl: u?.user_metadata?.avatar_url ?? u?.user_metadata?.avatarUrl ?? "",
+      ...cm,
+      authorName: cu?.user_metadata?.full_name ?? cu?.user_metadata?.name ?? "Unknown",
+      authorAvatarUrl: cu?.user_metadata?.avatar_url ?? cu?.user_metadata?.avatarUrl ?? "",
     };
   });
-  return c.json(enriched);
+  return {
+    ...p,
+    authorName: u?.user_metadata?.full_name ?? u?.user_metadata?.name ?? "Unknown",
+    authorAvatarUrl: u?.user_metadata?.avatar_url ?? u?.user_metadata?.avatarUrl ?? "",
+    reactionCounts: { amen: amen.length, pray: pray.length, heart: heart.length },
+    myReaction: amen.includes(callerId) ? "amen" : pray.includes(callerId) ? "pray" : heart.includes(callerId) ? "heart" : null,
+    comments,
+    commentCount: comments.length,
+  };
+}
+
+app.get(`${BASE}/blog-posts`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  const posts = await kv.get("blog_posts") ?? [];
+  const users = await listAuthUsers();
+  return c.json(posts.map((p: any) => serializeBlogPost(p, caller?.id ?? "", users)));
 });
 
 app.post(`${BASE}/blog-posts`, async (c) => {
@@ -1084,9 +1109,11 @@ app.post(`${BASE}/blog-posts`, async (c) => {
     tags: Array.isArray(body.tags) ? body.tags.filter((t: any) => BLOG_TAGS.includes(t)) : [],
     authorId: caller.id,
     createdAt: new Date().toISOString(),
+    reactions: { amen: [], pray: [], heart: [] },
+    comments: [],
   };
   await kv.set("blog_posts", [newPost, ...posts]);
-  return c.json(newPost, 201);
+  return c.json(serializeBlogPost(newPost, caller.id, await listAuthUsers()), 201);
 });
 
 app.patch(`${BASE}/blog-posts/:id`, async (c) => {
@@ -1109,7 +1136,7 @@ app.patch(`${BASE}/blog-posts/:id`, async (c) => {
   if (body.tags !== undefined) patch.tags = Array.isArray(body.tags) ? body.tags.filter((t: any) => BLOG_TAGS.includes(t)) : [];
   const updated = { ...post, ...patch, updatedAt: new Date().toISOString() };
   await kv.set("blog_posts", posts.map((p: any) => p.id === id ? updated : p));
-  return c.json(updated);
+  return c.json(serializeBlogPost(updated, caller.id, await listAuthUsers()));
 });
 
 app.delete(`${BASE}/blog-posts/:id`, async (c) => {
@@ -1124,6 +1151,64 @@ app.delete(`${BASE}/blog-posts/:id`, async (c) => {
   if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
   await kv.set("blog_posts", posts.filter((p: any) => p.id !== id));
   return c.json({ ok: true });
+});
+
+// Toggleable, one-active-reaction-per-user (clicking your current reaction
+// removes it; clicking a different one switches) — unlike POST /posts/:id/react,
+// which is an unauthenticated increment-only counter with no per-user state.
+app.post(`${BASE}/blog-posts/:id/react`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const body = await c.req.json();
+  if (!BLOG_REACTION_TYPES.includes(body.type)) return c.json({ error: "Invalid reaction type" }, 400);
+  const posts = await kv.get("blog_posts") ?? [];
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  const reactions = post.reactions && typeof post.reactions === "object" ? post.reactions : {};
+  const wasActive = (Array.isArray(reactions[body.type]) ? reactions[body.type] : []).includes(caller.id);
+  const next: Record<string, string[]> = {};
+  for (const t of BLOG_REACTION_TYPES) {
+    next[t] = (Array.isArray(reactions[t]) ? reactions[t] : []).filter((u: string) => u !== caller.id);
+  }
+  if (!wasActive) next[body.type].push(caller.id);
+  const updated = { ...post, reactions: next };
+  await kv.set("blog_posts", posts.map((p: any) => p.id === id ? updated : p));
+  return c.json(serializeBlogPost(updated, caller.id, await listAuthUsers()));
+});
+
+app.post(`${BASE}/blog-posts/:id/comments`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const body = await c.req.json();
+  const text = String(body.text ?? "").trim();
+  if (!text) return c.json({ error: "Comment text is required" }, 400);
+  const posts = await kv.get("blog_posts") ?? [];
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+  const newComment = { id: `bc${Date.now()}`, authorId: caller.id, text, createdAt: new Date().toISOString() };
+  const updated = { ...post, comments: [...comments, newComment] };
+  await kv.set("blog_posts", posts.map((p: any) => p.id === id ? updated : p));
+  return c.json(serializeBlogPost(updated, caller.id, await listAuthUsers()), 201);
+});
+
+app.delete(`${BASE}/blog-posts/:id/comments/:commentId`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id, commentId } = c.req.param();
+  const posts = await kv.get("blog_posts") ?? [];
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+  const comment = comments.find((cm: any) => cm.id === commentId);
+  if (!comment) return c.json({ error: "Comment not found" }, 404);
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (comment.authorId !== caller.id && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const updated = { ...post, comments: comments.filter((cm: any) => cm.id !== commentId) };
+  await kv.set("blog_posts", posts.map((p: any) => p.id === id ? updated : p));
+  return c.json(serializeBlogPost(updated, caller.id, await listAuthUsers()));
 });
 
 function dmConversationId(userA: string, userB: string) {

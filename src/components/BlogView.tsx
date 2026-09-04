@@ -8,6 +8,15 @@ import BlogBlockRenderer from './BlogBlockRenderer'
 import CreateBlogPostModal, { BLOG_TAGS } from './CreateBlogPostModal'
 import type { BlogBlock } from './BlockEditor'
 
+export interface BlogComment {
+  id: string
+  authorId: string
+  authorName: string
+  authorAvatarUrl: string
+  text: string
+  createdAt: string
+}
+
 export interface BlogPost {
   id: string
   title: string
@@ -20,6 +29,10 @@ export interface BlogPost {
   authorAvatarUrl: string
   createdAt: string
   updatedAt?: string
+  reactionCounts: { amen: number; pray: number; heart: number }
+  myReaction: 'amen' | 'pray' | 'heart' | null
+  comments: BlogComment[]
+  commentCount: number
 }
 
 function formatDate(d: string) {
@@ -77,20 +90,38 @@ export function BlogPostFeedCard({ post }: { post: BlogPost }) {
         )}
         <div style={{ fontSize: '12px', color: 'var(--color-text-3)' }}>
           By {post.authorName} · {formatDate(post.date)}
+          {(post.reactionCounts.amen + post.reactionCounts.pray + post.reactionCounts.heart) > 0 && (
+            <> · 🙏 {post.reactionCounts.amen + post.reactionCounts.pray + post.reactionCounts.heart}</>
+          )}
+          {post.commentCount > 0 && <> · 💬 {post.commentCount}</>}
         </div>
       </div>
     </div>
   )
 }
 
-function BlogPostDetailView({ post, onBack, onChanged }: { post: BlogPost; onBack: () => void; onChanged: () => void }) {
+const BLOG_REACTIONS: { type: 'amen' | 'pray' | 'heart'; icon: string; label: string }[] = [
+  { type: 'amen', icon: '✝️', label: 'Amen' },
+  { type: 'pray', icon: '🙏', label: 'Praying' },
+  { type: 'heart', icon: '❤️', label: 'Bless' },
+]
+
+function BlogPostDetailView({ post: initialPost, onBack, onChanged }: { post: BlogPost; onBack: () => void; onChanged: () => void }) {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
   const openProfile = useOpenProfile()
+  const [post, setPost] = useState(initialPost)
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [reacting, setReacting] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commenting, setCommenting] = useState(false)
 
-  const canModify = currentUser?.id === post.authorId || role === 'admin' || role === 'superadmin'
+  useEffect(() => { setPost(initialPost) }, [initialPost])
+
+  const isAdmin = role === 'admin' || role === 'superadmin'
+  const canModify = currentUser?.id === post.authorId || isAdmin
+  const totalReactions = post.reactionCounts.amen + post.reactionCounts.pray + post.reactionCounts.heart
 
   async function handleDelete() {
     if (!window.confirm('Delete this post? This cannot be undone.')) return
@@ -102,6 +133,38 @@ function BlogPostDetailView({ post, onBack, onChanged }: { post: BlogPost; onBac
     } finally {
       setDeleting(false)
     }
+  }
+
+  async function react(type: 'amen' | 'pray' | 'heart') {
+    if (reacting) return
+    setReacting(true)
+    try {
+      const updated = await api<BlogPost>(`/blog-posts/${post.id}/react`, { method: 'POST', body: JSON.stringify({ type }) })
+      setPost(updated)
+      onChanged()
+    } finally {
+      setReacting(false)
+    }
+  }
+
+  async function submitComment() {
+    if (!commentText.trim() || commenting) return
+    setCommenting(true)
+    try {
+      const updated = await api<BlogPost>(`/blog-posts/${post.id}/comments`, { method: 'POST', body: JSON.stringify({ text: commentText.trim() }) })
+      setPost(updated)
+      setCommentText('')
+      onChanged()
+    } finally {
+      setCommenting(false)
+    }
+  }
+
+  async function deleteComment(commentId: string) {
+    if (!window.confirm('Delete this comment?')) return
+    const updated = await api<BlogPost>(`/blog-posts/${post.id}/comments/${commentId}`, { method: 'DELETE' })
+    setPost(updated)
+    onChanged()
   }
 
   return (
@@ -144,6 +207,88 @@ function BlogPostDetailView({ post, onBack, onChanged }: { post: BlogPost; onBac
       </div>
 
       <BlogBlockRenderer blocks={post.blocks} />
+
+      {/* Reactions */}
+      <div style={{ marginTop: '28px', paddingTop: '18px', borderTop: '1px solid var(--color-border)' }}>
+        {totalReactions > 0 && (
+          <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '10px' }}>
+            🙏❤️✝️ {totalReactions.toLocaleString()} {totalReactions === 1 ? 'reaction' : 'reactions'}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {BLOG_REACTIONS.map(r => {
+            const active = post.myReaction === r.type
+            return (
+              <button key={r.type} onClick={() => react(r.type)} disabled={reacting} style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 16px', borderRadius: '20px', cursor: reacting ? 'default' : 'pointer',
+                border: `1px solid ${active ? 'var(--color-gold)' : 'var(--color-border)'}`,
+                backgroundColor: active ? 'var(--color-gold-bg)' : 'var(--color-surface)',
+                color: active ? 'var(--color-gold)' : 'var(--color-text-2)',
+                fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+              }}>
+                <span>{r.icon}</span> {r.label}{post.reactionCounts[r.type] > 0 ? ` · ${post.reactionCounts[r.type]}` : ''}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Comments */}
+      <div style={{ marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--color-border)' }}>
+        <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-1)', marginBottom: '14px' }}>
+          {post.commentCount} {post.commentCount === 1 ? 'Comment' : 'Comments'}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          {currentUser?.avatarUrl
+            ? <img src={currentUser.avatarUrl} alt="" style={{ width: '34px', height: '34px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+            : <div style={{ width: '34px', height: '34px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '13px' }}>{(currentUser?.displayName || '?').slice(0, 2).toUpperCase()}</div>
+          }
+          <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
+            <input
+              value={commentText}
+              onChange={e => setCommentText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submitComment() }}
+              placeholder="Write a comment…"
+              style={{
+                flex: 1, padding: '9px 14px', borderRadius: '20px', border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)', color: 'var(--color-text-1)', fontSize: '13px',
+                fontFamily: 'var(--font-sans)', outline: 'none',
+              }}
+            />
+            <button onClick={submitComment} disabled={!commentText.trim() || commenting} style={{
+              padding: '9px 18px', borderRadius: '20px', border: 'none',
+              backgroundColor: commentText.trim() ? 'var(--color-navy)' : 'var(--color-border)',
+              color: commentText.trim() ? '#fff' : 'var(--color-text-3)',
+              fontSize: '13px', fontWeight: 700, cursor: commentText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-sans)',
+            }}>{commenting ? 'Posting…' : 'Post'}</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {post.comments.map(c => {
+            const canDeleteComment = c.authorId === currentUser?.id || isAdmin
+            return (
+              <div key={c.id} style={{ display: 'flex', gap: '10px' }}>
+                {c.authorAvatarUrl
+                  ? <img onClick={() => openProfile(c.authorId)} src={c.authorAvatarUrl} alt="" style={{ width: '34px', height: '34px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0, cursor: 'pointer' }} />
+                  : <div onClick={() => openProfile(c.authorId)} style={{ width: '34px', height: '34px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '13px', cursor: 'pointer' }}>{(c.authorName || '?').slice(0, 2).toUpperCase()}</div>
+                }
+                <div style={{ flex: 1, backgroundColor: 'var(--color-surface)', borderRadius: '12px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span onClick={() => openProfile(c.authorId)} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-1)', cursor: 'pointer' }}>{c.authorName}</span>
+                    {canDeleteComment && (
+                      <button onClick={() => deleteComment(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '12px', padding: 0 }}>✕</button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-1)', lineHeight: 1.5, marginTop: '2px', whiteSpace: 'pre-wrap' }}>{c.text}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {editing && (
         <CreateBlogPostModal post={post} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }} />
