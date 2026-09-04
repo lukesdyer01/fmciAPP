@@ -95,13 +95,15 @@ function MainFeed() {
   const clearHashtag = useUIStore(s => s.clearHashtag)
 
   // Filter out truly orphaned posts (completely missing author). Members-only
-  // ministry posts are also excluded here even though the backend may have
-  // sent them to this caller — private content only ever surfaces on the
-  // ministry's own page, never the main network feed.
-  const posts = allPosts?.filter(p => p.author && p.author.trim() !== '' && p.visibility !== 'private')
+  // ministry posts/events are NOT filtered out here — the backend already
+  // only ever sends a caller private items from ministries they actually
+  // belong to (GET /posts, GET /events), so if one shows up here it's
+  // legitimately visible to this member. PostCard/EventCard render a
+  // "🔒 Members Only" badge so it's still clear which items are private.
+  const posts = allPosts?.filter(p => p.author && p.author.trim() !== '')
 
   function loadEvents() {
-    api<EventItem[]>('/events').then(events => setEvents(events.filter(e => e.visibility !== 'private'))).catch(() => setEvents([]))
+    api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
   }
   useEffect(() => { loadEvents() }, [])
 
