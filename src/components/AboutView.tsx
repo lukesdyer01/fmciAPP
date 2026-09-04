@@ -280,18 +280,21 @@ export default function AboutView() {
       </Section>
 
       {/* Leadership */}
-      <Section eyebrow="Leadership" title="Founding Apostle">
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+      <Section eyebrow="Leadership" title="Founder, President, and Apostolic Team Leader">
+        <div style={{ display: 'flex', gap: '18px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <img
             src="https://www.jimhodgesministries.com/uploads/1/4/6/2/146298067/jimhodgesa_orig.jpg"
             alt="Jim Hodges"
-            style={{ width: '52px', height: '52px', borderRadius: '12px', flexShrink: 0, objectFit: 'cover' }}
+            style={{ width: '84px', height: '84px', borderRadius: '14px', flexShrink: 0, objectFit: 'cover' }}
           />
-          <div>
-            <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-1)' }}>Jim Hodges</div>
-            <div style={{ fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
-              Founding Apostle of FMCI, and author of <em>Battle for Earth: Globalism vs. Nationhood</em>.
-            </div>
+          <div style={{ flex: 1, minWidth: '220px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-1)', marginBottom: '8px' }}>Jim Hodges</div>
+            <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.7 }}>
+              A graduate of Wheaton College in Wheaton, Illinois and Central Baptist Theological Seminary in Kansas City, Kansas, Jim has founded and led churches in Kansas, West Virginia, and Texas. For eleven years, he was professor of New Testament Studies at Christ For the Nations Bible Institute in Dallas, Texas. For several years, he also served as Missions Director at Christ For the Nations, which was founded by Gordon and Freda Lindsay.
+            </p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.7 }}>
+              Having ministered in over 40 nations, Jim serves the Body of Christ as a teaching apostle with a passion to see a mature Church and a victorious Kingdom of God in the earth. He resides in the Dallas area, and is the author of <em>Battle for Earth: Globalism vs. Nationhood</em>.
+            </p>
           </div>
         </div>
       </Section>
