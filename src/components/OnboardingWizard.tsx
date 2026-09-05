@@ -5,6 +5,13 @@ import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 
 const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
 const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
+// Same stored values EditProfileModal.tsx uses for this field — the labels
+// below are just phrased to match how the user described this step.
+const COMMUNICATION_PREFS = [
+  { value: 'Email', label: 'Email' },
+  { value: 'Text Message', label: 'Text Message (SMS)' },
+  { value: 'Phone Call', label: 'Phone Call' },
+]
 const CURRENT_YEAR = new Date().getFullYear()
 const MEMBER_SINCE_YEARS = Array.from({ length: CURRENT_YEAR - 1950 + 1 }, (_, i) => String(CURRENT_YEAR - i))
 const TOTAL_STEPS = 3
@@ -15,6 +22,8 @@ export default function OnboardingWizard({ session }: { session: Session }) {
   const [title, setTitle] = useState('')
   const [church, setChurch] = useState('')
   const [location, setLocation] = useState('')
+  const [phone, setPhone] = useState('')
+  const [communicationPrefs, setCommunicationPrefs] = useState<string[]>([])
   const [ministryRoles, setMinistryRoles] = useState<string[]>([])
   const [additionalRoles, setAdditionalRoles] = useState<string[]>([])
   const [memberSince, setMemberSince] = useState('')
@@ -55,7 +64,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
         data: {
           ...session.user.user_metadata,
           avatar_url: avatarUrl || session.user.user_metadata?.avatar_url,
-          title, church, location,
+          title, church, location, phone, communicationPrefs,
           ministryRoles, additionalRoles, memberSince,
           onboarding_complete: true,
         },
@@ -153,6 +162,26 @@ export default function OnboardingWizard({ session }: { session: Session }) {
               <div>
                 <label style={labelStyle}>Location</label>
                 <input value={location} onChange={e => setLocation(e.target.value)} placeholder="City, State" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Phone Number <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Preferred Contact Method <span style={{ fontWeight: 400, textTransform: 'none' }}>(select all that apply)</span></label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {COMMUNICATION_PREFS.map(pref => (
+                    <label key={pref.value} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
+                      <input
+                        type="checkbox"
+                        checked={communicationPrefs.includes(pref.value)}
+                        onChange={() => toggleIn(communicationPrefs, setCommunicationPrefs, pref.value)}
+                        style={{ width: '16px', height: '16px', accentColor: 'var(--color-gold)', cursor: 'pointer' }}
+                      />
+                      {pref.label}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           )}
