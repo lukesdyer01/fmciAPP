@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { SupabaseRoleProvider } from '../contexts/SupabaseRoleContext'
 import { api } from '../api-client/server'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
+import OnboardingWizard from './OnboardingWizard'
 
 type AuthMode = 'login' | 'signup' | 'forgot'
 
@@ -36,7 +37,12 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         }
         const { data, error } = await supabase.auth.signUp({
           email, password,
-          options: { data: { full_name: name } },
+          // onboarding_complete: false marks this as a brand-new account so
+          // AuthGate shows the OnboardingWizard once, right after signup —
+          // existing accounts never have this key at all, which is what
+          // keeps the wizard from ever appearing for them (see AuthGate's
+          // strict === false gate below).
+          options: { data: { full_name: name, onboarding_complete: false } },
         })
         if (error) throw error
         if (data.session) {
@@ -254,6 +260,12 @@ export default function AuthGate({ children }: AuthGateProps) {
 
   if (!session) {
     return <AuthForm onSession={setSession} />
+  }
+
+  // Strict === false, not just falsy — existing accounts never have this key
+  // at all (undefined), so they never see this, only brand-new signups.
+  if (session.user.user_metadata?.onboarding_complete === false) {
+    return <OnboardingWizard session={session} />
   }
 
   return (
