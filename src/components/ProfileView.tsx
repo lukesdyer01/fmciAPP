@@ -53,7 +53,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
       .finally(() => setLoading(false))
   }, [userId])
 
-  const { data: allPosts, isLoading: postsLoading } = useFeedPosts('network')
+  const { data: allPosts, isLoading: postsLoading } = useFeedPosts()
   const wallPosts = (allPosts ?? []).filter(p =>
     p.author && p.author.trim() !== '' &&
     ((p.wallUserId ?? p.authorId) === userId || (p.taggedUsers ?? []).some(t => t.id === userId))

@@ -98,7 +98,6 @@ const inputStyle: React.CSSProperties = {
 
 interface MyOrgSummary {
   id: string
-  following: boolean
   members: { userId: string }[]
 }
 
@@ -106,7 +105,7 @@ function ProfileChecklist() {
   const { currentUser } = useAuth()
   const setActiveView = useUIStore(s => s.setActiveView)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
-  const { data: posts } = useFeedPosts('network')
+  const { data: posts } = useFeedPosts()
   const [orgs, setOrgs] = useState<MyOrgSummary[] | null>(null)
 
   useEffect(() => {
@@ -118,14 +117,14 @@ function ProfileChecklist() {
   if (!currentUser || orgs === null) return null
 
   const hasPosted = (posts ?? []).some(p => p.authorId === currentUser.id)
-  const hasMinistry = orgs.some(o => o.following || o.members.some(m => m.userId === currentUser.id))
+  const hasMinistry = orgs.some(o => o.members.some(m => m.userId === currentUser.id))
 
   const items = [
     { done: !!currentUser.avatarUrl, label: 'Add a profile photo', action: () => setEditProfileOpen(true) },
     { done: !!currentUser.bio?.trim(), label: 'Write a short bio', action: () => setEditProfileOpen(true) },
     { done: !!(currentUser.title && currentUser.church && currentUser.location), label: 'Add your title, church & location', action: () => setEditProfileOpen(true) },
     { done: hasPosted, label: 'Make your first post', action: () => setActiveView('feed') },
-    { done: hasMinistry, label: 'Follow or join a ministry', action: () => setActiveView('orgs') },
+    { done: hasMinistry, label: 'Join a ministry', action: () => setActiveView('orgs') },
   ]
 
   const doneCount = items.filter(i => i.done).length

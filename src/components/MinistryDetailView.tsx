@@ -28,8 +28,6 @@ export interface MinistrySummary {
   status: string
   img: string
   members: OrgMember[]
-  following: boolean
-  followerCount: number
   hasPendingRequest: boolean
   pendingRequestCount: number
 }
@@ -74,12 +72,10 @@ function MinistryLogo({ ministry, size }: { ministry: Pick<MinistrySummary, 'nam
     )
 }
 
-export default function MinistryDetailView({ ministry, currentUserId, onBack, onFollowToggle, followBusy, onRequestJoin, requestJoinBusy }: {
+export default function MinistryDetailView({ ministry, currentUserId, onBack, onRequestJoin, requestJoinBusy }: {
   ministry: MinistrySummary
   currentUserId: string
   onBack: () => void
-  onFollowToggle: () => void
-  followBusy: boolean
   onRequestJoin: () => void
   requestJoinBusy: boolean
 }) {
@@ -94,7 +90,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
   const myRole = ministry.members.find(m => m.userId === currentUserId)?.role
   const canPostEvents = myRole === 'owner' || myRole === 'admin'
 
-  const { data: allPosts, isLoading: postsLoading } = useFeedPosts('network')
+  const { data: allPosts, isLoading: postsLoading } = useFeedPosts()
   const ministryPosts = (allPosts ?? []).filter(p => p.orgId === ministry.id && p.author && p.author.trim() !== '')
   // Prayer requests and testimonies get their own tabs, so the general feed
   // tab excludes them to avoid showing the same posts twice within one page.
@@ -141,24 +137,12 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
                 {ministry.verified && <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 10px', borderRadius: '20px', backgroundColor: '#ECFDF5', color: '#047857' }}>✓ Verified</span>}
               </div>
               <div style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>
-                <strong style={{ color: 'var(--color-text-1)' }}>{ministry.members.length}</strong> members ·{' '}
-                <strong style={{ color: 'var(--color-text-1)' }}>{ministry.followerCount}</strong> followers
+                <strong style={{ color: 'var(--color-text-1)' }}>{ministry.members.length}</strong> members
                 {ministry.location ? ` · ${ministry.location}` : ''}
               </div>
             </div>
             {!isMember && (
               <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                <button
-                  onClick={onFollowToggle}
-                  disabled={followBusy}
-                  style={{
-                    padding: '9px 20px', borderRadius: '8px', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
-                    border: ministry.following ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: ministry.following ? 'var(--color-surface)' : 'var(--color-navy)',
-                    color: ministry.following ? 'var(--color-text-1)' : '#fff',
-                    opacity: followBusy ? 0.6 : 1,
-                  }}
-                >{followBusy ? '…' : ministry.following ? '✓ Following' : '+ Follow'}</button>
                 <button
                   onClick={onRequestJoin}
                   disabled={requestJoinBusy || ministry.hasPendingRequest}
@@ -345,7 +329,6 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
               { label: 'Location', value: ministry.location || '—' },
               { label: 'Website', value: ministry.website || '—' },
               { label: 'Members', value: `${ministry.members.length}` },
-              { label: 'Followers', value: `${ministry.followerCount}` },
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--color-border-light)' }}>
                 <div style={{ width: '90px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)' }}>{label}</div>

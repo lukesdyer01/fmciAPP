@@ -24,7 +24,6 @@ export interface FeedPost {
   shares: number
   scripture?: string
   pinned?: boolean
-  isFollowing?: boolean
   orgId?: string
   orgName?: string
   orgImg?: string
@@ -45,7 +44,7 @@ function adaptPost(raw: any, index: number): FeedPost {
       id: String(index), author: 'Unknown', title: '', church: '', location: '', avatar: '',
       badges: [], time: '', recencyHours: 0, type: 'post', content: '',
       image: null, imageAlt: null, reactions: { amen: 0, pray: 0, heart: 0 },
-      comments: 0, shares: 0, pinned: false, isFollowing: false,
+      comments: 0, shares: 0, pinned: false,
     }
   }
   const createdAt = raw.createdAt ? new Date(raw.createdAt).getTime() : Date.now()
@@ -78,7 +77,6 @@ function adaptPost(raw: any, index: number): FeedPost {
     shares: Number(raw.shares ?? 0) || 0,
     scripture: raw.scripture,
     pinned: raw.pinned ?? false,
-    isFollowing: raw.isFollowing ?? false,
     orgId: raw.orgId,
     orgName: raw.orgName,
     orgImg: raw.orgImg,
@@ -94,11 +92,10 @@ function adaptPost(raw: any, index: number): FeedPost {
   }
 }
 
-async function fetchFeedPosts(filter: 'network' | 'following'): Promise<FeedPost[]> {
+async function fetchFeedPosts(): Promise<FeedPost[]> {
   const raw = await api<any[]>('/posts')
   const posts = (Array.isArray(raw) ? raw : []).map(adaptPost)
-  const pool = filter === 'following' ? posts.filter(p => p.isFollowing) : posts
-  return [...pool].sort((a, b) => {
+  return [...posts].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1
     if (!a.pinned && b.pinned) return 1
     return scorePost({
@@ -113,13 +110,13 @@ async function fetchFeedPosts(filter: 'network' | 'following'): Promise<FeedPost
 
 export const feedKeys = {
   all: ['feed'] as const,
-  posts: (filter: 'network' | 'following') => [...feedKeys.all, 'posts', filter] as const,
+  posts: () => [...feedKeys.all, 'posts'] as const,
 }
 
-export function useFeedPosts(filter: 'network' | 'following' = 'network') {
+export function useFeedPosts() {
   return useQuery({
-    queryKey: feedKeys.posts(filter),
-    queryFn: () => fetchFeedPosts(filter),
+    queryKey: feedKeys.posts(),
+    queryFn: fetchFeedPosts,
     staleTime: 1000 * 30,
   })
 }
@@ -127,7 +124,7 @@ export function useFeedPosts(filter: 'network' | 'following' = 'network') {
 export function useCreatePost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content' | 'isFollowing'> & { orgId?: string; orgName?: string; orgImg?: string; wallUserId?: string; wallUserName?: string; image?: string; imageAlt?: string; videoId?: string; isAnonymous?: boolean; testimonyCategory?: string; prayerStatus?: 'unanswered' | 'answered'; taggedUsers?: { id: string; name: string }[]; visibility?: 'public' | 'private'; pinned?: boolean }) =>
+    mutationFn: (post: Pick<FeedPost, 'author' | 'avatar' | 'title' | 'church' | 'location' | 'badges' | 'type' | 'content'> & { orgId?: string; orgName?: string; orgImg?: string; wallUserId?: string; wallUserName?: string; image?: string; imageAlt?: string; videoId?: string; isAnonymous?: boolean; testimonyCategory?: string; prayerStatus?: 'unanswered' | 'answered'; taggedUsers?: { id: string; name: string }[]; visibility?: 'public' | 'private'; pinned?: boolean }) =>
       api<FeedPost>('/posts', { method: 'POST', body: JSON.stringify(post) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
@@ -163,18 +160,12 @@ export function useDeletePost() {
     mutationFn: (postId: string) => api(`/posts/${postId}`, { method: 'DELETE' }),
     onMutate: async (postId) => {
       await qc.cancelQueries({ queryKey: feedKeys.all })
-      const prev = {
-        network: qc.getQueryData<FeedPost[]>(feedKeys.posts('network')),
-        following: qc.getQueryData<FeedPost[]>(feedKeys.posts('following')),
-      }
-      for (const filter of ['network', 'following'] as const) {
-        qc.setQueryData<FeedPost[]>(feedKeys.posts(filter), old => old?.filter(p => p.id !== postId) ?? [])
-      }
+      const prev = qc.getQueryData<FeedPost[]>(feedKeys.posts())
+      qc.setQueryData<FeedPost[]>(feedKeys.posts(), old => old?.filter(p => p.id !== postId) ?? [])
       return { prev }
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev.network) qc.setQueryData(feedKeys.posts('network'), ctx.prev.network)
-      if (ctx?.prev.following) qc.setQueryData(feedKeys.posts('following'), ctx.prev.following)
+      if (ctx?.prev) qc.setQueryData(feedKeys.posts(), ctx.prev)
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
@@ -189,22 +180,16 @@ export function useReactToPost() {
       api(`/posts/${postId}/react`, { method: 'POST', body: JSON.stringify({ reaction, delta }) }),
     onMutate: async ({ postId, reaction, delta }) => {
       await qc.cancelQueries({ queryKey: feedKeys.all })
-      const prev = {
-        network: qc.getQueryData<FeedPost[]>(feedKeys.posts('network')),
-        following: qc.getQueryData<FeedPost[]>(feedKeys.posts('following')),
-      }
-      for (const filter of ['network', 'following'] as const) {
-        qc.setQueryData<FeedPost[]>(feedKeys.posts(filter), old =>
-          old?.map(p => p.id === postId
-            ? { ...p, reactions: { ...p.reactions, [reaction]: p.reactions[reaction] + delta } }
-            : p) ?? []
-        )
-      }
+      const prev = qc.getQueryData<FeedPost[]>(feedKeys.posts())
+      qc.setQueryData<FeedPost[]>(feedKeys.posts(), old =>
+        old?.map(p => p.id === postId
+          ? { ...p, reactions: { ...p.reactions, [reaction]: p.reactions[reaction] + delta } }
+          : p) ?? []
+      )
       return { prev }
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev.network) qc.setQueryData(feedKeys.posts('network'), ctx.prev.network)
-      if (ctx?.prev.following) qc.setQueryData(feedKeys.posts('following'), ctx.prev.following)
+      if (ctx?.prev) qc.setQueryData(feedKeys.posts(), ctx.prev)
     },
   })
 }

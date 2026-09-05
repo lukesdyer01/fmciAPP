@@ -123,10 +123,10 @@ async function sendPushToUser(userId: string, payload: { title: string; body: st
 }
 
 const SEED_POSTS = [
-  { id: "p1", authorId: "m1", author: { name: "Apostle James Whitfield", title: "Presiding Apostle", church: "FMCI International", location: "Atlanta, GA", avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format" }, body: "Grateful for each of you in this network. The kingdom is advancing because of your faithfulness and commitment to excellence in ministry.", createdAt: "2026-08-30T08:15:00Z", reactions: { "🙏": 47, "❤️": 31, "🔥": 12 }, commentCount: 18, isFollowing: false },
-  { id: "p2", authorId: "m3", author: { name: "Rev. Thomas Adeyemi", title: "Regional Director", church: "FMCI West Africa", location: "Lagos, Nigeria", avatarUrl: "https://images.unsplash.com/photo-1566753323558-f4e0952af115?w=80&h=80&fit=crop&auto=format" }, body: "Just wrapped up our West Africa leadership summit — 340 pastors gathered, three nations represented. God is doing something extraordinary on this continent.", createdAt: "2026-08-29T14:22:00Z", reactions: { "🙏": 62, "❤️": 44, "🔥": 28 }, commentCount: 34, isFollowing: true },
-  { id: "p3", authorId: "m2", author: { name: "Pastor Maria Rodriguez", title: "Senior Leader", church: "Vida Nueva Church", location: "San Antonio, TX", avatarUrl: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=80&h=80&fit=crop&auto=format" }, body: "Our bilingual young adults ministry just hit 200 members. If you're looking for resources on multicultural ministry, I'd love to connect and share what's been working.", createdAt: "2026-08-29T09:05:00Z", reactions: { "🙏": 29, "❤️": 53, "🔥": 19 }, commentCount: 11, isFollowing: true },
-  { id: "p4", authorId: "m8", author: { name: "Bishop Clara Thompson", title: "Apostolic Bishop", church: "Apostolic Council", location: "Dallas, TX", avatarUrl: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&h=80&fit=crop&auto=format" }, body: "Reminder: FMCI Annual Convocation registration closes September 15th. Early bird pricing ends this Friday. Don't miss the pre-conference workshops on church planting and financial stewardship.", createdAt: "2026-08-28T16:48:00Z", reactions: { "🙏": 38, "❤️": 27, "🔥": 15 }, commentCount: 22, isFollowing: false },
+  { id: "p1", authorId: "m1", author: { name: "Apostle James Whitfield", title: "Presiding Apostle", church: "FMCI International", location: "Atlanta, GA", avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format" }, body: "Grateful for each of you in this network. The kingdom is advancing because of your faithfulness and commitment to excellence in ministry.", createdAt: "2026-08-30T08:15:00Z", reactions: { "🙏": 47, "❤️": 31, "🔥": 12 }, commentCount: 18 },
+  { id: "p2", authorId: "m3", author: { name: "Rev. Thomas Adeyemi", title: "Regional Director", church: "FMCI West Africa", location: "Lagos, Nigeria", avatarUrl: "https://images.unsplash.com/photo-1566753323558-f4e0952af115?w=80&h=80&fit=crop&auto=format" }, body: "Just wrapped up our West Africa leadership summit — 340 pastors gathered, three nations represented. God is doing something extraordinary on this continent.", createdAt: "2026-08-29T14:22:00Z", reactions: { "🙏": 62, "❤️": 44, "🔥": 28 }, commentCount: 34 },
+  { id: "p3", authorId: "m2", author: { name: "Pastor Maria Rodriguez", title: "Senior Leader", church: "Vida Nueva Church", location: "San Antonio, TX", avatarUrl: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=80&h=80&fit=crop&auto=format" }, body: "Our bilingual young adults ministry just hit 200 members. If you're looking for resources on multicultural ministry, I'd love to connect and share what's been working.", createdAt: "2026-08-29T09:05:00Z", reactions: { "🙏": 29, "❤️": 53, "🔥": 19 }, commentCount: 11 },
+  { id: "p4", authorId: "m8", author: { name: "Bishop Clara Thompson", title: "Apostolic Bishop", church: "Apostolic Council", location: "Dallas, TX", avatarUrl: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&h=80&fit=crop&auto=format" }, body: "Reminder: FMCI Annual Convocation registration closes September 15th. Early bird pricing ends this Friday. Don't miss the pre-conference workshops on church planting and financial stewardship.", createdAt: "2026-08-28T16:48:00Z", reactions: { "🙏": 38, "❤️": 27, "🔥": 15 }, commentCount: 22 },
 ];
 
 const SEED_ORGS = [
@@ -317,9 +317,15 @@ app.post(`${BASE}/verification-requests/:id/deny`, async (c) => {
 
 // `pinned` is never trusted as a stored flag — it's derived from pinnedUntil
 // every time posts are read, so a 7-day pin expires on its own with no cron
-// cleanup needed.
+// cleanup needed. isFollowing is explicitly dropped here too — retired
+// along with follower functionality, but old post records from before that
+// removal still have it baked in (the admin panel round-trips whatever a
+// GET response shape was straight back through a PUT, and old posts were
+// created with isFollowing: false stamped directly on them), so it must be
+// stripped on every read rather than assumed absent from storage.
 function withComputedPinned(p: any) {
-  return { ...p, pinned: !!p.pinnedUntil && new Date(p.pinnedUntil).getTime() > Date.now() };
+  const { isFollowing, ...rest } = p;
+  return { ...rest, pinned: !!p.pinnedUntil && new Date(p.pinnedUntil).getTime() > Date.now() };
 }
 
 // A post with orgId but no orgName was made by a member as themselves on a
@@ -339,19 +345,13 @@ app.get(`${BASE}/posts`, async (c) => {
     const orgs = await kv.get("orgs") ?? SEED_ORGS;
     return c.json(posts.filter((p: any) => p.visibility !== "private").map((p: any) => withComputedPinned(withPostedOnOrgName(p, orgs))));
   }
-  // isFollowing is computed from real org-follow relationships, not trusted
-  // from however the post was created — that's what powers the feed's
-  // "Following" tab for posts made on behalf of an org.
   const orgs = await kv.get("orgs") ?? SEED_ORGS;
-  const followedOrgIds = new Set(
-    orgs.filter((o: any) => Array.isArray(o.followerIds) && o.followerIds.includes(caller.id)).map((o: any) => o.id)
-  );
   // Private posts are members-only — only visible to a caller who belongs to
   // (any role in) the post's org. Everyone else never receives them at all,
   // not even a filtered-out placeholder.
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
-  return c.json(visible.map((p: any) => withComputedPinned(withPostedOnOrgName(p.orgId ? { ...p, isFollowing: followedOrgIds.has(p.orgId) } : p, orgs))));
+  return c.json(visible.map((p: any) => withComputedPinned(withPostedOnOrgName(p, orgs))));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -405,7 +405,7 @@ app.post(`${BASE}/posts`, async (c) => {
   // authorId is stamped from the verified caller, never trusted from the client —
   // it's what edit/delete ownership checks below rely on.
   const newPost = {
-    id: `p${Date.now()}`, reactions: {}, commentCount: 0, createdAt: new Date().toISOString(), isFollowing: false,
+    id: `p${Date.now()}`, reactions: {}, commentCount: 0, createdAt: new Date().toISOString(),
     ...(body.type === "prayer" ? { prayerStatus: "unanswered" } : {}),
     ...body, authorId: caller.id,
   };
@@ -539,9 +539,16 @@ app.get(`${BASE}/orgs/locations`, async (c) => {
 // GET /members and GET /orgs/:id/join-requests. `users` can be pre-fetched
 // once by a caller that's serializing many orgs (GET /orgs/my) to avoid a
 // redundant listAuthUsers() call per org; otherwise it's fetched here.
+// following/followerCount/followerIds are explicitly dropped here — retired
+// along with follower functionality, but some stored org records still have
+// them baked in (the admin panel's PUT /orgs round-trips whatever GET /orgs
+// returned, which used to include the computed following/followerCount
+// fields, permanently persisting them). Stripped on every read so the API
+// response is correct regardless of what got frozen into storage.
 async function serializeOrg(o: any, callerId: string, users?: any[]) {
+  const { following: _following, followerCount: _followerCount, followerIds: _followerIds, ...orgData } = o;
   const resolvedUsers = users ?? await listAuthUsers();
-  const members = (Array.isArray(o.members) ? o.members : []).map((m: any) => {
+  const members = (Array.isArray(orgData.members) ? orgData.members : []).map((m: any) => {
     const u = resolvedUsers.find((x: any) => x.id === m.userId);
     return {
       ...m,
@@ -550,11 +557,9 @@ async function serializeOrg(o: any, callerId: string, users?: any[]) {
       avatarUrl: u?.user_metadata?.avatar_url ?? u?.user_metadata?.avatarUrl ?? "",
     };
   });
-  const followerIds = Array.isArray(o.followerIds) ? o.followerIds : [];
-  const joinRequests = Array.isArray(o.joinRequests) ? o.joinRequests : [];
+  const joinRequests = Array.isArray(orgData.joinRequests) ? orgData.joinRequests : [];
   return {
-    ...o, members,
-    following: followerIds.includes(callerId), followerCount: followerIds.length,
+    ...orgData, members,
     // Only whether *this caller* has a pending request, plus a bare count —
     // the full requester list (names) is deliberately not exposed here, that
     // would leak who's requesting to every viewer. Owner/admin fetch the
@@ -575,7 +580,7 @@ app.get(`${BASE}/orgs/my`, async (c) => {
   const users = await listAuthUsers();
   // "My Organizations" surfaces every active org on the platform, not just
   // ones the caller belongs to — membership/ownership is still tracked per
-  // org (for Manage Members) and following is tracked separately.
+  // org (for Manage Members).
   const active = await Promise.all(
     orgs.filter((o: any) => o.status === "active").map((o: any) => serializeOrg(o, caller.id, users))
   );
@@ -591,14 +596,11 @@ app.post(`${BASE}/orgs/fmci-bootstrap`, async (c) => {
   const fmci = orgs.find((o: any) => o.id === "org_fmci");
   if (!fmci) return c.json({ ok: true });
   const members = Array.isArray(fmci.members) ? fmci.members : [];
-  const followerIds = Array.isArray(fmci.followerIds) ? fmci.followerIds : [];
   const needsMember = !members.some((m: any) => m.userId === caller.id);
-  const needsFollow = !followerIds.includes(caller.id);
-  if (!needsMember && !needsFollow) return c.json(await serializeOrg(fmci, caller.id));
+  if (!needsMember) return c.json(await serializeOrg(fmci, caller.id));
   const updated = {
     ...fmci,
-    members: needsMember ? [...members, { userId: caller.id, role: "member", addedAt: new Date().toISOString() }] : members,
-    followerIds: needsFollow ? [...followerIds, caller.id] : followerIds,
+    members: [...members, { userId: caller.id, role: "member", addedAt: new Date().toISOString() }],
   };
   await kv.set("orgs", orgs.map((o: any) => o.id === "org_fmci" ? updated : o));
   return c.json(await serializeOrg(updated, caller.id));
@@ -625,7 +627,6 @@ app.post(`${BASE}/orgs`, async (c) => {
     createdAt: new Date().toISOString(),
     // Creator becomes owner immediately.
     members: [{ userId: caller.id, role: "owner", addedAt: new Date().toISOString() }],
-    followerIds: [],
   };
   await kv.set("orgs", [newOrg, ...orgs]);
   return c.json(await serializeOrg(newOrg, caller.id), 201);
@@ -764,32 +765,6 @@ app.post(`${BASE}/orgs/:id/join-requests/:userId/deny`, async (c) => {
   return c.json(await serializeOrg(updated, caller.id));
 });
 
-app.post(`${BASE}/orgs/:id/follow`, async (c) => {
-  const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json({ error: "Must be signed in" }, 401);
-  const { id } = c.req.param();
-  const orgs = await kv.get("orgs") ?? SEED_ORGS;
-  const org = orgs.find((o: any) => o.id === id);
-  if (!org) return c.json({ error: "Organization not found" }, 404);
-  const followerIds = Array.isArray(org.followerIds) ? org.followerIds : [];
-  const updated = { ...org, followerIds: followerIds.includes(caller.id) ? followerIds : [...followerIds, caller.id] };
-  await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(await serializeOrg(updated, caller.id));
-});
-
-app.post(`${BASE}/orgs/:id/unfollow`, async (c) => {
-  const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json({ error: "Must be signed in" }, 401);
-  const { id } = c.req.param();
-  const orgs = await kv.get("orgs") ?? SEED_ORGS;
-  const org = orgs.find((o: any) => o.id === id);
-  if (!org) return c.json({ error: "Organization not found" }, 404);
-  const followerIds = (Array.isArray(org.followerIds) ? org.followerIds : []).filter((uid: string) => uid !== caller.id);
-  const updated = { ...org, followerIds };
-  await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
-  return c.json(await serializeOrg(updated, caller.id));
-});
-
 // Events created before startDate/startTime existed only had date/time —
 // fall back to those at read time rather than migrating stored data. Used
 // by both the authenticated and unauthenticated GET /events branches, since
@@ -830,11 +805,12 @@ app.post(`${BASE}/events`, async (c) => {
   if (!body.title || !String(body.title).trim()) return c.json({ error: "Event title is required" }, 400);
   // An event posted on behalf of a ministry requires being that ministry's
   // owner/admin — anyone can create a personal (non-org) event.
+  let hostOrg: any = null;
   if (body.orgId) {
     const orgs = await kv.get("orgs") ?? SEED_ORGS;
-    const org = orgs.find((o: any) => o.id === body.orgId);
-    const myRole = org ? orgRole(org, caller.id) : undefined;
-    if (!org || (myRole !== "owner" && myRole !== "admin")) {
+    hostOrg = orgs.find((o: any) => o.id === body.orgId);
+    const myRole = hostOrg ? orgRole(hostOrg, caller.id) : undefined;
+    if (!hostOrg || (myRole !== "owner" && myRole !== "admin")) {
       return c.json({ error: "Only that ministry's owner or admin can post events on its behalf" }, 403);
     }
   }
@@ -870,6 +846,23 @@ app.post(`${BASE}/events`, async (c) => {
     interested: [],
   };
   await kv.set("events", [newEvent, ...events]);
+  // Fire-and-forget, same as the DM push in POST /conversations/:id/messages
+  // — never delays or fails the event creation itself. Only that ministry's
+  // members are notified (not the whole platform, not just followers), and
+  // never the creator about their own event. Personal (non-org) events don't
+  // notify anyone — there's no membership list to notify for those.
+  if (hostOrg) {
+    const members = Array.isArray(hostOrg.members) ? hostOrg.members : [];
+    for (const m of members) {
+      if (m.userId === caller.id) continue;
+      sendPushToUser(m.userId, {
+        title: `New event from ${hostOrg.name}`,
+        body: newEvent.title,
+        url: "/",
+        tag: `event-${newEvent.id}`,
+      }).catch(() => {});
+    }
+  }
   return c.json(serializeEvent(newEvent, caller.id), 201);
 });
 
@@ -1468,15 +1461,22 @@ app.get(`${BASE}/groups/:id/members`, async (c) => {
 app.put(`${BASE}/orgs`, async (c) => {
   const body = await c.req.json();
   const previous = await kv.get("orgs") ?? SEED_ORGS;
-  // If an admin edit changed an org's location/address, its cached geocode is
-  // stale — clear it so /orgs/locations re-geocodes on the next request.
+  // This admin route round-trips whatever shape the client fetched from
+  // GET /orgs (a serialized, enriched response) straight back into storage —
+  // so any purely-computed/derived field GET /orgs ever returns must be
+  // stripped here, or it gets permanently baked into the stored record.
+  // (This is exactly how retired following/followerCount fields ended up
+  // stuck in storage after follower functionality was removed.)
   const updated = body.map((o: any) => {
     const prev = previous.find((p: any) => p.id === o.id);
-    if (prev && (prev.location !== o.location || prev.address !== o.address)) {
-      const { lat, lng, geocodeFailed, ...rest } = o;
+    const { following, followerCount, followerIds, hasPendingRequest, pendingRequestCount, ...clean } = o;
+    // If an admin edit changed an org's location/address, its cached geocode
+    // is stale — clear it so /orgs/locations re-geocodes on the next request.
+    if (prev && (prev.location !== clean.location || prev.address !== clean.address)) {
+      const { lat, lng, geocodeFailed, ...rest } = clean;
       return rest;
     }
-    return o;
+    return clean;
   });
   await kv.set("orgs", updated);
   return c.json(updated);

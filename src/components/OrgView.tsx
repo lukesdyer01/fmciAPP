@@ -27,8 +27,6 @@ interface MyOrg {
   img: string
   features: string[]
   members: OrgMember[]
-  following: boolean
-  followerCount: number
   hasPendingRequest: boolean
   pendingRequestCount: number
   createdAt: string
@@ -572,15 +570,13 @@ function OrgMembersPanel({ org, currentUserId, onClose, onUpdate }: {
 }
 
 // ── Org Card ─────────────────────────────────────────────────────────────────
-function OrgCard({ org, currentUserId, isMember, onManage, onEdit, onView, onFollowToggle, followBusy }: {
+function OrgCard({ org, currentUserId, isMember, onManage, onEdit, onView }: {
   org: MyOrg
   currentUserId: string
   isMember: boolean
   onManage: () => void
   onEdit: () => void
   onView: () => void
-  onFollowToggle: () => void
-  followBusy: boolean
 }) {
   const myRole = org.members.find(m => m.userId === currentUserId)?.role
   const ts = typeStyle(org.type)
@@ -605,7 +601,6 @@ function OrgCard({ org, currentUserId, isMember, onManage, onEdit, onView, onFol
         </div>
         <div style={{ display: 'flex', gap: '16px', marginBottom: '14px' }}>
           <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.members.length}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Members</div></div>
-          <div><div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)' }}>{org.followerCount}</div><div style={{ fontSize: '10px', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Followers</div></div>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
@@ -625,19 +620,6 @@ function OrgCard({ org, currentUserId, isMember, onManage, onEdit, onView, onFol
               style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
             >Manage Members</button>
           )}
-          {!isMember && (
-            <button
-              onClick={onFollowToggle}
-              disabled={followBusy}
-              style={{
-                flex: 1, padding: '8px', borderRadius: '8px', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
-                border: org.following ? '1px solid var(--color-border)' : 'none',
-                backgroundColor: org.following ? 'var(--color-surface)' : 'var(--color-navy)',
-                color: org.following ? 'var(--color-text-1)' : '#fff',
-                opacity: followBusy ? 0.6 : 1,
-              }}
-            >{followBusy ? '…' : org.following ? '✓ Following' : '+ Follow'}</button>
-          )}
         </div>
       </div>
     </div>
@@ -650,7 +632,7 @@ export default function OrgView() {
   const viewingOrgId = useUIStore(s => s.viewingOrgId)
   const viewOrg = useUIStore(s => s.viewOrg)
   const closeOrgView = useUIStore(s => s.closeOrgView)
-  const [tab, setTab] = useState<'my' | 'following' | 'discover'>('my')
+  const [tab, setTab] = useState<'my' | 'discover'>('my')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [orgs, setOrgs] = useState<MyOrg[]>([])
   const [loading, setLoading] = useState(true)
@@ -658,7 +640,6 @@ export default function OrgView() {
   const [managingOrg, setManagingOrg] = useState<MyOrg | null>(null)
   const [editingOrg, setEditingOrg] = useState<MyOrg | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string>('')
-  const [followBusyId, setFollowBusyId] = useState<string | null>(null)
   const [requestJoinBusyId, setRequestJoinBusyId] = useState<string | null>(null)
 
   async function load() {
@@ -697,16 +678,6 @@ export default function OrgView() {
     }
   }, [orgs])
 
-  async function toggleFollow(org: MyOrg) {
-    setFollowBusyId(org.id)
-    try {
-      await api(`/orgs/${org.id}/${org.following ? 'unfollow' : 'follow'}`, { method: 'POST' })
-      await load()
-    } finally {
-      setFollowBusyId(null)
-    }
-  }
-
   async function requestJoin(org: MyOrg) {
     setRequestJoinBusyId(org.id)
     try {
@@ -719,12 +690,11 @@ export default function OrgView() {
 
   const isMember = (org: MyOrg) => org.members.some(m => m.userId === currentUserId)
   const myOrgs = orgs.filter(isMember)
-  const followingOrgs = orgs.filter(o => o.following)
   const discoverOrgs = orgs.filter(o => !isMember(o))
 
   const availableTypes = Array.from(new Set(orgs.map(o => o.type))).sort()
 
-  const tabList = tab === 'my' ? myOrgs : tab === 'following' ? followingOrgs : discoverOrgs
+  const tabList = tab === 'my' ? myOrgs : discoverOrgs
   const tabOrgs = tabList
     .filter(o => typeFilter === 'all' || o.type === typeFilter)
     // FMCI is the network's own headquarters — always shown first, wherever it appears.
@@ -737,8 +707,6 @@ export default function OrgView() {
         ministry={viewingOrg}
         currentUserId={currentUserId}
         onBack={closeOrgView}
-        onFollowToggle={() => toggleFollow(viewingOrg)}
-        followBusy={followBusyId === viewingOrg.id}
         onRequestJoin={() => requestJoin(viewingOrg)}
         requestJoinBusy={requestJoinBusyId === viewingOrg.id}
       />
@@ -765,7 +733,6 @@ export default function OrgView() {
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {([
           { id: 'my' as const, label: `My Ministries (${myOrgs.length})` },
-          { id: 'following' as const, label: `Following (${followingOrgs.length})` },
           { id: 'discover' as const, label: `Discover (${discoverOrgs.length})` },
         ]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -815,14 +782,11 @@ export default function OrgView() {
           <div style={{ fontSize: '40px', marginBottom: '16px' }}>🏛</div>
           <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--color-text-1)', marginBottom: '8px', fontFamily: 'var(--font-serif)' }}>
             {tab === 'my' ? "You're not part of any ministries yet"
-              : tab === 'following' ? "You're not following any ministries yet"
               : 'Nothing to discover right now'}
           </div>
           <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.7, maxWidth: '400px', margin: '0 auto 20px' }}>
             {tab === 'my'
-              ? 'Create your church, ministry, or network, or browse Discover to follow others.'
-              : tab === 'following'
-              ? 'Follow a ministry from Discover to see its posts in your feed and keep track of it here.'
+              ? 'Create your church, ministry, or network, or browse Discover to find and join others.'
               : typeFilter !== 'all' ? 'Try a different type filter.' : "You're already part of everything else on the network."}
           </div>
           {tab === 'my' && (
@@ -845,8 +809,6 @@ export default function OrgView() {
               onManage={() => setManagingOrg(managingOrg?.id === org.id ? null : org)}
               onEdit={() => setEditingOrg(org)}
               onView={() => viewOrg(org.id)}
-              onFollowToggle={() => toggleFollow(org)}
-              followBusy={followBusyId === org.id}
             />
           ))}
         </div>

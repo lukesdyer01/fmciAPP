@@ -167,7 +167,6 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       badges: !anonymous && currentUser?.verified ? ['verified'] : [],
       type,
       content: text.trim(),
-      isFollowing: false,
       orgId: fixedOrgId ?? orgIdentity?.id,
       orgName: orgIdentity?.name,
       orgImg: orgIdentity?.img,

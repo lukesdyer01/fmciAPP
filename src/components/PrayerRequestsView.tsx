@@ -7,7 +7,7 @@ type StatusFilter = 'all' | 'unanswered' | 'answered'
 
 export default function PrayerRequestsView() {
   const [filter, setFilter] = useState<StatusFilter>('all')
-  const { data: allPosts, isLoading, isError } = useFeedPosts('network')
+  const { data: allPosts, isLoading, isError } = useFeedPosts()
 
   const prayers = (allPosts ?? [])
     .filter(p => p.type === 'prayer' && p.author && p.author.trim() !== '')

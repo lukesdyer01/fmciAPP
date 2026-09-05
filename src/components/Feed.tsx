@@ -95,7 +95,7 @@ function FeedToggle({ filter, setFilter, primaryMinistry }: {
 
 function MainFeed() {
   const [filter, setFilter] = useState<FeedFilter>('network')
-  const { data: allPosts, isLoading, isError } = useFeedPosts('network')
+  const { data: allPosts, isLoading, isError } = useFeedPosts()
   const [events, setEvents] = useState<EventItem[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)

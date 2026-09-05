@@ -9,7 +9,7 @@ const CATEGORY_ORDER: CategoryFilter[] = ['all', 'healing', 'provision', 'salvat
 
 export default function TestimoniesView() {
   const [filter, setFilter] = useState<CategoryFilter>('all')
-  const { data: allPosts, isLoading, isError } = useFeedPosts('network')
+  const { data: allPosts, isLoading, isError } = useFeedPosts()
 
   const testimonies = (allPosts ?? [])
     .filter(p => p.type === 'testimony' && p.author && p.author.trim() !== '')
