@@ -45,11 +45,21 @@ function PostSkeleton() {
   )
 }
 
-// "All Network" is always the active feed mode now (there's only one) — the
-// second pill is a quick-link to the member's chosen primary ministry page,
-// not a filter, so it only appears once one is resolved.
-function FeedToggle({ primaryMinistry }: { primaryMinistry: { id: string; name: string } | null }) {
-  const viewOrg = useUIStore(s => s.viewOrg)
+type FeedFilter = 'network' | 'ministry'
+
+// A real two-state toggle again (like the old Network/Following pair) — the
+// second pill only exists once a primary ministry is resolved, shows its
+// name, and switches the feed to ministry-only items rather than navigating
+// away.
+function FeedToggle({ filter, setFilter, primaryMinistry }: {
+  filter: FeedFilter
+  setFilter: (f: FeedFilter) => void
+  primaryMinistry: { id: string; name: string } | null
+}) {
+  const options = [
+    { id: 'network' as const, label: 'All Network', icon: '🌐' },
+    ...(primaryMinistry ? [{ id: 'ministry' as const, label: primaryMinistry.name, icon: '🏛' }] : []),
+  ]
   return (
     <div style={{
       display: 'inline-flex', backgroundColor: 'var(--color-surface)',
@@ -57,40 +67,34 @@ function FeedToggle({ primaryMinistry }: { primaryMinistry: { id: string; name: 
       border: '1px solid var(--color-border)',
       marginBottom: '12px',
     }}>
-      <button
-        style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '7px 16px', borderRadius: '8px', border: 'none',
-          cursor: 'default', fontFamily: 'var(--font-sans)',
-          fontSize: '13px', fontWeight: 700,
-          backgroundColor: 'var(--color-card)', color: 'var(--color-text-1)',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
-        }}
-      >
-        <span style={{ fontSize: '14px' }}>🌐</span>
-        All Network
-      </button>
-      {primaryMinistry && (
-        <button
-          onClick={() => viewOrg(primaryMinistry.id)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 16px', borderRadius: '8px', border: 'none',
-            cursor: 'pointer', fontFamily: 'var(--font-sans)',
-            fontSize: '13px', fontWeight: 500,
-            backgroundColor: 'transparent', color: 'var(--color-text-2)',
-            transition: 'all 0.15s',
-          }}
-        >
-          <span style={{ fontSize: '14px' }}>🏛</span>
-          {primaryMinistry.name}
-        </button>
-      )}
+      {options.map(opt => {
+        const active = filter === opt.id
+        return (
+          <button
+            key={opt.id}
+            onClick={() => setFilter(opt.id)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '7px 16px', borderRadius: '8px', border: 'none',
+              cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              fontSize: '13px', fontWeight: active ? 700 : 500,
+              backgroundColor: active ? 'var(--color-card)' : 'transparent',
+              color: active ? 'var(--color-text-1)' : 'var(--color-text-2)',
+              boxShadow: active ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            <span style={{ fontSize: '14px' }}>{opt.icon}</span>
+            {opt.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
 
 function MainFeed() {
+  const [filter, setFilter] = useState<FeedFilter>('network')
   const { data: allPosts, isLoading, isError } = useFeedPosts('network')
   const [events, setEvents] = useState<EventItem[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
@@ -121,7 +125,7 @@ function MainFeed() {
   // ministry rename (or the member losing membership) shows up immediately
   // instead of showing a stale name — same reasoning as postedOnOrgName.
   useEffect(() => {
-    if (!primaryMinistryId) { setPrimaryMinistry(null); return }
+    if (!primaryMinistryId) { setPrimaryMinistry(null); setFilter('network'); return }
     api<{ id: string; name: string }[]>('/orgs/my')
       .then(orgs => setPrimaryMinistry(orgs.find(o => o.id === primaryMinistryId) ?? null))
       .catch(() => setPrimaryMinistry(null))
@@ -136,6 +140,15 @@ function MainFeed() {
     ...blogPosts.map((blogPost): FeedEntry => ({ kind: 'blogPost', ts: blogPost.createdAt ? new Date(blogPost.createdAt).getTime() : 0, blogPost })),
   ].sort((a, b) => b.ts - a.ts)
 
+  // Blog posts have no org affiliation, so they never appear in the
+  // ministry-scoped view — only posts/events actually tied to that org do.
+  if (filter === 'ministry' && primaryMinistry) {
+    merged = merged.filter(entry =>
+      (entry.kind === 'post' && entry.post.orgId === primaryMinistry.id) ||
+      (entry.kind === 'event' && entry.event.orgId === primaryMinistry.id)
+    )
+  }
+
   if (activeHashtag) {
     const needle = new RegExp(`#${activeHashtag}\\b`, 'i')
     merged = merged.filter(entry => entry.kind === 'post' && needle.test(entry.post.content ?? ''))
@@ -143,7 +156,7 @@ function MainFeed() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-      <FeedToggle primaryMinistry={primaryMinistry} />
+      <FeedToggle filter={filter} setFilter={setFilter} primaryMinistry={primaryMinistry} />
       {activeHashtag && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
@@ -173,6 +186,20 @@ function MainFeed() {
       {isError && (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>
           Unable to load feed. Please try again.
+        </div>
+      )}
+      {!isLoading && filter === 'ministry' && primaryMinistry && merged.length === 0 && (
+        <div style={{
+          backgroundColor: 'var(--color-card)', borderRadius: '12px',
+          border: '1px solid var(--color-border)', padding: '40px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏛</div>
+          <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '6px' }}>
+            No posts or events from {primaryMinistry.name} yet
+          </div>
+          <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
+            Check back later, or switch back to All Network.
+          </div>
         </div>
       )}
       {merged.map(entry => {
