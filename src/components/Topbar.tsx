@@ -207,9 +207,10 @@ export default function Topbar() {
       {/* Brand */}
       <div className="topbar-brand">
         <img
+          className="topbar-brand-logo"
           src={fmciLogo}
           alt="FMCI"
-          style={{ height: '32px', width: '32px', objectFit: 'contain', display: 'block', flexShrink: 0 }}
+          style={{ height: '32px', width: '32px', objectFit: 'contain', flexShrink: 0 }}
         />
         <div>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', lineHeight: 1.1, letterSpacing: '0.5px' }}>FMCI</div>
