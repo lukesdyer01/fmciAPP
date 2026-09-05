@@ -172,7 +172,17 @@ function MainFeed() {
           }}>✕</button>
         </div>
       )}
-      <PostComposer hidePostAs />
+      {filter === 'ministry' && primaryMinistry ? (
+        // Same composer the ministry's own Feed tab uses — lets an owner/admin
+        // choose to post as themselves or as the ministry, and any member
+        // post as themselves on this ministry's page — instead of the
+        // personal-only composer shown in All Network mode. Keyed by mode so
+        // switching the toggle remounts with a clean draft rather than
+        // carrying over half-typed text/state from the other composer.
+        <PostComposer key="ministry" fixedOrgId={primaryMinistry.id} placeholder={`Share something with ${primaryMinistry.name}…`} />
+      ) : (
+        <PostComposer key="network" hidePostAs />
+      )}
       {editingEvent && (
         <CreateEventModal
           event={editingEvent}
