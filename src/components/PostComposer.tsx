@@ -19,10 +19,6 @@ interface TaggableMember {
   avatarUrl: string
 }
 
-const POST_TYPES = [
-  { icon: '🙏', label: 'Prayer Request', color: '#7C3AED' },
-]
-
 const TESTIMONY_CATEGORIES = [
   { value: 'healing',     label: 'Healing',     icon: '🩹' },
   { value: 'provision',   label: 'Provision',   icon: '🍞' },
@@ -592,21 +588,6 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
             {taggedUsers.length > 0 ? `Tagged (${taggedUsers.length})` : 'Tag People'}
           </button>
         )}
-        {type === 'post' && POST_TYPES.map((t, i) => (
-          <button key={i} style={{
-            display: 'flex', alignItems: 'center', gap: '5px',
-            padding: '7px 12px', borderRadius: '8px', border: 'none',
-            background: 'none', cursor: 'pointer',
-            fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)',
-            fontFamily: 'var(--font-sans)', transition: 'background 0.15s',
-          }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-          >
-            <span style={{ fontSize: '16px' }}>{t.icon}</span>
-            {t.label}
-          </button>
-        ))}
         <button
           onClick={handlePost}
           disabled={!text.trim() || isPending}
