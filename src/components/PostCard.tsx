@@ -146,8 +146,8 @@ export default function PostCard({ post }: { post: Post }) {
           ? <div style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, backgroundColor: 'var(--color-text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🙏</div>
           : post.orgName
           ? (post.orgImg
-              ? <img src={post.orgImg} alt={post.orgName} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', display: 'block', flexShrink: 0 }} />
-              : <div style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🏛</div>)
+              ? <img src={post.orgImg} alt={post.orgName} onClick={() => post.orgId && viewOrg(post.orgId)} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', display: 'block', flexShrink: 0, cursor: post.orgId ? 'pointer' : 'default' }} />
+              : <div onClick={() => post.orgId && viewOrg(post.orgId)} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', cursor: post.orgId ? 'pointer' : 'default' }}>🏛</div>)
           : post.avatar
           ? <img src={post.avatar} alt={post.author} onClick={() => post.authorId && openProfile(post.authorId)} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', display: 'block', flexShrink: 0, cursor: post.authorId ? 'pointer' : 'default' }} />
           : <div onClick={() => post.authorId && openProfile(post.authorId)} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, cursor: post.authorId ? 'pointer' : 'default', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px' }}>{(post.author || '?').slice(0, 2).toUpperCase()}</div>
@@ -155,7 +155,7 @@ export default function PostCard({ post }: { post: Post }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
             <div>
-              <div onClick={() => !post.isAnonymous && !post.orgName && post.authorId && openProfile(post.authorId)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: !post.isAnonymous && !post.orgName && post.authorId ? 'pointer' : 'default', marginBottom: '3px' }}>
+              <div onClick={() => post.orgName ? (post.orgId && viewOrg(post.orgId)) : (!post.isAnonymous && post.authorId && openProfile(post.authorId))} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', cursor: (post.orgName ? post.orgId : (!post.isAnonymous && post.authorId)) ? 'pointer' : 'default', marginBottom: '3px' }}>
                 {post.isAnonymous ? 'Anonymous' : post.orgName ?? post.author}
                 {!post.isAnonymous && !post.orgName && (post.badges ?? []).includes('verified') && <VerifiedBadge size={14} />}
               </div>
