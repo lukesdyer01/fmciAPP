@@ -162,12 +162,22 @@ export default function AdminShell() {
           backgroundColor: '#0d1117', borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px',
         }}>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#e6edf3' }}>
-              {NAV.find(n => n.id === activeView)?.label}
-            </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '1px' }}>
-              FMCI Network Platform Administration
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Desktop has "← Back to Network" in the sidebar (hidden below
+                768px) — this is the mobile-only equivalent, since the mobile
+                nav strip below only lists admin sections, not a way out. */}
+            <button className="admin-back-mobile" onClick={() => setAdminMode(false)} title="Back to Network" style={{
+              width: '32px', height: '32px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+              backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>←</button>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: 800, color: '#e6edf3' }}>
+                {NAV.find(n => n.id === activeView)?.label}
+              </div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '1px' }}>
+                FMCI Network Platform Administration
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

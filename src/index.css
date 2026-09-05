@@ -117,6 +117,7 @@ html[data-theme="dark"] #root {
 
 .mobile-nav-toggle { display: none; }
 .admin-mobile-nav { display: none; }
+.admin-back-mobile { display: none; }
 
 /* Topbar sections that hide/reflow on mobile */
 .topbar-brand       { display: flex; align-items: center; gap: 8px; min-width: 200px; flex-shrink: 0; }
@@ -214,6 +215,9 @@ html[data-theme="dark"] #root {
     margin-left: 0;
   }
   .admin-mobile-nav {
+    display: flex;
+  }
+  .admin-back-mobile {
     display: flex;
   }
   .admin-topbar {
