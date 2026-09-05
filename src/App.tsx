@@ -80,6 +80,7 @@ function AppShell() {
       additionalRoles: currentUser.additionalRoles ?? [],
       communicationPrefs: currentUser.communicationPrefs ?? [],
       memberSince: currentUser.memberSince ?? '',
+      primaryMinistryId: currentUser.primaryMinistryId ?? '',
     })
   }, [currentUser])
 

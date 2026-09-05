@@ -1,7 +1,14 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useUIStore, type UserProfile } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import { supabase } from '../lib/supabase'
+import { api } from '../api-client/server'
+
+interface MyMinistry {
+  id: string
+  name: string
+  members: { userId: string }[]
+}
 
 const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
 const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
@@ -60,7 +67,15 @@ export default function EditProfileModal() {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [uploading, setUploading] = useState<'avatarUrl' | null>(null)
   const [uploadError, setUploadError] = useState('')
+  const [myMinistries, setMyMinistries] = useState<MyMinistry[]>([])
   const avatarInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!currentUser) return
+    api<MyMinistry[]>('/orgs/my')
+      .then(orgs => setMyMinistries(orgs.filter(o => o.members?.some(m => m.userId === currentUser.id))))
+      .catch(() => setMyMinistries([]))
+  }, [currentUser?.id])
 
   function set<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
     setDraft(d => ({ ...d, [key]: value }))
@@ -132,6 +147,7 @@ export default function EditProfileModal() {
           additionalRoles: draft.additionalRoles,
           communicationPrefs: draft.communicationPrefs,
           memberSince: draft.memberSince,
+          primaryMinistryId: draft.primaryMinistryId,
         },
       })
       if (error) throw error
@@ -150,6 +166,7 @@ export default function EditProfileModal() {
         additionalRoles: draft.additionalRoles,
         communicationPrefs: draft.communicationPrefs,
         memberSince: draft.memberSince,
+        primaryMinistryId: draft.primaryMinistryId,
       })
       setStatus('saved')
       setTimeout(() => {
@@ -275,6 +292,24 @@ export default function EditProfileModal() {
               >
                 <option value="">Not set</option>
                 {MEMBER_SINCE_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Primary Ministry <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(shown as a quick-link on your home feed)</span>
+              </label>
+              <select
+                value={draft.primaryMinistryId}
+                onChange={e => set('primaryMinistryId', e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                  border: '1px solid var(--color-border)', borderRadius: '8px',
+                  fontSize: '14px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)',
+                  backgroundColor: 'var(--color-surface)', outline: 'none',
+                }}
+              >
+                <option value="">None</option>
+                {myMinistries.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
             </div>
             <div>

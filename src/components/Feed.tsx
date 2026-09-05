@@ -23,8 +23,6 @@ type FeedEntry =
   | { kind: 'event'; ts: number; event: EventItem }
   | { kind: 'blogPost'; ts: number; blogPost: BlogPost }
 
-type FeedFilter = 'network' | 'following'
-
 function PostSkeleton() {
   return (
     <div style={{
@@ -47,11 +45,11 @@ function PostSkeleton() {
   )
 }
 
-function FeedToggle({ filter, setFilter }: { filter: FeedFilter; setFilter: (f: FeedFilter) => void }) {
-  const options: { id: FeedFilter; label: string; icon: string }[] = [
-    { id: 'network',   label: 'All Network', icon: '🌐' },
-    { id: 'following', label: 'Following',   icon: '👥' },
-  ]
+// "All Network" is always the active feed mode now (there's only one) — the
+// second pill is a quick-link to the member's chosen primary ministry page,
+// not a filter, so it only appears once one is resolved.
+function FeedToggle({ primaryMinistry }: { primaryMinistry: { id: string; name: string } | null }) {
+  const viewOrg = useUIStore(s => s.viewOrg)
   return (
     <div style={{
       display: 'inline-flex', backgroundColor: 'var(--color-surface)',
@@ -59,40 +57,48 @@ function FeedToggle({ filter, setFilter }: { filter: FeedFilter; setFilter: (f: 
       border: '1px solid var(--color-border)',
       marginBottom: '12px',
     }}>
-      {options.map(opt => {
-        const active = filter === opt.id
-        return (
-          <button
-            key={opt.id}
-            onClick={() => setFilter(opt.id)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '7px 16px', borderRadius: '8px', border: 'none',
-              cursor: 'pointer', fontFamily: 'var(--font-sans)',
-              fontSize: '13px', fontWeight: active ? 700 : 500,
-              backgroundColor: active ? 'var(--color-card)' : 'transparent',
-              color: active ? 'var(--color-text-1)' : 'var(--color-text-2)',
-              boxShadow: active ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-              transition: 'all 0.15s',
-            }}
-          >
-            <span style={{ fontSize: '14px' }}>{opt.icon}</span>
-            {opt.label}
-          </button>
-        )
-      })}
+      <button
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '7px 16px', borderRadius: '8px', border: 'none',
+          cursor: 'default', fontFamily: 'var(--font-sans)',
+          fontSize: '13px', fontWeight: 700,
+          backgroundColor: 'var(--color-card)', color: 'var(--color-text-1)',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
+        }}
+      >
+        <span style={{ fontSize: '14px' }}>🌐</span>
+        All Network
+      </button>
+      {primaryMinistry && (
+        <button
+          onClick={() => viewOrg(primaryMinistry.id)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '7px 16px', borderRadius: '8px', border: 'none',
+            cursor: 'pointer', fontFamily: 'var(--font-sans)',
+            fontSize: '13px', fontWeight: 500,
+            backgroundColor: 'transparent', color: 'var(--color-text-2)',
+            transition: 'all 0.15s',
+          }}
+        >
+          <span style={{ fontSize: '14px' }}>🏛</span>
+          {primaryMinistry.name}
+        </button>
+      )}
     </div>
   )
 }
 
 function MainFeed() {
-  const [filter, setFilter] = useState<FeedFilter>('network')
-  const { data: allPosts, isLoading, isError } = useFeedPosts(filter)
+  const { data: allPosts, isLoading, isError } = useFeedPosts('network')
   const [events, setEvents] = useState<EventItem[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
+  const [primaryMinistry, setPrimaryMinistry] = useState<{ id: string; name: string } | null>(null)
   const activeHashtag = useUIStore(s => s.activeHashtag)
   const clearHashtag = useUIStore(s => s.clearHashtag)
+  const primaryMinistryId = useUIStore(s => s.userProfile.primaryMinistryId)
 
   // Filter out truly orphaned posts (completely missing author). Members-only
   // ministry posts/events are NOT filtered out here — the backend already
@@ -111,6 +117,16 @@ function MainFeed() {
     api<BlogPost[]>('/blog-posts').then(setBlogPosts).catch(() => setBlogPosts([]))
   }, [])
 
+  // Resolved live from /orgs/my rather than cached in user_metadata, so a
+  // ministry rename (or the member losing membership) shows up immediately
+  // instead of showing a stale name — same reasoning as postedOnOrgName.
+  useEffect(() => {
+    if (!primaryMinistryId) { setPrimaryMinistry(null); return }
+    api<{ id: string; name: string }[]>('/orgs/my')
+      .then(orgs => setPrimaryMinistry(orgs.find(o => o.id === primaryMinistryId) ?? null))
+      .catch(() => setPrimaryMinistry(null))
+  }, [primaryMinistryId])
+
   // Posts, events, and blog posts interleaved by when they were posted/created
   // — a plain chronological feed rather than separate sections per type.
   const now = Date.now()
@@ -127,7 +143,7 @@ function MainFeed() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-      <FeedToggle filter={filter} setFilter={setFilter} />
+      <FeedToggle primaryMinistry={primaryMinistry} />
       {activeHashtag && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
@@ -157,20 +173,6 @@ function MainFeed() {
       {isError && (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>
           Unable to load feed. Please try again.
-        </div>
-      )}
-      {!isLoading && posts?.length === 0 && filter === 'following' && (
-        <div style={{
-          backgroundColor: 'var(--color-card)', borderRadius: '12px',
-          border: '1px solid var(--color-border)', padding: '40px 24px', textAlign: 'center',
-        }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>👥</div>
-          <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '6px' }}>
-            No posts from people you follow yet
-          </div>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
-            Connect with and follow members to see their posts here.
-          </div>
         </div>
       )}
       {merged.map(entry => {

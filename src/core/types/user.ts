@@ -22,6 +22,11 @@ export interface User {
   // — distinct from `createdAt` (the app account's creation date), since
   // someone may have been part of the movement long before signing up here.
   memberSince: string | null
+  // The one ministry a member chooses to highlight — surfaced as a quick-link
+  // on the home feed. Just an org id; resolving it to a name/page is done
+  // wherever it's displayed, never cached here, so a ministry rename or
+  // deletion is never stale.
+  primaryMinistryId: string | null
   platformRole: PlatformRole
   verified: boolean
   createdAt: string

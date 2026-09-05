@@ -52,6 +52,7 @@ export interface UserProfile {
   additionalRoles: string[]
   communicationPrefs: string[]
   memberSince: string
+  primaryMinistryId: string
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -68,6 +69,7 @@ const DEFAULT_PROFILE: UserProfile = {
   additionalRoles: [],
   communicationPrefs: [],
   memberSince: '',
+  primaryMinistryId: '',
 }
 
 interface UIState {
