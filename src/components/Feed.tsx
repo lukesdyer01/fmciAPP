@@ -156,7 +156,7 @@ function MainFeed() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-      <FeedToggle filter={filter} setFilter={setFilter} primaryMinistry={primaryMinistry} />
+      {primaryMinistry && <FeedToggle filter={filter} setFilter={setFilter} primaryMinistry={primaryMinistry} />}
       {activeHashtag && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
