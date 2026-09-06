@@ -43,7 +43,7 @@ export default function MobileNavDrawer() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px', borderBottom: '1px solid var(--color-border)' }}>
           <img src={fmciLogo} alt="FMCI" style={{ height: '28px', width: '28px', objectFit: 'contain', flexShrink: 0 }} />
-          <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-1)', letterSpacing: '0.5px' }}>FMCI</div>
+          <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-1)', letterSpacing: '0.5px' }}>FMCI NETWORK</div>
           <button onClick={close} style={{
             marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px',
