@@ -3,6 +3,15 @@ import { scorePost } from '../core/feed/fanout'
 import { api } from './server'
 import type { BadgeVariant } from '../components/Badge'
 
+export interface FeedComment {
+  id: string
+  authorId: string
+  authorName: string
+  authorAvatarUrl: string
+  text: string
+  createdAt: string
+}
+
 export interface FeedPost {
   id: string
   authorId?: string
@@ -21,6 +30,7 @@ export interface FeedPost {
   videoId?: string
   reactions: { amen: number; pray: number; heart: number }
   comments: number
+  commentsList: FeedComment[]
   shares: number
   scripture?: string
   pinned?: boolean
@@ -44,7 +54,7 @@ function adaptPost(raw: any, index: number): FeedPost {
       id: String(index), author: 'Unknown', title: '', church: '', location: '', avatar: '',
       badges: [], time: '', recencyHours: 0, type: 'post', content: '',
       image: null, imageAlt: null, reactions: { amen: 0, pray: 0, heart: 0 },
-      comments: 0, shares: 0, pinned: false,
+      comments: 0, commentsList: [], shares: 0, pinned: false,
     }
   }
   const createdAt = raw.createdAt ? new Date(raw.createdAt).getTime() : Date.now()
@@ -73,7 +83,11 @@ function adaptPost(raw: any, index: number): FeedPost {
       pray: Number(rxn.pray ?? rxn['🙏'] ?? 0) || 0,
       heart: Number(rxn.heart ?? rxn['❤️'] ?? 0) || 0,
     },
-    comments: Number(raw.comments ?? raw.commentCount ?? 0) || 0,
+    comments: Number(raw.commentCount ?? 0) || 0,
+    commentsList: Array.isArray(raw.commentsList) ? raw.commentsList.map((cm: any) => ({
+      id: String(cm.id ?? ''), authorId: cm.authorId ?? '', authorName: cm.authorName ?? 'Unknown',
+      authorAvatarUrl: cm.authorAvatarUrl ?? '', text: cm.text ?? '', createdAt: cm.createdAt ?? '',
+    })) : [],
     shares: Number(raw.shares ?? 0) || 0,
     scripture: raw.scripture,
     pinned: raw.pinned ?? false,
@@ -169,6 +183,32 @@ export function useDeletePost() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
+    },
+  })
+}
+
+export function useAddComment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ postId, text }: { postId: string; text: string }) =>
+      api<any>(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) }),
+    onSuccess: (updated, { postId }) => {
+      qc.setQueryData<FeedPost[]>(feedKeys.posts(), old =>
+        old?.map(p => p.id === postId ? adaptPost(updated, 0) : p) ?? []
+      )
+    },
+  })
+}
+
+export function useDeleteComment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ postId, commentId }: { postId: string; commentId: string }) =>
+      api<any>(`/posts/${postId}/comments/${commentId}`, { method: 'DELETE' }),
+    onSuccess: (updated, { postId }) => {
+      qc.setQueryData<FeedPost[]>(feedKeys.posts(), old =>
+        old?.map(p => p.id === postId ? adaptPost(updated, 0) : p) ?? []
+      )
     },
   })
 }

@@ -338,12 +338,32 @@ function withPostedOnOrgName(p: any, orgs: any[]) {
   return org ? { ...p, postedOnOrgName: org.name } : p;
 }
 
+// Feed posts store raw comments as { id, authorId, text, createdAt } — this
+// resolves each comment's authorName/authorAvatarUrl at read time (mirrors
+// serializeBlogPost) and reports commentCount from the real array length,
+// falling back to a seed post's cosmetic commentCount when it has no
+// comments array at all yet.
+function withComments(p: any, users: any[]) {
+  const raw = Array.isArray(p.comments) ? p.comments : [];
+  const commentsList = raw.map((cm: any) => {
+    const cu = users.find((x: any) => x.id === cm.authorId);
+    return {
+      id: cm.id, authorId: cm.authorId, text: cm.text, createdAt: cm.createdAt,
+      authorName: cu?.user_metadata?.full_name ?? cu?.user_metadata?.name ?? "Unknown",
+      authorAvatarUrl: cu?.user_metadata?.avatar_url ?? cu?.user_metadata?.avatarUrl ?? "",
+    };
+  });
+  const { comments: _comments, ...rest } = p;
+  return { ...rest, commentsList, commentCount: raw.length > 0 ? commentsList.length : (p.commentCount ?? 0) };
+}
+
 app.get(`${BASE}/posts`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   const caller = await getCallerUser(c.req.header("Authorization"));
+  const users = await listAuthUsers();
   if (!caller) {
     const orgs = await kv.get("orgs") ?? SEED_ORGS;
-    return c.json(posts.filter((p: any) => p.visibility !== "private").map((p: any) => withComputedPinned(withPostedOnOrgName(p, orgs))));
+    return c.json(posts.filter((p: any) => p.visibility !== "private").map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)));
   }
   const orgs = await kv.get("orgs") ?? SEED_ORGS;
   // Private posts are members-only — only visible to a caller who belongs to
@@ -351,7 +371,7 @@ app.get(`${BASE}/posts`, async (c) => {
   // not even a filtered-out placeholder.
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
-  return c.json(visible.map((p: any) => withComputedPinned(withPostedOnOrgName(p, orgs))));
+  return c.json(visible.map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -411,7 +431,7 @@ app.post(`${BASE}/posts`, async (c) => {
   };
   await kv.set("posts", [newPost, ...posts]);
   const orgs = await kv.get("orgs") ?? SEED_ORGS;
-  return c.json(withComputedPinned(withPostedOnOrgName(newPost, orgs)), 201);
+  return c.json(withComments(withComputedPinned(withPostedOnOrgName(newPost, orgs)), await listAuthUsers()), 201);
 });
 
 function canModifyPost(post: any, caller: any): boolean {
@@ -457,6 +477,42 @@ app.delete(`${BASE}/posts/:id`, async (c) => {
   if (!canModifyPost(post, caller) && !isWallOwner) return c.json({ error: "Forbidden" }, 403);
   await kv.set("posts", posts.filter((p: any) => p.id !== id));
   return c.json({ ok: true });
+});
+
+app.post(`${BASE}/posts/:id/comments`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const body = await c.req.json();
+  const text = String(body.text ?? "").trim();
+  if (!text) return c.json({ error: "Comment text is required" }, 400);
+  const posts = await kv.get("posts") ?? SEED_POSTS;
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+  const newComment = { id: `c${Date.now()}`, authorId: caller.id, text, createdAt: new Date().toISOString() };
+  const updated = { ...post, comments: [...comments, newComment] };
+  await kv.set("posts", posts.map((p: any) => p.id === id ? updated : p));
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  return c.json(withComments(withComputedPinned(withPostedOnOrgName(updated, orgs)), await listAuthUsers()), 201);
+});
+
+app.delete(`${BASE}/posts/:id/comments/:commentId`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id, commentId } = c.req.param();
+  const posts = await kv.get("posts") ?? SEED_POSTS;
+  const post = posts.find((p: any) => p.id === id);
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+  const comment = comments.find((cm: any) => cm.id === commentId);
+  if (!comment) return c.json({ error: "Comment not found" }, 404);
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (comment.authorId !== caller.id && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const updated = { ...post, comments: comments.filter((cm: any) => cm.id !== commentId) };
+  await kv.set("posts", posts.map((p: any) => p.id === id ? updated : p));
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  return c.json(withComments(withComputedPinned(withPostedOnOrgName(updated, orgs)), await listAuthUsers()));
 });
 
 app.post(`${BASE}/posts/:id/react`, async (c) => {

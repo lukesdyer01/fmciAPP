@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import VerifiedBadge from './VerifiedBadge'
 import { useOpenProfile } from './ProfileView'
-import { useEditPost, useDeletePost, useSetPrayerStatus } from '../api-client/posts'
+import { useEditPost, useDeletePost, useSetPrayerStatus, useAddComment, useDeleteComment, type FeedComment } from '../api-client/posts'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
@@ -24,6 +24,7 @@ export interface Post {
   videoId?: string
   reactions: { amen: number; pray: number; heart: number }
   comments: number
+  commentsList?: FeedComment[]
   shares: number
   scripture?: string
   pinned?: boolean
@@ -74,6 +75,8 @@ export default function PostCard({ post }: { post: Post }) {
   const editPost = useEditPost()
   const deletePost = useDeletePost()
   const setPrayerStatus = useSetPrayerStatus()
+  const addComment = useAddComment()
+  const deleteComment = useDeleteComment()
 
   const isOwner = !!currentUser && (
     post.authorId ? post.authorId === currentUser.id : post.author === currentUser.displayName
@@ -104,6 +107,19 @@ export default function PostCard({ post }: { post: Post }) {
     editPost.mutate({ postId: post.id, content: editText.trim() }, {
       onSuccess: () => setEditing(false),
     })
+  }
+
+  function submitComment() {
+    const text = commentText.trim()
+    if (!text || addComment.isPending) return
+    addComment.mutate({ postId: post.id, text }, {
+      onSuccess: () => setCommentText(''),
+    })
+  }
+
+  function removeComment(commentId: string) {
+    if (!window.confirm('Delete this comment?')) return
+    deleteComment.mutate({ postId: post.id, commentId })
   }
 
   function handleDelete() {
@@ -423,10 +439,44 @@ export default function PostCard({ post }: { post: Post }) {
       {/* Comments */}
       {showComments && (
         <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+          {(post.commentsList ?? []).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
+              {post.commentsList!.map(cm => {
+                const canDeleteComment = !!currentUser && (cm.authorId === currentUser.id || isAdmin)
+                return (
+                  <div key={cm.id} style={{ display: 'flex', gap: '8px' }}>
+                    {cm.authorAvatarUrl
+                      ? <img onClick={() => openProfile(cm.authorId)} src={cm.authorAvatarUrl} alt="" style={{ width: '30px', height: '30px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, cursor: 'pointer' }} />
+                      : <div onClick={() => openProfile(cm.authorId)} style={{ width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>{(cm.authorName || '?').slice(0, 2).toUpperCase()}</div>
+                    }
+                    <div style={{ flex: 1, backgroundColor: '#fff', borderRadius: '10px', padding: '8px 12px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span onClick={() => openProfile(cm.authorId)} style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--color-text-1)', cursor: 'pointer' }}>{cm.authorName}</span>
+                        {canDeleteComment && (
+                          <button onClick={() => removeComment(cm.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '11px', padding: 0 }}>✕</button>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--color-text-1)', lineHeight: 1.5, marginTop: '2px', whiteSpace: 'pre-wrap' }}>{cm.text}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderRadius: '8px', padding: '8px 14px', border: '1px solid var(--color-border)', gap: '8px' }}>
-              <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Write a comment…" style={{ flex: 1, border: 'none', background: 'none', outline: 'none', fontSize: '14px', fontFamily: 'var(--font-sans)' }} />
-              {commentText && <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gold)', fontWeight: 700, fontSize: '13px' }}>Post</button>}
+              <input
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitComment() }}
+                placeholder="Write a comment…"
+                style={{ flex: 1, border: 'none', background: 'none', outline: 'none', fontSize: '14px', fontFamily: 'var(--font-sans)' }}
+              />
+              {commentText && (
+                <button onClick={submitComment} disabled={addComment.isPending} style={{ background: 'none', border: 'none', cursor: addComment.isPending ? 'default' : 'pointer', color: 'var(--color-gold)', fontWeight: 700, fontSize: '13px', fontFamily: 'var(--font-sans)' }}>
+                  {addComment.isPending ? 'Posting…' : 'Post'}
+                </button>
+              )}
             </div>
           </div>
         </div>
