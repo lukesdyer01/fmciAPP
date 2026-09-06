@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 import { useUIStore } from '../store/ui'
 import { useOpenProfile } from './ProfileView'
 import EditProfileModal from './EditProfileModal'
@@ -206,18 +205,7 @@ export default function Topbar() {
 
       {/* Brand */}
       <div className="topbar-brand" onClick={() => setActiveView('feed')} style={{ cursor: 'pointer' }}>
-        <img
-          className="topbar-brand-logo"
-          src={fmciLogo}
-          alt="FMCI"
-          style={{ height: '32px', width: '32px', objectFit: 'contain', flexShrink: 0 }}
-        />
-        <div>
-          <div className="topbar-brand-title" style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>FMCI</div>
-          <div className="topbar-brand-subtitle" style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
-            THE FEDERATION OF<br />MINISTERS &amp; CHURCHES INTERNATIONAL
-          </div>
-        </div>
+        <div className="topbar-brand-title" style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>FMCI</div>
       </div>
 
       {/* Search */}

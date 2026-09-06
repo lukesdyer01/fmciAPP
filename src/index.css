@@ -120,8 +120,8 @@ html[data-theme="dark"] #root {
 .admin-back-mobile { display: none; }
 
 /* Topbar sections that hide/reflow on mobile */
-.topbar-brand       { display: flex; align-items: center; gap: 8px; min-width: 200px; flex-shrink: 0; }
-.topbar-brand-title { font-size: 14px; line-height: 1.1; }
+.topbar-brand        { display: flex; align-items: center; gap: 8px; min-width: 200px; flex-shrink: 0; }
+.topbar-brand-title  { font-size: 22px; line-height: 56px; }
 .topbar-nav-pills   { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .topbar-secondary-icon { display: flex; }
 .notif-panel        { position: fixed; top: 60px; right: 60px; width: 360px; }
@@ -156,8 +156,6 @@ html[data-theme="dark"] #root {
     display: flex;
   }
 
-  .topbar-brand-subtitle,
-  .topbar-brand-logo,
   .topbar-nav-pills,
   .topbar-search,
   .topbar-secondary-icon {
@@ -165,10 +163,6 @@ html[data-theme="dark"] #root {
   }
   .topbar-brand {
     min-width: 0;
-  }
-  .topbar-brand-title {
-    font-size: 22px;
-    line-height: 56px;
   }
   .notif-panel {
     right: 10px;
