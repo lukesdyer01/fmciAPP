@@ -205,7 +205,7 @@ export default function Topbar() {
 
       {/* Brand */}
       <div className="topbar-brand" onClick={() => setActiveView('feed')} style={{ cursor: 'pointer' }}>
-        <div className="topbar-brand-title" style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>FMCI</div>
+        <div className="topbar-brand-title" style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>FMCI NETWORK</div>
       </div>
 
       {/* Search */}
