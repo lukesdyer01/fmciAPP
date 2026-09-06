@@ -835,23 +835,24 @@ function normalizeEventDates(e: any) {
   };
 }
 
-function serializeEvent(e: any, callerId: string) {
+function serializeEvent(e: any, callerId: string, users: any[]) {
   const going = Array.isArray(e.going) ? e.going : [];
   const interested = Array.isArray(e.interested) ? e.interested : [];
-  return {
+  return withComments({
     ...normalizeEventDates(e),
     attending: going.length, interestedCount: interested.length, isGoing: going.includes(callerId), isInterested: interested.includes(callerId),
-  };
+  }, users);
 }
 
 app.get(`${BASE}/events`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   const events = await kv.get("events") ?? [];
-  if (!caller) return c.json(events.filter((e: any) => e.visibility !== "private").map(normalizeEventDates));
+  const users = await listAuthUsers();
+  if (!caller) return c.json(events.filter((e: any) => e.visibility !== "private").map((e: any) => withComments(normalizeEventDates(e), users)));
   const orgs = await kv.get("orgs") ?? SEED_ORGS;
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = events.filter((e: any) => e.visibility !== "private" || memberOrgIds.has(e.orgId));
-  return c.json(visible.map((e: any) => serializeEvent(e, caller.id)));
+  return c.json(visible.map((e: any) => serializeEvent(e, caller.id, users)));
 });
 
 app.post(`${BASE}/events`, async (c) => {
@@ -873,6 +874,17 @@ app.post(`${BASE}/events`, async (c) => {
   if (body.visibility && !["public", "private"].includes(body.visibility)) {
     return c.json({ error: "Invalid visibility" }, 400);
   }
+  // A recurring meeting occurrence may link back to its Meeting Series hub —
+  // only allowed when both belong to the same ministry, so a series can't be
+  // used to pull an occurrence into a different ministry's discussion history.
+  let seriesId: string | null = null;
+  if (body.seriesId) {
+    const series = (await kv.get("meeting_series") ?? []).find((s: any) => s.id === body.seriesId);
+    if (!series || series.orgId !== body.orgId) {
+      return c.json({ error: "seriesId must refer to a series hosted by the same ministry" }, 400);
+    }
+    seriesId = series.id;
+  }
   const events = await kv.get("events") ?? [];
   const newEvent = {
     id: `e${Date.now()}`,
@@ -880,6 +892,7 @@ app.post(`${BASE}/events`, async (c) => {
     host: body.host ?? "",
     orgId: body.orgId ?? null,
     orgName: body.orgName ?? null,
+    seriesId,
     startDate: body.startDate ?? "",
     startTime: body.startTime ?? "",
     endDate: body.endDate ?? "",
@@ -900,6 +913,7 @@ app.post(`${BASE}/events`, async (c) => {
     createdAt: new Date().toISOString(),
     going: [caller.id],
     interested: [],
+    comments: [],
   };
   await kv.set("events", [newEvent, ...events]);
   // Fire-and-forget, same as the DM push in POST /conversations/:id/messages
@@ -919,7 +933,7 @@ app.post(`${BASE}/events`, async (c) => {
       }).catch(() => {});
     }
   }
-  return c.json(serializeEvent(newEvent, caller.id), 201);
+  return c.json(serializeEvent(newEvent, caller.id, await listAuthUsers()), 201);
 });
 
 app.post(`${BASE}/events/:id/rsvp`, async (c) => {
@@ -936,7 +950,46 @@ app.post(`${BASE}/events/:id/rsvp`, async (c) => {
   else if (status === "interested") interested.push(caller.id);
   const updated = { ...event, going, interested };
   await kv.set("events", events.map((e: any) => e.id === id ? updated : e));
-  return c.json(serializeEvent(updated, caller.id));
+  return c.json(serializeEvent(updated, caller.id, await listAuthUsers()));
+});
+
+app.post(`${BASE}/events/:id/comments`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const body = await c.req.json();
+  const text = String(body.text ?? "").trim();
+  if (!text) return c.json({ error: "Comment text is required" }, 400);
+  const events = await kv.get("events") ?? [];
+  const event = events.find((e: any) => e.id === id);
+  if (!event) return c.json({ error: "Event not found" }, 404);
+  if (event.visibility === "private") {
+    const orgs = await kv.get("orgs") ?? SEED_ORGS;
+    const org = orgs.find((o: any) => o.id === event.orgId);
+    if (!org || !orgRole(org, caller.id)) return c.json({ error: "Only that ministry's members can discuss this event" }, 403);
+  }
+  const comments = Array.isArray(event.comments) ? event.comments : [];
+  const newComment = { id: `ec${Date.now()}`, authorId: caller.id, text, createdAt: new Date().toISOString() };
+  const updated = { ...event, comments: [...comments, newComment] };
+  await kv.set("events", events.map((e: any) => e.id === id ? updated : e));
+  return c.json(serializeEvent(updated, caller.id, await listAuthUsers()), 201);
+});
+
+app.delete(`${BASE}/events/:id/comments/:commentId`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id, commentId } = c.req.param();
+  const events = await kv.get("events") ?? [];
+  const event = events.find((e: any) => e.id === id);
+  if (!event) return c.json({ error: "Event not found" }, 404);
+  const comments = Array.isArray(event.comments) ? event.comments : [];
+  const comment = comments.find((cm: any) => cm.id === commentId);
+  if (!comment) return c.json({ error: "Comment not found" }, 404);
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (comment.authorId !== caller.id && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const updated = { ...event, comments: comments.filter((cm: any) => cm.id !== commentId) };
+  await kv.set("events", events.map((e: any) => e.id === id ? updated : e));
+  return c.json(serializeEvent(updated, caller.id, await listAuthUsers()));
 });
 
 app.patch(`${BASE}/events/:id`, async (c) => {
@@ -962,9 +1015,20 @@ app.patch(`${BASE}/events/:id`, async (c) => {
     if (body.visibility === "private" && !event.orgId) return c.json({ error: "Only a ministry event can be members-only" }, 400);
     patch.visibility = body.visibility;
   }
+  if (body.seriesId !== undefined) {
+    if (!body.seriesId) {
+      patch.seriesId = null;
+    } else {
+      const series = (await kv.get("meeting_series") ?? []).find((s: any) => s.id === body.seriesId);
+      if (!series || series.orgId !== event.orgId) {
+        return c.json({ error: "seriesId must refer to a series hosted by the same ministry" }, 400);
+      }
+      patch.seriesId = series.id;
+    }
+  }
   const updated = { ...event, ...patch, editedAt: new Date().toISOString() };
   await kv.set("events", events.map((e: any) => e.id === id ? updated : e));
-  return c.json(serializeEvent(updated, caller.id));
+  return c.json(serializeEvent(updated, caller.id, await listAuthUsers()));
 });
 
 app.delete(`${BASE}/events/:id`, async (c) => {
@@ -978,6 +1042,129 @@ app.delete(`${BASE}/events/:id`, async (c) => {
   const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
   if (!isCreator && !isAdmin) return c.json({ error: "Forbidden" }, 403);
   await kv.set("events", events.filter((e: any) => e.id !== id));
+  return c.json({ ok: true });
+});
+
+// Meeting Series — a stable, bookmarkable hub for a recurring meeting (a
+// weekly prayer call, a monthly strategy meeting). It's not a duplicate
+// calendar entry: individual Events opt into a series via their own
+// seriesId, and the series page is just the index of those occurrences plus
+// each one's discussion thread, so a recurring meeting's history stays
+// findable in one place instead of scattered across independent events.
+function serializeMeetingSeries(s: any, events: any[], callerId: string, users: any[]) {
+  const occurrences = events
+    .filter((e: any) => e.seriesId === s.id)
+    .map((e: any) => serializeEvent(e, callerId, users))
+    .sort((a: any, b: any) => (b.startDate || "").localeCompare(a.startDate || ""));
+  return { ...s, occurrenceCount: occurrences.length, occurrences };
+}
+
+app.get(`${BASE}/meeting-series`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  const series = await kv.get("meeting_series") ?? [];
+  const events = await kv.get("events") ?? [];
+  const users = await listAuthUsers();
+  if (!caller) return c.json(series.filter((s: any) => s.visibility !== "private").map((s: any) => serializeMeetingSeries(s, events, "", users)));
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
+  const visible = series.filter((s: any) => s.visibility !== "private" || memberOrgIds.has(s.orgId));
+  return c.json(visible.map((s: any) => serializeMeetingSeries(s, events, caller.id, users)));
+});
+
+app.get(`${BASE}/meeting-series/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  const { id } = c.req.param();
+  const series = (await kv.get("meeting_series") ?? []).find((s: any) => s.id === id);
+  if (!series) return c.json({ error: "Series not found" }, 404);
+  if (series.visibility === "private") {
+    if (!caller) return c.json({ error: "Must be signed in" }, 401);
+    const orgs = await kv.get("orgs") ?? SEED_ORGS;
+    const org = orgs.find((o: any) => o.id === series.orgId);
+    if (!org || !orgRole(org, caller.id)) return c.json({ error: "Forbidden" }, 403);
+  }
+  const events = await kv.get("events") ?? [];
+  return c.json(serializeMeetingSeries(series, events, caller?.id ?? "", await listAuthUsers()));
+});
+
+app.post(`${BASE}/meeting-series`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const body = await c.req.json();
+  if (!body.title || !String(body.title).trim()) return c.json({ error: "Series title is required" }, 400);
+  if (!body.orgId) return c.json({ error: "orgId is required" }, 400);
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === body.orgId);
+  const myRole = org ? orgRole(org, caller.id) : undefined;
+  if (!org || (myRole !== "owner" && myRole !== "admin")) {
+    return c.json({ error: "Only that ministry's owner or admin can create a meeting series for it" }, 403);
+  }
+  if (body.visibility && !["public", "private"].includes(body.visibility)) {
+    return c.json({ error: "Invalid visibility" }, 400);
+  }
+  const series = await kv.get("meeting_series") ?? [];
+  const newSeries = {
+    id: `ms${Date.now()}`,
+    title: String(body.title).trim(),
+    description: body.description ?? "",
+    orgId: body.orgId,
+    orgName: org.name,
+    cadence: body.cadence ?? "",
+    location: body.location ?? "",
+    zoomLink: body.zoomLink ?? "",
+    zoomPassword: body.zoomPassword ?? "",
+    visibility: body.visibility === "private" ? "private" : "public",
+    createdBy: caller.id,
+    createdAt: new Date().toISOString(),
+  };
+  await kv.set("meeting_series", [newSeries, ...series]);
+  return c.json(serializeMeetingSeries(newSeries, await kv.get("events") ?? [], caller.id, await listAuthUsers()), 201);
+});
+
+app.patch(`${BASE}/meeting-series/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const series = await kv.get("meeting_series") ?? [];
+  const item = series.find((s: any) => s.id === id);
+  if (!item) return c.json({ error: "Series not found" }, 404);
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === item.orgId);
+  const myRole = org ? orgRole(org, caller.id) : undefined;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (myRole !== "owner" && myRole !== "admin" && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  if (body.title !== undefined && !String(body.title).trim()) return c.json({ error: "Series title is required" }, 400);
+  const EDITABLE_FIELDS = ["title", "description", "cadence", "location", "zoomLink", "zoomPassword"];
+  const patch: Record<string, unknown> = {};
+  for (const f of EDITABLE_FIELDS) {
+    if (body[f] !== undefined) patch[f] = f === "title" ? String(body[f]).trim() : body[f];
+  }
+  if (body.visibility !== undefined) {
+    if (!["public", "private"].includes(body.visibility)) return c.json({ error: "Invalid visibility" }, 400);
+    patch.visibility = body.visibility;
+  }
+  const updated = { ...item, ...patch };
+  await kv.set("meeting_series", series.map((s: any) => s.id === id ? updated : s));
+  return c.json(serializeMeetingSeries(updated, await kv.get("events") ?? [], caller.id, await listAuthUsers()));
+});
+
+app.delete(`${BASE}/meeting-series/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const series = await kv.get("meeting_series") ?? [];
+  const item = series.find((s: any) => s.id === id);
+  if (!item) return c.json({ error: "Series not found" }, 404);
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === item.orgId);
+  const myRole = org ? orgRole(org, caller.id) : undefined;
+  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
+  if (myRole !== "owner" && myRole !== "admin" && !isAdmin) return c.json({ error: "Forbidden" }, 403);
+  // Unlink (not delete) any occurrences still pointing at this series, so
+  // deleting the hub doesn't silently orphan calendar events or their threads.
+  const events = await kv.get("events") ?? [];
+  await kv.set("events", events.map((e: any) => e.seriesId === id ? { ...e, seriesId: null } : e));
+  await kv.set("meeting_series", series.filter((s: any) => s.id !== id));
   return c.json({ ok: true });
 });
 

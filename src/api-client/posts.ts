@@ -3,14 +3,8 @@ import { scorePost } from '../core/feed/fanout'
 import { api } from './server'
 import type { BadgeVariant } from '../components/Badge'
 
-export interface FeedComment {
-  id: string
-  authorId: string
-  authorName: string
-  authorAvatarUrl: string
-  text: string
-  createdAt: string
-}
+import type { FeedComment } from './comments'
+export type { FeedComment }
 
 export interface FeedPost {
   id: string

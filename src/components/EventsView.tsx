@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { api } from '../api-client/server'
 import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
+import CreateMeetingSeriesModal from './CreateMeetingSeriesModal'
+import EventDetailView from './EventDetailView'
+import MeetingSeriesView from './MeetingSeriesView'
 import { useUIStore } from '../store/ui'
 
 const FILTERS = ['All', 'Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study', 'Movement']
@@ -11,9 +14,13 @@ export default function EventsView() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+  const [showCreateSeries, setShowCreateSeries] = useState(false)
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
-  const focusEventId = useUIStore(s => s.focusEventId)
-  const clearFocusEvent = useUIStore(s => s.clearFocusEvent)
+  const viewingEventId = useUIStore(s => s.viewingEventId)
+  const closeEventView = useUIStore(s => s.closeEventView)
+  const viewingSeriesId = useUIStore(s => s.viewingSeriesId)
+  const viewMeetingSeries = useUIStore(s => s.viewMeetingSeries)
+  const closeMeetingSeriesView = useUIStore(s => s.closeMeetingSeriesView)
 
   async function load() {
     try {
@@ -30,26 +37,15 @@ export default function EventsView() {
 
   useEffect(() => { load() }, [])
 
-  // Arriving here from a widget link (e.g. the homepage Upcoming Events
-  // list) — make sure the filter isn't hiding the target, then scroll to
-  // and briefly highlight its card. There's no standalone event-detail
-  // page, so this is the "link to the specific event" destination.
-  useEffect(() => {
-    if (!focusEventId || loading) return
-    setFilter('All')
-    const el = document.getElementById(`event-${focusEventId}`)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      const prevTransition = el.style.transition
-      const prevShadow = el.style.boxShadow
-      el.style.transition = 'box-shadow 0.3s'
-      el.style.boxShadow = '0 0 0 3px var(--color-gold)'
-      setTimeout(() => { el.style.boxShadow = prevShadow; el.style.transition = prevTransition }, 2200)
-    }
-    clearFocusEvent()
-  }, [focusEventId, loading])
-
   const filtered = events.filter(e => filter === 'All' || e.type === filter)
+
+  if (viewingSeriesId) {
+    return <MeetingSeriesView seriesId={viewingSeriesId} onBack={closeMeetingSeriesView} />
+  }
+
+  if (viewingEventId) {
+    return <EventDetailView eventId={viewingEventId} onBack={closeEventView} />
+  }
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
@@ -58,15 +54,25 @@ export default function EventsView() {
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Events</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Conferences, prayer calls, leadership meetings, and training sessions — including events from ministries across the network</p>
         </div>
-        <button onClick={() => setShowCreate(true)} style={{
-          padding: '10px 20px', borderRadius: '10px', border: 'none',
-          backgroundColor: 'var(--color-navy)', color: '#fff',
-          fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-        }}>+ Create Event</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => setShowCreateSeries(true)} style={{
+            padding: '10px 18px', borderRadius: '10px', border: '1px solid var(--color-border)',
+            backgroundColor: 'var(--color-card)', color: 'var(--color-text-1)',
+            fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+          }}>🔁 New Recurring Meeting</button>
+          <button onClick={() => setShowCreate(true)} style={{
+            padding: '10px 20px', borderRadius: '10px', border: 'none',
+            backgroundColor: 'var(--color-navy)', color: '#fff',
+            fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+          }}>+ Create Event</button>
+        </div>
       </div>
 
       {showCreate && (
         <CreateEventModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load() }} />
+      )}
+      {showCreateSeries && (
+        <CreateMeetingSeriesModal onClose={() => setShowCreateSeries(false)} onCreated={id => { setShowCreateSeries(false); viewMeetingSeries(id) }} />
       )}
       {editingEvent && (
         <CreateEventModal

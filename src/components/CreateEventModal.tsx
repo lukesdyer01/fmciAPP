@@ -6,9 +6,12 @@ import type { EventItem } from './EventCard'
 
 const EVENT_TYPES = ['Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study', 'Movement']
 
-export default function CreateEventModal({ orgId, orgName, event, onClose, onCreated }: {
+export default function CreateEventModal({ orgId, orgName, seriesId, event, onClose, onCreated }: {
   orgId?: string
   orgName?: string
+  // Set when creating a new occurrence from a Meeting Series hub page, so
+  // this event is automatically linked into that recurring meeting's history.
+  seriesId?: string
   // When set, the modal edits this existing event instead of creating a new one.
   event?: EventItem
   onClose: () => void
@@ -73,7 +76,7 @@ export default function CreateEventModal({ orgId, orgName, event, onClose, onCre
           body: JSON.stringify({
             title: title.trim(), startDate, startTime, endDate, endTime, location, type, access, price, img, infoUrl: infoUrl.trim(),
             isRemote, zoomLink: isRemote ? zoomLink.trim() : '', zoomPassword: isRemote ? zoomPassword.trim() : '',
-            host: orgName ?? '', orgId, orgName, official: !!orgId,
+            host: orgName ?? '', orgId, orgName, official: !!orgId, seriesId,
             ...(orgId ? { visibility } : {}),
           }),
         })

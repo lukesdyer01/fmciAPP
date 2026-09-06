@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { api } from '../api-client/server'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
+import { useUIStore } from '../store/ui'
+import type { FeedComment } from '../api-client/comments'
 
 export interface EventItem {
   id: string
@@ -9,6 +11,7 @@ export interface EventItem {
   host: string
   orgId?: string | null
   orgName?: string | null
+  seriesId?: string | null
   startDate: string
   startTime: string
   endDate?: string
@@ -31,6 +34,7 @@ export interface EventItem {
   interestedCount: number
   isGoing: boolean
   isInterested: boolean
+  commentsList?: FeedComment[]
 }
 
 export const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
@@ -79,9 +83,11 @@ export function UpcomingEvents({ events, onChanged, onEdit, showOrg = true }: { 
 export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event: EventItem; onChanged: () => void; onEdit?: (event: EventItem) => void; showOrg?: boolean }) {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
+  const viewEvent = useUIStore(s => s.viewEvent)
   const [busy, setBusy] = useState(false)
   const ts = TYPE_COLOR[event.type] ?? { color: '#374151', bg: '#F9FAFB' }
   const canModify = currentUser?.id === event.createdBy || role === 'admin' || role === 'superadmin'
+  const commentCount = (event.commentsList ?? []).length
 
   async function rsvp(status: 'going' | 'interested' | null) {
     setBusy(true)
@@ -142,7 +148,10 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
       </div>
       <div style={{ padding: '22px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-          <h2 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)', lineHeight: 1.3 }}>{event.title}</h2>
+          <h2
+            onClick={() => viewEvent(event.id)}
+            style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: 'var(--color-text-1)', lineHeight: 1.3, cursor: 'pointer' }}
+          >{event.title}</h2>
           {canModify && (
             <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
               {onEdit && (
@@ -212,8 +221,13 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>
-            <strong style={{ color: 'var(--color-text-1)' }}>{event.attending}</strong> going · <strong style={{ color: 'var(--color-text-1)' }}>{event.interestedCount}</strong> interested
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '13px', color: 'var(--color-text-2)' }}>
+            <span><strong style={{ color: 'var(--color-text-1)' }}>{event.attending}</strong> going · <strong style={{ color: 'var(--color-text-1)' }}>{event.interestedCount}</strong> interested</span>
+            <button onClick={() => viewEvent(event.id)} style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-2)',
+              fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 600, padding: 0,
+              display: 'flex', alignItems: 'center', gap: '5px',
+            }}>💬 {commentCount > 0 ? commentCount : 'Discuss'}</button>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
