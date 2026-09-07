@@ -3,6 +3,7 @@ import { useUIStore, type UserProfile } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import { supabase } from '../lib/supabase'
 import { api } from '../api-client/server'
+import { useBlockedMembers, useUnblockMember } from '../api-client/moderation'
 
 interface MyMinistry {
   id: string
@@ -407,6 +408,10 @@ export default function EditProfileModal() {
             </div>
           </div>
 
+          {/* Blocked members — a block has to be reversible from somewhere, and
+              this is the only per-account settings surface in the app. */}
+          <BlockedMembersSection />
+
           {/* Danger zone */}
           <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--color-border)' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-red)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Danger Zone</div>
@@ -481,6 +486,45 @@ export default function EditProfileModal() {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Blocked members list with an unblock action. Rendered inside the profile
+// modal because it is the only per-account settings surface in the app; a
+// block made from a post menu would otherwise be impossible to undo.
+function BlockedMembersSection() {
+  const { data: blocked, isLoading } = useBlockedMembers()
+  const unblock = useUnblockMember()
+
+  if (isLoading || !blocked || blocked.length === 0) return null
+
+  return (
+    <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--color-border)' }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '4px' }}>
+        Blocked Members
+      </div>
+      <div style={{ fontSize: '13px', color: 'var(--color-text-2)', lineHeight: 1.5, marginBottom: '12px' }}>
+        You don't see their posts, comments, or messages. They are not told.
+      </div>
+      {blocked.map(m => (
+        <div key={m.id} style={{
+          display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0',
+          borderBottom: '1px solid var(--color-border-light)',
+        }}>
+          {m.avatarUrl
+            ? <img src={m.avatarUrl} alt="" style={{ width: '34px', height: '34px', borderRadius: '9px', objectFit: 'cover', flexShrink: 0 }} />
+            : <div style={{ width: '34px', height: '34px', borderRadius: '9px', backgroundColor: 'var(--color-hover)', flexShrink: 0 }} />}
+          <div style={{ flex: 1, minWidth: 0, fontSize: '14px', fontWeight: 600, color: 'var(--color-text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {m.name || 'Unknown member'}
+          </div>
+          <button onClick={() => unblock.mutate(m.id)} disabled={unblock.isPending} style={{
+            padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-border)',
+            backgroundColor: 'transparent', color: 'var(--color-text-1)', fontSize: '12px', fontWeight: 700,
+            cursor: unblock.isPending ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
+          }}>Unblock</button>
+        </div>
+      ))}
     </div>
   )
 }

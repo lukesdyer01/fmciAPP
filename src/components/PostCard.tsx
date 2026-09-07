@@ -7,6 +7,8 @@ import CommentThread from './CommentThread'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
+import ReportModal from './ReportModal'
+import { useBlockMember } from '../api-client/moderation'
 
 export interface Post {
   id: string
@@ -65,6 +67,7 @@ export default function PostCard({ post }: { post: Post }) {
   const [active, setActive] = useState<'amen' | 'pray' | 'heart' | null>(null)
   const [showComments, setShowComments] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [reporting, setReporting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(post.content ?? '')
   const openProfile = useOpenProfile()
@@ -86,6 +89,18 @@ export default function PostCard({ post }: { post: Post }) {
   const canEdit = isOwner || isAdmin
   const canDelete = isOwner || isAdmin || isWallOwner
   const canModify = canEdit
+  // Reporting and blocking only make sense against someone else's content, and
+  // an anonymous prayer request has no author to act on.
+  const canReport = !!currentUser && !isOwner && !post.isAnonymous
+  const canBlock = canReport && !!post.authorId
+  const blockMember = useBlockMember()
+
+  async function handleBlock() {
+    if (!post.authorId) return
+    if (!window.confirm(`Block ${post.author}? You will no longer see their posts, comments, or messages.`)) return
+    setMenuOpen(false)
+    await blockMember.mutateAsync(post.authorId)
+  }
 
   const handleReaction = (type: 'amen' | 'pray' | 'heart') => {
     setReactions(r => {
@@ -260,7 +275,7 @@ export default function PostCard({ post }: { post: Post }) {
                   }}>{post.prayerStatus === 'answered' ? '✓ Answered' : '○ Unanswered'}</span>
                 )
               )}
-              {(canEdit || canDelete) && (
+              {(canEdit || canDelete || canReport) && (
                 <div style={{ position: 'relative' }}>
                   <button onClick={() => setMenuOpen(o => !o)} style={{
                     background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px',
@@ -288,6 +303,21 @@ export default function PostCard({ post }: { post: Post }) {
                           cursor: deletePost.isPending ? 'default' : 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-red)',
                           textAlign: 'left', fontFamily: 'var(--font-sans)', opacity: deletePost.isPending ? 0.5 : 1,
                         }}>{deletePost.isPending ? 'Deleting…' : '🗑 Delete'}</button>
+                        )}
+                        {canReport && (
+                          <button onClick={() => { setMenuOpen(false); setReporting(true) }} style={{
+                            display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
+                            cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)',
+                            textAlign: 'left', fontFamily: 'var(--font-sans)',
+                          }}>🚩 Report</button>
+                        )}
+                        {canBlock && (
+                          <button onClick={handleBlock} disabled={blockMember.isPending} style={{
+                            display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
+                            cursor: blockMember.isPending ? 'default' : 'pointer', fontSize: '13px', fontWeight: 600,
+                            color: 'var(--color-red)', textAlign: 'left', fontFamily: 'var(--font-sans)',
+                            opacity: blockMember.isPending ? 0.5 : 1,
+                          }}>{blockMember.isPending ? 'Blocking…' : '🚫 Block member'}</button>
                         )}
                       </div>
                     </>
@@ -440,6 +470,16 @@ export default function PostCard({ post }: { post: Post }) {
             isAdmin={isAdmin}
           />
         </div>
+      )}
+
+      {reporting && (
+        <ReportModal
+          targetType="post"
+          targetId={post.id}
+          targetAuthorId={post.authorId}
+          targetLabel="this post"
+          onClose={() => setReporting(false)}
+        />
       )}
     </div>
   )

@@ -530,6 +530,33 @@ function withComments(p: any, users: any[]) {
   return { ...rest, commentsList, commentCount: raw.length > 0 ? commentsList.length : (p.commentCount ?? 0) };
 }
 
+// Moderation. App Store guideline 1.2 requires user-generated content to carry
+// a way to report objectionable material and to block abusive members.
+// Blocks are one-directional and silent: the blocker stops seeing the blocked
+// member, and the blocked member is never told.
+const REPORT_REASONS = ["spam", "harassment", "hate", "sexual", "violence", "misinformation", "other"];
+
+async function getBlockedIds(userId: string): Promise<string[]> {
+  const all = await kv.get("user_blocks") ?? {};
+  return Array.isArray(all[userId]) ? all[userId] : [];
+}
+
+async function saveBlockedIds(userId: string, ids: string[]): Promise<void> {
+  const all = await kv.get("user_blocks") ?? {};
+  await kv.set("user_blocks", { ...all, [userId]: ids });
+}
+
+// Drops a blocked member's own posts, and their comments on posts that remain.
+// Must run before withComments(), which consumes and removes p.comments.
+function withoutBlocked(posts: any[], blocked: Set<string>): any[] {
+  if (blocked.size === 0) return posts;
+  return posts
+    .filter((p: any) => !blocked.has(p.authorId))
+    .map((p: any) => (Array.isArray(p.comments) && p.comments.some((cm: any) => blocked.has(cm.authorId))
+      ? { ...p, comments: p.comments.filter((cm: any) => !blocked.has(cm.authorId)) }
+      : p));
+}
+
 app.get(`${BASE}/posts`, async (c) => {
   const posts = await kv.get("posts") ?? SEED_POSTS;
   const caller = await getCallerUser(c.req.header("Authorization"));
@@ -544,7 +571,8 @@ app.get(`${BASE}/posts`, async (c) => {
   // not even a filtered-out placeholder.
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
-  return c.json(visible.map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)));
+  const blocked = new Set(await getBlockedIds(caller.id));
+  return c.json(withoutBlocked(visible, blocked).map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -1653,7 +1681,10 @@ app.get(`${BASE}/conversations`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const conversations = await kv.get("conversations") ?? [];
-  const mine = conversations.filter((conv: any) => Array.isArray(conv.participantIds) && conv.participantIds.includes(caller.id));
+  const blocked = new Set(await getBlockedIds(caller.id));
+  const mine = conversations.filter((conv: any) => Array.isArray(conv.participantIds) &&
+    conv.participantIds.includes(caller.id) &&
+    !conv.participantIds.some((id: string) => blocked.has(id)));
   const summaries = await Promise.all(mine.map(async (conv: any) => {
     const otherId = conv.participantIds.find((id: string) => id !== caller.id);
     const other = await userSummary(otherId);
@@ -1726,6 +1757,101 @@ app.post(`${BASE}/conversations/:id/messages`, async (c) => {
     }).catch(() => {});
   }
   return c.json(message, 201);
+});
+
+// --- Reports ---------------------------------------------------------------
+
+app.post(`${BASE}/reports`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const body = await c.req.json();
+  if (!["post", "comment", "user", "message"].includes(body?.targetType)) {
+    return c.json({ error: "A valid targetType is required" }, 400);
+  }
+  if (!body?.targetId) return c.json({ error: "targetId is required" }, 400);
+  if (!REPORT_REASONS.includes(body?.reason)) return c.json({ error: "A valid reason is required" }, 400);
+
+  const reports = await kv.get("content_reports") ?? [];
+  // One open report per person per item, so a repeat tap doesn't flood the queue.
+  const already = reports.some((r: any) =>
+    r.reporterId === caller.id && r.targetType === body.targetType &&
+    r.targetId === String(body.targetId) && r.status === "open");
+  if (already) return c.json({ ok: true, duplicate: true });
+
+  const report = {
+    id: `r${Date.now()}`,
+    targetType: body.targetType,
+    targetId: String(body.targetId),
+    targetAuthorId: body.targetAuthorId ?? null,
+    reason: body.reason,
+    note: typeof body.note === "string" ? body.note.slice(0, 1000) : "",
+    reporterId: caller.id,
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+  await kv.set("content_reports", [report, ...reports]);
+  return c.json({ ok: true });
+});
+
+// Review queue. Apple expects reports to be acted on, not merely collected.
+app.get(`${BASE}/reports`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (!["admin", "moderator", "superadmin"].includes(callerRole(caller))) {
+    return c.json({ error: "Not permitted" }, 403);
+  }
+  const reports = await kv.get("content_reports") ?? [];
+  const withNames = await Promise.all(reports.map(async (r: any) => ({
+    ...r,
+    reporter: await userSummary(r.reporterId),
+    targetAuthor: r.targetAuthorId ? await userSummary(r.targetAuthorId) : null,
+  })));
+  return c.json(withNames);
+});
+
+app.put(`${BASE}/reports/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (!["admin", "moderator", "superadmin"].includes(callerRole(caller))) {
+    return c.json({ error: "Not permitted" }, 403);
+  }
+  const { status } = await c.req.json();
+  if (!["open", "actioned", "dismissed"].includes(status)) return c.json({ error: "A valid status is required" }, 400);
+  const reports = await kv.get("content_reports") ?? [];
+  const next = reports.map((r: any) => (r.id === c.req.param("id")
+    ? { ...r, status, reviewedBy: caller.id, reviewedAt: new Date().toISOString() }
+    : r));
+  await kv.set("content_reports", next);
+  return c.json({ ok: true });
+});
+
+// --- Blocks ----------------------------------------------------------------
+
+app.get(`${BASE}/blocks`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const ids = await getBlockedIds(caller.id);
+  return c.json(await Promise.all(ids.map((id) => userSummary(id))));
+});
+
+app.post(`${BASE}/blocks`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { userId } = await c.req.json();
+  if (!userId) return c.json({ error: "userId is required" }, 400);
+  if (userId === caller.id) return c.json({ error: "You cannot block yourself" }, 400);
+  const ids = await getBlockedIds(caller.id);
+  if (!ids.includes(userId)) await saveBlockedIds(caller.id, [...ids, userId]);
+  return c.json({ ok: true });
+});
+
+app.delete(`${BASE}/blocks/:userId`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const userId = c.req.param("userId");
+  const ids = await getBlockedIds(caller.id);
+  await saveBlockedIds(caller.id, ids.filter((id) => id !== userId));
+  return c.json({ ok: true });
 });
 
 app.post(`${BASE}/push/subscribe`, async (c) => {
