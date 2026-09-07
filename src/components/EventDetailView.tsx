@@ -5,6 +5,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { type EventItem, formatEventWhen, TYPE_COLOR } from './EventCard'
 import CommentThread from './CommentThread'
+import { openExternal } from '../lib/openExternal'
 
 // A single event's permalink page — full info, RSVP, and its discussion
 // thread. Replaces the old scroll-to-card-in-the-list behavior so a
@@ -128,7 +129,7 @@ export default function EventDetailView({ eventId, onBack }: { eventId: string; 
         {event.isRemote && (event.zoomLink || event.zoomPassword) && (
           <div style={{ marginTop: '6px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>
             {event.zoomLink && (
-              <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none' }}>💻 Join Zoom Meeting</a>
+              <a href={event.zoomLink} onClick={e => { e.preventDefault(); openExternal(event.zoomLink!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none' }}>💻 Join Zoom Meeting</a>
             )}
             {event.zoomPassword && (
               <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginTop: '6px' }}>Passcode: <strong style={{ color: 'var(--color-text-1)' }}>{event.zoomPassword}</strong></div>
@@ -137,7 +138,7 @@ export default function EventDetailView({ eventId, onBack }: { eventId: string; 
         )}
         {event.infoUrl && (
           <div style={{ marginTop: event.isRemote ? 0 : '6px', paddingTop: event.isRemote ? 0 : '12px', borderTop: event.isRemote ? 'none' : '1px solid var(--color-border)' }}>
-            <a href={event.infoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none' }}>🔗 More Info</a>
+            <a href={event.infoUrl} onClick={e => { e.preventDefault(); openExternal(event.infoUrl!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none' }}>🔗 More Info</a>
           </div>
         )}
       </div>

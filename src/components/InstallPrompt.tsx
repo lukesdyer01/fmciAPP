@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 
 const DISMISSED_KEY = 'ic-install-prompt-dismissed'
 
@@ -68,8 +69,9 @@ export default function InstallPrompt() {
   }
 
   // Desktop already has its own install affordance in the browser's own UI
-  // (address-bar icon) — this banner is specifically for mobile users.
-  if (installed || dismissed || window.innerWidth > 768) return null
+  // (address-bar icon) — this banner is specifically for mobile users. Also
+  // meaningless inside the native Capacitor app — it's already "installed."
+  if (installed || dismissed || window.innerWidth > 768 || Capacitor.isNativePlatform()) return null
 
   // Android/Chrome/Edge — the browser tells us it's installable via this
   // event; only show once that fires (no generic "maybe installable" guess).

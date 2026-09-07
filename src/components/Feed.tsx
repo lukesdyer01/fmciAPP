@@ -10,6 +10,7 @@ import ResourcesView from './ResourcesView'
 import BlogView, { BlogPostFeedCard, type BlogPost } from './BlogView'
 import GlobalMapView from './GlobalMapView'
 import AboutView from './AboutView'
+import PrivacyPolicyView from './PrivacyPolicyView'
 import OrgView from './OrgView'
 import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
@@ -236,6 +237,7 @@ export default function Feed({ activeView }: { activeView: ActiveView }) {
   if (activeView === 'resources') return <ResourcesView />
   if (activeView === 'map')       return <GlobalMapView />
   if (activeView === 'about')     return <AboutView />
+  if (activeView === 'privacy')   return <PrivacyPolicyView />
 
   return <MainFeed />
 }

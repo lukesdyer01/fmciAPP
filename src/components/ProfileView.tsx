@@ -7,6 +7,7 @@ import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
 import EditProfileModal from './EditProfileModal'
 import VerifiedBadge from './VerifiedBadge'
+import { openExternal } from '../lib/openExternal'
 
 export interface MemberProfile {
   id: string
@@ -153,9 +154,10 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
           )}
           {(member.website || member.email || member.phone) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px', fontSize: '13px' }}>
-              {member.website && (
-                <a href={member.website.startsWith('http') ? member.website : `https://${member.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-navy)', fontWeight: 600 }}>🌐 {member.website}</a>
-              )}
+              {member.website && (() => {
+                const websiteUrl = member.website.startsWith('http') ? member.website : `https://${member.website}`
+                return <a href={websiteUrl} onClick={e => { e.preventDefault(); openExternal(websiteUrl) }} style={{ color: 'var(--color-navy)', fontWeight: 600 }}>🌐 {member.website}</a>
+              })()}
               {member.email && (
                 <a href={`mailto:${member.email}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>✉️ {member.email}</a>
               )}

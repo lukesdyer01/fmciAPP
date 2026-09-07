@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { PushNotifications } from '@capacitor/push-notifications'
 import { useSubscribeToPush } from '../api-client/push'
 
 const DISMISSED_KEY = 'ic-push-prompt-dismissed'
@@ -12,9 +14,18 @@ function pushSupported(): boolean {
 }
 
 export default function PushPrompt() {
+  const isNative = Capacitor.isNativePlatform()
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY) === 'true')
   const [error, setError] = useState('')
+  // Native permission state isn't readable synchronously like Notification.permission
+  // is on the web, so it's fetched once on mount instead.
+  const [nativeUndecided, setNativeUndecided] = useState(false)
   const { mutate, isPending } = useSubscribeToPush()
+
+  useEffect(() => {
+    if (!isNative) return
+    PushNotifications.checkPermissions().then(status => setNativeUndecided(status.receive === 'prompt'))
+  }, [isNative])
 
   function dismiss() {
     localStorage.setItem(DISMISSED_KEY, 'true')
@@ -29,15 +40,17 @@ export default function PushPrompt() {
     })
   }
 
-  // Push permission can only be requested from inside a standalone, installed
-  // PWA on iOS — a regular Safari tab is never offered it — so this banner
-  // only ever appears once InstallPrompt's flow has actually been completed.
-  if (
-    dismissed ||
-    !isStandalone() ||
-    !pushSupported() ||
-    Notification.permission !== 'default'
-  ) return null
+  // Web: push permission can only be requested from inside a standalone,
+  // installed PWA on iOS — a regular Safari tab is never offered it — so
+  // this banner only appears once InstallPrompt's flow has been completed.
+  // Native: no such install-state gate applies; only the OS permission
+  // itself (still undecided) matters.
+  if (dismissed) return null
+  if (isNative) {
+    if (!nativeUndecided) return null
+  } else if (!isStandalone() || !pushSupported() || Notification.permission !== 'default') {
+    return null
+  }
 
   return (
     <div style={{

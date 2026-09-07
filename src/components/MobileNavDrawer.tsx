@@ -89,6 +89,23 @@ export default function MobileNavDrawer() {
             }}>ℹ️</span>
             About FMCI
           </button>
+
+          <button onClick={() => selectView('privacy')} style={{
+            display: 'flex', alignItems: 'center', gap: '12px',
+            width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
+            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
+            backgroundColor: activeView === 'privacy' ? 'var(--color-navy)' : 'transparent',
+            color: activeView === 'privacy' ? '#fff' : 'var(--color-text-1)',
+            fontSize: '15px', fontWeight: activeView === 'privacy' ? 700 : 500,
+            marginBottom: '2px',
+          }}>
+            <span style={{
+              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+              backgroundColor: activeView === 'privacy' ? 'rgba(255,255,255,0.12)' : 'var(--color-surface)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
+            }}>🔒</span>
+            Privacy Policy
+          </button>
         </nav>
 
         <div style={{ borderTop: '1px solid var(--color-border)', padding: '10px' }}>

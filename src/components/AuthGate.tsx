@@ -5,11 +5,13 @@ import { SupabaseRoleProvider } from '../contexts/SupabaseRoleContext'
 import { api } from '../api-client/server'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 import OnboardingWizard from './OnboardingWizard'
+import PrivacyPolicyView from './PrivacyPolicyView'
 
 type AuthMode = 'login' | 'signup' | 'forgot'
 
 function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
   const [mode, setMode] = useState<AuthMode>('login')
+  const [showPrivacy, setShowPrivacy] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -53,7 +55,11 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         }
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin,
+          // A fixed, real URL rather than window.location.origin — inside a
+          // Capacitor WebView, the origin is a meaningless capacitor://localhost
+          // that the reset email can't link back into. Native users complete
+          // the reset in their system browser and sign back into the app.
+          redirectTo: 'https://fmci.network',
         })
         if (error) throw error
         setInfo('Password reset email sent. Check your inbox.')
@@ -215,8 +221,24 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
 
         <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '12px', color: 'rgba(255,255,255,0.2)', lineHeight: 1.6 }}>
           © 2026 Federation of Ministers &amp; Churches International
+          {' · '}
+          <button onClick={() => setShowPrivacy(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', fontSize: '12px', textDecoration: 'underline', fontFamily: 'var(--font-sans)', padding: 0 }}>
+            Privacy Policy
+          </button>
         </p>
       </div>
+
+      {showPrivacy && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 500, backgroundColor: 'var(--color-surface)', overflowY: 'auto', padding: '32px 20px 60px' }}>
+          <div style={{ maxWidth: '720px', margin: '0 auto 20px' }}>
+            <button onClick={() => setShowPrivacy(false)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '14px', fontWeight: 600, color: 'var(--color-text-2)', fontFamily: 'var(--font-sans)', padding: 0,
+            }}>← Back to sign in</button>
+          </div>
+          <PrivacyPolicyView />
+        </div>
+      )}
     </div>
   )
 }

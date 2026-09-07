@@ -1,4 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
+import { Capacitor } from '@capacitor/core'
+import { PushNotifications } from '@capacitor/push-notifications'
 import { api } from './server'
 import { VAPID_PUBLIC_KEY } from '../../utils/supabase/vapid'
 
@@ -26,6 +28,31 @@ export async function subscribeToPush(): Promise<void> {
   await api('/push/subscribe', { method: 'POST', body: JSON.stringify(subscription.toJSON()) })
 }
 
+// Native counterpart — permission + registration go through
+// @capacitor/push-notifications instead of the browser Notification/
+// PushManager APIs; the resulting device token feeds the FCM-backed
+// delivery path on the backend rather than Web Push.
+async function subscribeToNativePush(): Promise<void> {
+  const permStatus = await PushNotifications.checkPermissions()
+  const finalStatus = permStatus.receive === 'prompt' ? await PushNotifications.requestPermissions() : permStatus
+  if (finalStatus.receive !== 'granted') throw new Error('Notification permission denied')
+
+  await new Promise<void>((resolve, reject) => {
+    PushNotifications.addListener('registration', async token => {
+      try {
+        await api('/push/register-device', { method: 'POST', body: JSON.stringify({ token: token.value, platform: 'ios' }) })
+        resolve()
+      } catch (e) {
+        reject(e)
+      }
+    })
+    PushNotifications.addListener('registrationError', err => {
+      reject(new Error(err.error || 'Push registration failed'))
+    })
+    PushNotifications.register()
+  })
+}
+
 export function useSubscribeToPush() {
-  return useMutation({ mutationFn: subscribeToPush })
+  return useMutation({ mutationFn: Capacitor.isNativePlatform() ? subscribeToNativePush : subscribeToPush })
 }

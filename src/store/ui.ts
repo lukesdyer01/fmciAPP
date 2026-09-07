@@ -10,7 +10,7 @@ import type { ActiveView } from '../App'
 const VIEW_TO_PATH: Record<ActiveView, string> = {
   feed: '/', directory: '/directory', orgs: '/ministries', groups: '/groups', blog: '/blog',
   prayer: '/prayer', testimonies: '/testimonies', events: '/events',
-  resources: '/resources', map: '/map', about: '/about',
+  resources: '/resources', map: '/map', about: '/about', privacy: '/privacy',
 }
 const PATH_TO_VIEW: Record<string, ActiveView> = Object.fromEntries(
   Object.entries(VIEW_TO_PATH).map(([view, path]) => [path, view as ActiveView])

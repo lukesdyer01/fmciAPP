@@ -107,19 +107,132 @@ async function sendWebPush(subscription: any, payload: string): Promise<boolean>
   }
 }
 
+// Native iOS push. Raw APNs HTTP/2 signing isn't reliably achievable from a
+// Deno edge function (APNs strictly requires HTTP/2, which Deno's fetch
+// doesn't guarantee for arbitrary hosts) — so native delivery routes through
+// Firebase Cloud Messaging instead, which proxies to APNs and only needs
+// plain HTTPS/1.1 JSON plus a Google service-account JWT. Stored separately
+// from Web Push subscriptions (different shape, different transport), but
+// fanned out from the same sendPushToUser() call sites below.
+const FIREBASE_PROJECT_ID = () => Deno.env.get("FIREBASE_PROJECT_ID") ?? "";
+const FIREBASE_SERVICE_ACCOUNT_JSON = () => Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON") ?? "";
+
+async function getUserNativeTokens(userId: string): Promise<any[]> {
+  const all = await kv.get("native_push_tokens") ?? {};
+  return Array.isArray(all[userId]) ? all[userId] : [];
+}
+
+async function saveUserNativeTokens(userId: string, tokens: any[]): Promise<void> {
+  const all = await kv.get("native_push_tokens") ?? {};
+  await kv.set("native_push_tokens", { ...all, [userId]: tokens });
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  let str = "";
+  for (const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlEncodeString(s: string): string {
+  return base64UrlEncodeBytes(new TextEncoder().encode(s));
+}
+
+function pemToPkcs8(pem: string): ArrayBuffer {
+  const b64 = pem.replace(/-----BEGIN PRIVATE KEY-----/, "").replace(/-----END PRIVATE KEY-----/, "").replace(/\s+/g, "");
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+// Google OAuth2 access tokens are valid for 1 hour — cached in-memory (per
+// warm function instance) so a burst of notifications doesn't re-sign a new
+// JWT and round-trip to Google for every single push.
+let cachedFcmToken: { token: string; expiresAt: number } | null = null;
+
+async function getFcmAccessToken(): Promise<string | null> {
+  const saJson = FIREBASE_SERVICE_ACCOUNT_JSON();
+  if (!saJson) return null;
+  if (cachedFcmToken && cachedFcmToken.expiresAt > Date.now() + 60_000) return cachedFcmToken.token;
+  const sa = JSON.parse(saJson);
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = `${base64UrlEncodeString(JSON.stringify({ alg: "RS256", typ: "JWT" }))}.${base64UrlEncodeString(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  }))}`;
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8", pemToPkcs8(sa.private_key), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]
+  );
+  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey, new TextEncoder().encode(unsigned));
+  const jwt = `${unsigned}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  cachedFcmToken = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
+  return cachedFcmToken.token;
+}
+
+// Returns false only for a definitive dead-token error (mirrors sendWebPush's
+// 404/410 contract) so the caller can prune it; anything else (including
+// "FCM isn't configured yet") is treated as transient/non-fatal.
+async function sendFcmNotification(token: string, payload: { title: string; body: string; url?: string; tag?: string }): Promise<boolean> {
+  const projectId = FIREBASE_PROJECT_ID();
+  const accessToken = await getFcmAccessToken();
+  if (!projectId || !accessToken) return true;
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: {
+        token,
+        notification: { title: payload.title, body: payload.body },
+        apns: { payload: { aps: { sound: "default" } } },
+        data: { url: payload.url ?? "/", tag: payload.tag ?? "" },
+      },
+    }),
+  });
+  if (res.ok) return true;
+  const errText = await res.text().catch(() => "");
+  if (res.status === 404 || errText.includes("UNREGISTERED") || errText.includes("NOT_FOUND")) return false;
+  return true;
+}
+
 async function sendPushToUser(userId: string, payload: { title: string; body: string; url?: string; tag?: string }) {
   const subs = await getUserSubscriptions(userId);
-  if (subs.length === 0) return;
-  const survivors: any[] = [];
-  for (const sub of subs) {
-    try {
-      const ok = await sendWebPush(sub, JSON.stringify(payload));
-      if (ok) survivors.push(sub);
-    } catch {
-      survivors.push(sub);
+  if (subs.length > 0) {
+    const survivors: any[] = [];
+    for (const sub of subs) {
+      try {
+        const ok = await sendWebPush(sub, JSON.stringify(payload));
+        if (ok) survivors.push(sub);
+      } catch {
+        survivors.push(sub);
+      }
     }
+    if (survivors.length !== subs.length) await saveUserSubscriptions(userId, survivors);
   }
-  if (survivors.length !== subs.length) await saveUserSubscriptions(userId, survivors);
+
+  const tokens = await getUserNativeTokens(userId);
+  if (tokens.length > 0) {
+    const survivors: any[] = [];
+    for (const t of tokens) {
+      try {
+        const ok = await sendFcmNotification(t.token, payload);
+        if (ok) survivors.push(t);
+      } catch {
+        survivors.push(t);
+      }
+    }
+    if (survivors.length !== tokens.length) await saveUserNativeTokens(userId, survivors);
+  }
 }
 
 const SEED_POSTS = [
@@ -1573,6 +1686,57 @@ app.post(`${BASE}/push/unsubscribe`, async (c) => {
   if (!endpoint) return c.json({ error: "endpoint is required" }, 400);
   const existing = await getUserSubscriptions(caller.id);
   await saveUserSubscriptions(caller.id, existing.filter((s: any) => s.endpoint !== endpoint));
+  return c.json({ ok: true });
+});
+
+// Native-app counterpart to /push/subscribe — registers an FCM device token
+// (obtained via @capacitor/push-notifications) instead of a Web Push
+// subscription object.
+app.post(`${BASE}/push/register-device`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { token, platform } = await c.req.json();
+  if (!token) return c.json({ error: "A device token is required" }, 400);
+  const existing = await getUserNativeTokens(caller.id);
+  const withoutThis = existing.filter((t: any) => t.token !== token);
+  await saveUserNativeTokens(caller.id, [...withoutThis, { token, platform: platform ?? "ios", createdAt: new Date().toISOString() }]);
+  return c.json({ ok: true });
+});
+
+app.post(`${BASE}/push/unregister-device`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { token } = await c.req.json();
+  if (!token) return c.json({ error: "token is required" }, 400);
+  const existing = await getUserNativeTokens(caller.id);
+  await saveUserNativeTokens(caller.id, existing.filter((t: any) => t.token !== token));
+  return c.json({ ok: true });
+});
+
+// Self-service account deletion — Apple App Store Guideline 5.1.1(v) requires
+// any app offering account creation to also offer real in-app deletion (not
+// deactivation, not "email support"). org.members only ever stores
+// {userId, role, addedAt} (no embedded name/email/phone — see the comment
+// above serializeOrg), and post/comment authorship already resolves display
+// name live from listAuthUsers() with a graceful "Unknown" fallback (see
+// withComments) — so once the auth user itself is gone, old content simply
+// stops attributing to a real name with no further cleanup needed. Only the
+// push-delivery targets are removed explicitly, since there's no point
+// attempting delivery to an account that's about to not exist.
+app.delete(`${BASE}/me`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+
+  const subsAll = await kv.get("push_subscriptions") ?? {};
+  if (subsAll[caller.id]) { delete subsAll[caller.id]; await kv.set("push_subscriptions", subsAll); }
+  const tokensAll = await kv.get("native_push_tokens") ?? {};
+  if (tokensAll[caller.id]) { delete tokensAll[caller.id]; await kv.set("native_push_tokens", tokensAll); }
+
+  const res = await fetch(`${SUPABASE_URL()}/auth/v1/admin/users/${caller.id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${SERVICE_KEY()}`, apikey: SERVICE_KEY() },
+  });
+  if (!res.ok) return c.json({ error: "Failed to delete account" }, 500);
   return c.json({ ok: true });
 });
 

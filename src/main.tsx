@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { Capacitor } from '@capacitor/core'
 import App from './App'
 import { ThemeProvider } from './providers/ThemeProvider'
 import './index.css'
@@ -14,7 +15,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 // Enables installability + Web Push (iOS 16.4+/Android for an installed
 // home-screen app). Registered here, once, independent of React/auth state.
-if ('serviceWorker' in navigator) {
+// Skipped inside the native Capacitor shell — there's no "install" to enable
+// and push there goes through @capacitor/push-notifications instead.
+if ('serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {})
   })

@@ -4,6 +4,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
 import type { FeedComment } from '../api-client/comments'
+import { openExternal } from '../lib/openExternal'
 
 export interface EventItem {
   id: string
@@ -190,7 +191,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
         {event.isRemote && (event.zoomLink || event.zoomPassword) && (
           <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
             {event.zoomLink && (
-              <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" style={{
+              <a href={event.zoomLink} onClick={e => { e.preventDefault(); openExternal(event.zoomLink!) }} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none',
               }}>💻 Join Zoom Meeting</a>
@@ -204,7 +205,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
         )}
         {event.infoUrl && (
           <div style={{ marginBottom: '16px' }}>
-            <a href={event.infoUrl} target="_blank" rel="noopener noreferrer" style={{
+            <a href={event.infoUrl} onClick={e => { e.preventDefault(); openExternal(event.infoUrl!) }} style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none',
             }}>🔗 More Info</a>

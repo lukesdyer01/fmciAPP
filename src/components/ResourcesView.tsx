@@ -4,6 +4,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
 import CreateResourceModal from './CreateResourceModal'
+import { openExternal } from '../lib/openExternal'
 
 export interface ReviewItem {
   id: string
@@ -381,7 +382,7 @@ export default function ResourcesView() {
                     <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                       {r.url && (
                         <a
-                          href={r.url} target="_blank" rel="noopener noreferrer"
+                          href={r.url} onClick={e => { e.preventDefault(); openExternal(r.url!) }}
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: '5px',
                             padding: '7px 16px', borderRadius: '9px', textDecoration: 'none',

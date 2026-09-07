@@ -69,6 +69,10 @@ export default function EditProfileModal() {
   const [uploadError, setUploadError] = useState('')
   const [myMinistries, setMyMinistries] = useState<MyMinistry[]>([])
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     if (!currentUser) return
@@ -175,6 +179,20 @@ export default function EditProfileModal() {
       }, 900)
     } catch {
       setStatus('idle')
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== 'DELETE') return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await api('/me', { method: 'DELETE' })
+      await supabase.auth.signOut()
+      window.location.href = '/'
+    } catch (e: any) {
+      setDeleteError(e.message ?? 'Failed to delete account. Please try again.')
+      setDeleting(false)
     }
   }
 
@@ -388,6 +406,55 @@ export default function EditProfileModal() {
               </div>
             </div>
           </div>
+
+          {/* Danger zone */}
+          <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-red)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Danger Zone</div>
+            {!showDeleteConfirm ? (
+              <button onClick={() => setShowDeleteConfirm(true)} style={{
+                padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--color-red)',
+                backgroundColor: 'transparent', color: 'var(--color-red)', fontSize: '13px', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              }}>Delete Account</button>
+            ) : (
+              <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--color-red)', backgroundColor: 'rgba(220,38,38,0.06)' }}>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-1)', lineHeight: 1.6, marginBottom: '12px' }}>
+                  This permanently deletes your account and signs you out. This cannot be undone. Type <strong>DELETE</strong> to confirm.
+                </div>
+                <input
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '9px 12px', marginBottom: '12px',
+                    border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '14px',
+                    fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)', backgroundColor: 'var(--color-card)', outline: 'none',
+                  }}
+                />
+                {deleteError && (
+                  <div style={{ fontSize: '12px', color: 'var(--color-red)', marginBottom: '12px' }}>{deleteError}</div>
+                )}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); setDeleteError('') }} style={{
+                    flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid var(--color-border)',
+                    backgroundColor: 'transparent', color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  }}>Cancel</button>
+                  <button onClick={handleDeleteAccount} disabled={deleteConfirmText !== 'DELETE' || deleting} style={{
+                    flex: 1, padding: '9px', borderRadius: '8px', border: 'none',
+                    backgroundColor: 'var(--color-red)', color: '#fff', fontSize: '13px', fontWeight: 700,
+                    cursor: deleteConfirmText === 'DELETE' && !deleting ? 'pointer' : 'default',
+                    opacity: deleteConfirmText === 'DELETE' && !deleting ? 1 : 0.5,
+                    fontFamily: 'var(--font-sans)',
+                  }}>{deleting ? 'Deleting…' : 'Permanently Delete'}</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Keeps the confirm box's own buttons from being covered by the
+              sticky footer below — that footer overlays whatever's scrolled
+              to the bottom of this container rather than pushing it up. */}
+          {showDeleteConfirm && <div style={{ height: '80px' }} />}
         </div>
 
         {/* Footer */}
