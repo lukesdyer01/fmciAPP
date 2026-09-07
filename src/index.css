@@ -134,8 +134,8 @@ html[data-theme="dark"] #root {
 .topbar-nav-pills   { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .topbar-secondary-icon { display: flex; }
 .notif-panel        { position: fixed; top: calc(60px + var(--safe-top)); right: 60px; width: 360px; }
-.org-manage-panel   { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; }
-.admin-manage-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; }
+.org-manage-panel   { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
+.admin-manage-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
 .messages-back-btn  { display: none; }
 .admin-sidebar      { display: flex; }
 .admin-main         { margin-left: 240px; min-width: 0; }

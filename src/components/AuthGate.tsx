@@ -229,7 +229,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
       </div>
 
       {showPrivacy && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 500, backgroundColor: 'var(--color-surface)', overflowY: 'auto', padding: '32px 20px 60px' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 500, backgroundColor: 'var(--color-surface)', overflowY: 'auto', padding: 'calc(32px + var(--safe-top)) 20px calc(60px + var(--safe-bottom))' }}>
           <div style={{ maxWidth: '720px', margin: '0 auto 20px' }}>
             <button onClick={() => setShowPrivacy(false)} style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer',
@@ -249,7 +249,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
 // so this bare version is only ever shown to visitors who have no session.
 function PublicPrivacyPolicy() {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface)', overflowY: 'auto', padding: '32px 20px 60px' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface)', overflowY: 'auto', padding: 'calc(32px + var(--safe-top)) 20px calc(60px + var(--safe-bottom))' }}>
       <div style={{ maxWidth: '720px', margin: '0 auto 20px' }}>
         <a href="/" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none',

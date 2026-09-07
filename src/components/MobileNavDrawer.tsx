@@ -38,6 +38,10 @@ export default function MobileNavDrawer() {
         position: 'absolute', top: 0, left: 0, bottom: 0, width: '78vw', maxWidth: '300px',
         backgroundColor: 'var(--color-card)', boxShadow: '4px 0 24px rgba(0,0,0,0.25)',
         display: 'flex', flexDirection: 'column',
+        // Spans the full height under viewport-fit=cover, so its own header
+        // would otherwise sit beneath the status bar and its last nav item
+        // under the home indicator.
+        paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)',
         transform: visible ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1)',
       }}>
