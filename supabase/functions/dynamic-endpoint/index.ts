@@ -107,15 +107,25 @@ async function sendWebPush(subscription: any, payload: string): Promise<boolean>
   }
 }
 
-// Native iOS push. Raw APNs HTTP/2 signing isn't reliably achievable from a
-// Deno edge function (APNs strictly requires HTTP/2, which Deno's fetch
-// doesn't guarantee for arbitrary hosts) — so native delivery routes through
-// Firebase Cloud Messaging instead, which proxies to APNs and only needs
-// plain HTTPS/1.1 JSON plus a Google service-account JWT. Stored separately
-// from Web Push subscriptions (different shape, different transport), but
-// fanned out from the same sendPushToUser() call sites below.
-const FIREBASE_PROJECT_ID = () => Deno.env.get("FIREBASE_PROJECT_ID") ?? "";
-const FIREBASE_SERVICE_ACCOUNT_JSON = () => Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON") ?? "";
+// Native iOS push, sent straight to APNs over HTTP/2. An earlier revision
+// proxied through Firebase Cloud Messaging on the assumption that Deno's fetch
+// couldn't hold an HTTP/2 connection to Apple; it can — a direct request comes
+// back as a normal APNs error document rather than a transport failure — so
+// the Google dependency is gone. Stored separately from Web Push subscriptions
+// (different shape, different transport), but fanned out from the same
+// sendPushToUser() call sites below.
+const APNS_KEY_ID = () => Deno.env.get("APNS_KEY_ID") ?? "";
+const APNS_TEAM_ID = () => Deno.env.get("APNS_TEAM_ID") ?? "";
+const APNS_PRIVATE_KEY = () => Deno.env.get("APNS_PRIVATE_KEY") ?? "";
+const APNS_BUNDLE_ID = () => Deno.env.get("APNS_BUNDLE_ID") ?? "network.fmci.app";
+// "production" for TestFlight and App Store builds, "sandbox" for development
+// builds run from Xcode. A token minted under one environment is rejected by
+// the other, so the send path retries across hosts before pruning anything.
+const APNS_ENV = () => Deno.env.get("APNS_ENV") ?? "production";
+const APNS_HOSTS: Record<string, string> = {
+  production: "https://api.push.apple.com",
+  sandbox: "https://api.sandbox.push.apple.com",
+};
 
 async function getUserNativeTokens(userId: string): Promise<any[]> {
   const all = await kv.get("native_push_tokens") ?? {};
@@ -145,64 +155,84 @@ function pemToPkcs8(pem: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-// Google OAuth2 access tokens are valid for 1 hour — cached in-memory (per
-// warm function instance) so a burst of notifications doesn't re-sign a new
-// JWT and round-trip to Google for every single push.
-let cachedFcmToken: { token: string; expiresAt: number } | null = null;
+// APNs provider tokens stay valid for an hour, and Apple rejects clients that
+// re-mint them too aggressively, so the signed JWT is cached in-memory (per
+// warm function instance) and refreshed well inside that window.
+let cachedApnsJwt: { jwt: string; expiresAt: number } | null = null;
 
-async function getFcmAccessToken(): Promise<string | null> {
-  const saJson = FIREBASE_SERVICE_ACCOUNT_JSON();
-  if (!saJson) return null;
-  if (cachedFcmToken && cachedFcmToken.expiresAt > Date.now() + 60_000) return cachedFcmToken.token;
-  const sa = JSON.parse(saJson);
+async function getApnsJwt(): Promise<string | null> {
+  const keyId = APNS_KEY_ID();
+  const teamId = APNS_TEAM_ID();
+  const privateKey = APNS_PRIVATE_KEY();
+  if (!keyId || !teamId || !privateKey) return null;
+  if (cachedApnsJwt && cachedApnsJwt.expiresAt > Date.now()) return cachedApnsJwt.jwt;
   const now = Math.floor(Date.now() / 1000);
-  const unsigned = `${base64UrlEncodeString(JSON.stringify({ alg: "RS256", typ: "JWT" }))}.${base64UrlEncodeString(JSON.stringify({
-    iss: sa.client_email,
-    scope: "https://www.googleapis.com/auth/firebase.messaging",
-    aud: "https://oauth2.googleapis.com/token",
+  const unsigned = `${base64UrlEncodeString(JSON.stringify({ alg: "ES256", kid: keyId }))}.${base64UrlEncodeString(JSON.stringify({
+    iss: teamId,
     iat: now,
-    exp: now + 3600,
   }))}`;
   const cryptoKey = await crypto.subtle.importKey(
-    "pkcs8", pemToPkcs8(sa.private_key), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]
+    "pkcs8", pemToPkcs8(privateKey), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]
   );
-  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey, new TextEncoder().encode(unsigned));
+  // WebCrypto emits the raw r||s pair that JOSE wants, so unlike most Node-side
+  // APNs libraries there's no DER signature to unwrap here.
+  const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, cryptoKey, new TextEncoder().encode(unsigned));
   const jwt = `${unsigned}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
+  cachedApnsJwt = { jwt, expiresAt: Date.now() + 45 * 60 * 1000 };
+  return jwt;
+}
 
-  const res = await fetch("https://oauth2.googleapis.com/token", {
+async function postToApns(host: string, jwt: string, deviceToken: string, body: string): Promise<Response> {
+  return await fetch(`${host}/3/device/${deviceToken}`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
+    headers: {
+      authorization: `bearer ${jwt}`,
+      "apns-topic": APNS_BUNDLE_ID(),
+      "apns-push-type": "alert",
+      "apns-priority": "10",
+    },
+    body,
   });
-  if (!res.ok) return null;
-  const data = await res.json();
-  cachedFcmToken = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
-  return cachedFcmToken.token;
+}
+
+async function apnsFailureReason(res: Response): Promise<string> {
+  try {
+    return JSON.parse(await res.text())?.reason ?? "";
+  } catch {
+    return "";
+  }
 }
 
 // Returns false only for a definitive dead-token error (mirrors sendWebPush's
 // 404/410 contract) so the caller can prune it; anything else (including
-// "FCM isn't configured yet") is treated as transient/non-fatal.
-async function sendFcmNotification(token: string, payload: { title: string; body: string; url?: string; tag?: string }): Promise<boolean> {
-  const projectId = FIREBASE_PROJECT_ID();
-  const accessToken = await getFcmAccessToken();
-  if (!projectId || !accessToken) return true;
-  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: {
-        token,
-        notification: { title: payload.title, body: payload.body },
-        apns: { payload: { aps: { sound: "default" } } },
-        data: { url: payload.url ?? "/", tag: payload.tag ?? "" },
-      },
-    }),
+// "APNs isn't configured yet") is treated as transient/non-fatal.
+async function sendApnsNotification(deviceToken: string, payload: { title: string; body: string; url?: string; tag?: string }): Promise<boolean> {
+  const jwt = await getApnsJwt();
+  if (!jwt) return true;
+  const body = JSON.stringify({
+    aps: { alert: { title: payload.title, body: payload.body }, sound: "default" },
+    url: payload.url ?? "/",
+    tag: payload.tag ?? "",
   });
-  if (res.ok) return true;
-  const errText = await res.text().catch(() => "");
-  if (res.status === 404 || errText.includes("UNREGISTERED") || errText.includes("NOT_FOUND")) return false;
-  return true;
+
+  const primary = APNS_ENV() === "sandbox" ? "sandbox" : "production";
+  const fallback = primary === "production" ? "sandbox" : "production";
+
+  let res = await postToApns(APNS_HOSTS[primary], jwt, deviceToken, body);
+  if (res.status === 200) return true;
+  let reason = await apnsFailureReason(res);
+
+  // A token minted for the other environment is reported as BadDeviceToken,
+  // which is indistinguishable from a genuinely malformed one. Retrying against
+  // the opposite host tells them apart, so a development build's token survives
+  // a production-configured deployment (and vice versa).
+  if (res.status === 400 && reason === "BadDeviceToken") {
+    res = await postToApns(APNS_HOSTS[fallback], jwt, deviceToken, body);
+    if (res.status === 200) return true;
+    reason = await apnsFailureReason(res);
+  }
+
+  return !(res.status === 410 || reason === "Unregistered" || reason === "BadDeviceToken" || reason === "DeviceTokenNotForTopic");
 }
 
 async function sendPushToUser(userId: string, payload: { title: string; body: string; url?: string; tag?: string }) {
@@ -225,7 +255,7 @@ async function sendPushToUser(userId: string, payload: { title: string; body: st
     const survivors: any[] = [];
     for (const t of tokens) {
       try {
-        const ok = await sendFcmNotification(t.token, payload);
+        const ok = await sendApnsNotification(t.token, payload);
         if (ok) survivors.push(t);
       } catch {
         survivors.push(t);
@@ -1689,7 +1719,7 @@ app.post(`${BASE}/push/unsubscribe`, async (c) => {
   return c.json({ ok: true });
 });
 
-// Native-app counterpart to /push/subscribe — registers an FCM device token
+// Native-app counterpart to /push/subscribe — registers an APNs device token
 // (obtained via @capacitor/push-notifications) instead of a Web Push
 // subscription object.
 app.post(`${BASE}/push/register-device`, async (c) => {

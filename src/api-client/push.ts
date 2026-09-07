@@ -30,7 +30,7 @@ export async function subscribeToPush(): Promise<void> {
 
 // Native counterpart — permission + registration go through
 // @capacitor/push-notifications instead of the browser Notification/
-// PushManager APIs; the resulting device token feeds the FCM-backed
+// PushManager APIs; the resulting APNs device token feeds the direct-to-Apple
 // delivery path on the backend rather than Web Push.
 async function subscribeToNativePush(): Promise<void> {
   const permStatus = await PushNotifications.checkPermissions()
