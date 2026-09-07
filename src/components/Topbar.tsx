@@ -183,10 +183,15 @@ export default function Topbar() {
   return (
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
-      height: '56px',
+      // Grows into the status-bar area rather than hiding under it: the navy
+      // background paints the full inset while the 56px of controls sit below.
+      height: 'calc(56px + var(--safe-top))',
       backgroundColor: 'var(--color-navy)',
       display: 'flex', alignItems: 'center',
       padding: '0 16px', gap: '12px',
+      // Must follow the `padding` shorthand — a later key wins in a style
+      // object, so declaring this above it would be silently overridden.
+      paddingTop: 'var(--safe-top)',
       boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
     }}>
       {/* Hamburger — mobile only, opens the slide-out nav drawer. `display` is

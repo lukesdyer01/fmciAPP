@@ -25,7 +25,7 @@ function BannerShell({ onDismiss, children }: { onDismiss: () => void; children:
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 250,
       backgroundColor: 'var(--color-card)', borderTop: '1px solid var(--color-border)',
       borderRadius: '14px 14px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
-      padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '14px 16px', paddingBottom: 'calc(14px + var(--safe-bottom))', display: 'flex', alignItems: 'center', gap: '12px',
     }}>
       {children}
       <button onClick={onDismiss} style={{

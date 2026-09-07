@@ -22,8 +22,14 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>FMCI Network uses the camera so you can take a photo for your profile, group, or resource images.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FMCI Network needs access to your photos so you can choose images for your profile, groups, and resources.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
