@@ -117,6 +117,13 @@ async function sendWebPush(subscription: any, payload: string): Promise<boolean>
 const APNS_KEY_ID = () => Deno.env.get("APNS_KEY_ID") ?? "";
 const APNS_TEAM_ID = () => Deno.env.get("APNS_TEAM_ID") ?? "";
 const APNS_PRIVATE_KEY = () => Deno.env.get("APNS_PRIVATE_KEY") ?? "";
+// Apple's key registration can be scoped to a single environment, and such a
+// key is rejected by the other host with BadEnvironmentKeyInToken rather than
+// a token error. When two environment-scoped keys are issued these hold the
+// sandbox pair; left unset, the primary key is used for both hosts, which is
+// correct for a key registered as "Sandbox & Production".
+const APNS_KEY_ID_SANDBOX = () => Deno.env.get("APNS_KEY_ID_SANDBOX") ?? "";
+const APNS_PRIVATE_KEY_SANDBOX = () => Deno.env.get("APNS_PRIVATE_KEY_SANDBOX") ?? "";
 const APNS_BUNDLE_ID = () => Deno.env.get("APNS_BUNDLE_ID") ?? "network.fmci.app";
 // "production" for TestFlight and App Store builds, "sandbox" for development
 // builds run from Xcode. A token minted under one environment is rejected by
@@ -156,16 +163,24 @@ function pemToPkcs8(pem: string): ArrayBuffer {
 }
 
 // APNs provider tokens stay valid for an hour, and Apple rejects clients that
-// re-mint them too aggressively, so the signed JWT is cached in-memory (per
-// warm function instance) and refreshed well inside that window.
-let cachedApnsJwt: { jwt: string; expiresAt: number } | null = null;
+// re-mint them too aggressively, so signed JWTs are cached in-memory (per warm
+// function instance) and refreshed well inside that window. Keyed by key id
+// rather than by environment, so the two hosts share one entry when a single
+// key serves both.
+const cachedApnsJwts: Record<string, { jwt: string; expiresAt: number }> = {};
 
-async function getApnsJwt(): Promise<string | null> {
-  const keyId = APNS_KEY_ID();
+async function getApnsJwt(env: string): Promise<string | null> {
+  const sandboxKeyId = APNS_KEY_ID_SANDBOX();
+  const sandboxKey = APNS_PRIVATE_KEY_SANDBOX();
+  const useSandboxKey = env === "sandbox" && sandboxKeyId !== "" && sandboxKey !== "";
+  const keyId = useSandboxKey ? sandboxKeyId : APNS_KEY_ID();
+  const privateKey = useSandboxKey ? sandboxKey : APNS_PRIVATE_KEY();
   const teamId = APNS_TEAM_ID();
-  const privateKey = APNS_PRIVATE_KEY();
   if (!keyId || !teamId || !privateKey) return null;
-  if (cachedApnsJwt && cachedApnsJwt.expiresAt > Date.now()) return cachedApnsJwt.jwt;
+
+  const cached = cachedApnsJwts[keyId];
+  if (cached && cached.expiresAt > Date.now()) return cached.jwt;
+
   const now = Math.floor(Date.now() / 1000);
   const unsigned = `${base64UrlEncodeString(JSON.stringify({ alg: "ES256", kid: keyId }))}.${base64UrlEncodeString(JSON.stringify({
     iss: teamId,
@@ -178,7 +193,7 @@ async function getApnsJwt(): Promise<string | null> {
   // APNs libraries there's no DER signature to unwrap here.
   const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, cryptoKey, new TextEncoder().encode(unsigned));
   const jwt = `${unsigned}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
-  cachedApnsJwt = { jwt, expiresAt: Date.now() + 45 * 60 * 1000 };
+  cachedApnsJwts[keyId] = { jwt, expiresAt: Date.now() + 45 * 60 * 1000 };
   return jwt;
 }
 
@@ -203,12 +218,28 @@ async function apnsFailureReason(res: Response): Promise<string> {
   }
 }
 
+// One delivery attempt against a single environment, signed with whichever key
+// that environment is configured to use. Null means "not configured".
+async function attemptApnsSend(env: string, deviceToken: string, body: string): Promise<{ status: number; reason: string } | null> {
+  const jwt = await getApnsJwt(env);
+  if (!jwt) return null;
+  const res = await postToApns(APNS_HOSTS[env], jwt, deviceToken, body);
+  if (res.status === 200) {
+    await res.body?.cancel();
+    return { status: 200, reason: "" };
+  }
+  return { status: res.status, reason: await apnsFailureReason(res) };
+}
+
+function isDeadTokenResult(result: { status: number; reason: string }): boolean {
+  return result.status === 410 || result.reason === "Unregistered" ||
+    result.reason === "BadDeviceToken" || result.reason === "DeviceTokenNotForTopic";
+}
+
 // Returns false only for a definitive dead-token error (mirrors sendWebPush's
 // 404/410 contract) so the caller can prune it; anything else (including
 // "APNs isn't configured yet") is treated as transient/non-fatal.
 async function sendApnsNotification(deviceToken: string, payload: { title: string; body: string; url?: string; tag?: string }): Promise<boolean> {
-  const jwt = await getApnsJwt();
-  if (!jwt) return true;
   const body = JSON.stringify({
     aps: { alert: { title: payload.title, body: payload.body }, sound: "default" },
     url: payload.url ?? "/",
@@ -218,21 +249,20 @@ async function sendApnsNotification(deviceToken: string, payload: { title: strin
   const primary = APNS_ENV() === "sandbox" ? "sandbox" : "production";
   const fallback = primary === "production" ? "sandbox" : "production";
 
-  let res = await postToApns(APNS_HOSTS[primary], jwt, deviceToken, body);
-  if (res.status === 200) return true;
-  let reason = await apnsFailureReason(res);
+  const first = await attemptApnsSend(primary, deviceToken, body);
+  if (!first) return true;
+  if (first.status === 200) return true;
 
-  // A token minted for the other environment is reported as BadDeviceToken,
-  // which is indistinguishable from a genuinely malformed one. Retrying against
-  // the opposite host tells them apart, so a development build's token survives
-  // a production-configured deployment (and vice versa).
-  if (res.status === 400 && reason === "BadDeviceToken") {
-    res = await postToApns(APNS_HOSTS[fallback], jwt, deviceToken, body);
-    if (res.status === 200) return true;
-    reason = await apnsFailureReason(res);
+  // Tokens are environment-specific and the wrong host reports the mismatch as
+  // BadDeviceToken, identically to a malformed token. Retrying the opposite
+  // environment — with that environment's own key — tells the two apart, so a
+  // development build's token survives a production-configured deployment.
+  if (first.status === 400 && first.reason === "BadDeviceToken") {
+    const second = await attemptApnsSend(fallback, deviceToken, body);
+    if (second) return second.status === 200 ? true : !isDeadTokenResult(second);
   }
 
-  return !(res.status === 410 || reason === "Unregistered" || reason === "BadDeviceToken" || reason === "DeviceTokenNotForTopic");
+  return !isDeadTokenResult(first);
 }
 
 async function sendPushToUser(userId: string, payload: { title: string; body: string; url?: string; tag?: string }) {
