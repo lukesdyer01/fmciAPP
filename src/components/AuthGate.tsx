@@ -243,12 +243,34 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
   )
 }
 
+// The privacy policy has to be readable without an account: App Store Connect
+// requires a public URL for it and a reviewer opens that URL signed out. The
+// signed-in case is handled by the normal 'privacy' view with its usual chrome,
+// so this bare version is only ever shown to visitors who have no session.
+function PublicPrivacyPolicy() {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface)', overflowY: 'auto', padding: '32px 20px 60px' }}>
+      <div style={{ maxWidth: '720px', margin: '0 auto 20px' }}>
+        <a href="/" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none',
+          fontSize: '14px', fontWeight: 600, color: 'var(--color-text-2)', fontFamily: 'var(--font-sans)',
+        }}>← Back to sign in</a>
+      </div>
+      <PrivacyPolicyView />
+    </div>
+  )
+}
+
 interface AuthGateProps {
   children: React.ReactNode
 }
 
 export default function AuthGate({ children }: AuthGateProps) {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
+  // Read once at mount rather than on every render: in-app navigation pushes
+  // new paths, so a live read would yank a signed-in member out of the app
+  // shell the moment they opened the policy from the nav.
+  const [initialPath] = useState(() => (typeof window === 'undefined' ? '' : window.location.pathname))
 
   useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION immediately, which replaces the need for getSession()
@@ -266,6 +288,11 @@ export default function AuthGate({ children }: AuthGateProps) {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // Ahead of the loading branch — a public policy page shouldn't wait on an
+  // auth round-trip that cannot change what it renders. Must stay below the
+  // hooks above so none of them are skipped on this path.
+  if (initialPath === '/privacy' && !session) return <PublicPrivacyPolicy />
 
   // Still loading
   if (session === undefined) {
