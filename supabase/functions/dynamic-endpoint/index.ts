@@ -1978,22 +1978,142 @@ app.post(`${BASE}/push/unregister-device`, async (c) => {
 
 // Self-service account deletion — Apple App Store Guideline 5.1.1(v) requires
 // any app offering account creation to also offer real in-app deletion (not
-// deactivation, not "email support"). org.members only ever stores
-// {userId, role, addedAt} (no embedded name/email/phone — see the comment
-// above serializeOrg), and post/comment authorship already resolves display
-// name live from listAuthUsers() with a graceful "Unknown" fallback (see
-// withComments) — so once the auth user itself is gone, old content simply
-// stops attributing to a real name with no further cleanup needed. Only the
-// push-delivery targets are removed explicitly, since there's no point
-// attempting delivery to an account that's about to not exist.
+// deactivation, not "email support").
+//
+// Deleting the auth row alone left every post, comment, review, RSVP and
+// membership standing, merely re-attributed to "Unknown" — the content was
+// still there for everyone to read. A member deleting their account means
+// their contributions go with it, so purgeUserContent() walks every store
+// that holds any of it.
+//
+// What survives is deliberately narrow: posts and events by *other* people
+// that they had merely commented on or joined stay, minus their own part in
+// them, and analytics keeps its aggregate shape with the user id stripped.
+async function purgeUserContent(userId: string): Promise<void> {
+  // Posts they wrote, and their comments on posts that remain.
+  const posts = await kv.get("posts") ?? SEED_POSTS;
+  await kv.set("posts", posts
+    .filter((p: any) => p.authorId !== userId)
+    .map((p: any) => (Array.isArray(p.comments) && p.comments.some((cm: any) => cm.authorId === userId)
+      ? { ...p, comments: p.comments.filter((cm: any) => cm.authorId !== userId) }
+      : p)));
+
+  // Events they created, their comments on the rest, and their RSVPs.
+  const events = await kv.get("events") ?? [];
+  await kv.set("events", events
+    .filter((e: any) => e.createdBy !== userId)
+    .map((e: any) => ({
+      ...e,
+      comments: (Array.isArray(e.comments) ? e.comments : []).filter((cm: any) => cm.authorId !== userId),
+      going: (Array.isArray(e.going) ? e.going : []).filter((u: string) => u !== userId),
+      interested: (Array.isArray(e.interested) ? e.interested : []).filter((u: string) => u !== userId),
+    })));
+
+  const series = await kv.get("meeting_series") ?? [];
+  await kv.set("meeting_series", series.filter((m: any) => m.createdBy !== userId));
+
+  // Resources they submitted, and their reviews of everyone else's — the
+  // star rating is recomputed so it doesn't keep counting a deleted review.
+  const resources = await kv.get("resources") ?? [];
+  await kv.set("resources", resources
+    .filter((r: any) => r.createdBy !== userId)
+    .map((r: any) => {
+      const list = Array.isArray(r.reviewList) ? r.reviewList : [];
+      return list.some((rv: any) => rv.userId === userId)
+        ? recomputeResourceRating({ ...r, reviewList: list.filter((rv: any) => rv.userId !== userId) })
+        : r;
+    }));
+
+  // Blog posts they wrote, plus their comments and reactions on the rest.
+  const blogPosts = await kv.get("blog_posts") ?? [];
+  await kv.set("blog_posts", blogPosts
+    .filter((b: any) => b.authorId !== userId)
+    .map((b: any) => {
+      const reactions = b.reactions && typeof b.reactions === "object" ? b.reactions : {};
+      const nextReactions: Record<string, string[]> = {};
+      for (const key of ["amen", "pray", "heart"]) {
+        nextReactions[key] = (Array.isArray(reactions[key]) ? reactions[key] : []).filter((u: string) => u !== userId);
+      }
+      return {
+        ...b,
+        reactions: nextReactions,
+        comments: (Array.isArray(b.comments) ? b.comments : []).filter((cm: any) => cm.authorId !== userId),
+      };
+    }));
+
+  // Group memberships. A group left with nobody in it was theirs alone and
+  // goes with them, rather than lingering empty in the groups list.
+  const groups = await kv.get("groups") ?? [];
+  await kv.set("groups", groups
+    .map((g: any) => ({
+      ...g,
+      memberIds: (Array.isArray(g.memberIds) ? g.memberIds : []).filter((u: string) => u !== userId),
+      admins: (Array.isArray(g.admins) ? g.admins : []).filter((u: string) => u !== userId),
+    }))
+    .filter((g: any) => {
+      const wasMember = (groups.find((x: any) => x.id === g.id)?.memberIds ?? []).includes(userId);
+      return !(wasMember && g.memberIds.length === 0);
+    }));
+
+  // Ministry memberships and pending join requests, on the same rule: an org
+  // left with nobody at all goes too; one with members standing stays, for the
+  // remaining members and the admin panel to sort out.
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  await kv.set("orgs", orgs
+    .map((o: any) => ({
+      ...o,
+      members: (Array.isArray(o.members) ? o.members : []).filter((m: any) => m.userId !== userId),
+      joinRequests: (Array.isArray(o.joinRequests) ? o.joinRequests : []).filter((r: any) => r.userId !== userId),
+    }))
+    .filter((o: any) => {
+      const wasMember = (orgs.find((x: any) => x.id === o.id)?.members ?? []).some((m: any) => m.userId === userId);
+      return !(wasMember && o.members.length === 0);
+    }));
+
+  // Direct messages. These are one-to-one, so a conversation with a deleted
+  // member has nothing left to be — it goes in full rather than leaving the
+  // other person a half-thread they can never reply to.
+  const conversations = await kv.get("conversations") ?? [];
+  await kv.set("conversations", conversations.filter((cv: any) =>
+    !(Array.isArray(cv.participantIds) ? cv.participantIds : []).includes(userId)));
+
+  // Reports they filed, and reports about them — the content those pointed at
+  // has just been deleted, so nothing is left for a moderator to act on.
+  const reports = await kv.get("content_reports") ?? [];
+  await kv.set("content_reports", reports.filter((r: any) =>
+    r.reporterId !== userId && r.targetAuthorId !== userId));
+
+  const verifications = await kv.get("verification_requests") ?? [];
+  await kv.set("verification_requests", verifications.filter((v: any) => v.userId !== userId));
+
+  // Their block list, and their id anywhere in someone else's.
+  const blocksAll = await kv.get("user_blocks") ?? {};
+  const nextBlocks: Record<string, string[]> = {};
+  for (const [blockerId, ids] of Object.entries(blocksAll)) {
+    if (blockerId === userId) continue;
+    nextBlocks[blockerId] = (Array.isArray(ids) ? ids : []).filter((id: string) => id !== userId);
+  }
+  await kv.set("user_blocks", nextBlocks);
+
+  // Analytics keeps its aggregate shape but stops naming them.
+  const sessions = await kv.get("analytics_sessions") ?? [];
+  if (sessions.some((sn: any) => sn.userId === userId)) {
+    await kv.set("analytics_sessions", sessions.map((sn: any) => (sn.userId === userId ? { ...sn, userId: null } : sn)));
+  }
+
+  const subsAll = await kv.get("push_subscriptions") ?? {};
+  if (subsAll[userId]) { delete subsAll[userId]; await kv.set("push_subscriptions", subsAll); }
+  const tokensAll = await kv.get("native_push_tokens") ?? {};
+  if (tokensAll[userId]) { delete tokensAll[userId]; await kv.set("native_push_tokens", tokensAll); }
+}
+
 app.delete(`${BASE}/me`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
 
-  const subsAll = await kv.get("push_subscriptions") ?? {};
-  if (subsAll[caller.id]) { delete subsAll[caller.id]; await kv.set("push_subscriptions", subsAll); }
-  const tokensAll = await kv.get("native_push_tokens") ?? {};
-  if (tokensAll[caller.id]) { delete tokensAll[caller.id]; await kv.set("native_push_tokens", tokensAll); }
+  // Content first: if the auth row went first the caller could no longer be
+  // authenticated to finish, and their posts would be stranded for good.
+  await purgeUserContent(caller.id);
 
   const res = await fetch(`${SUPABASE_URL()}/auth/v1/admin/users/${caller.id}`, {
     method: "DELETE",
@@ -2199,6 +2319,40 @@ app.post(`${BASE}/admin/update-member`, async (c) => {
   const user = await userRes.json();
   const merged = { ...user.user_metadata, ...patch };
   const res = await updateUserMeta(userId, merged);
+  if (!res.ok) return c.json({ error: await res.text() }, res.status);
+  return c.json({ ok: true });
+});
+
+// Admin-initiated deletion. Goes through the same purgeUserContent() as
+// self-service DELETE /me: the confirmation in MembersAdmin promises "all
+// their data", and the admin_delete_user RPC it used to call removed only the
+// auth row, leaving every post and comment standing under "Unknown".
+app.delete(`${BASE}/admin/users/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  const userId = c.req.param("id");
+  // Deleting yourself here would strand the panel mid-request; the account
+  // settings flow is the way out.
+  if (userId === caller.id) return c.json({ error: "Use account settings to delete your own account" }, 400);
+
+  const userRes = await fetch(`${SUPABASE_URL()}/auth/v1/admin/users/${userId}`, {
+    headers: { Authorization: `Bearer ${SERVICE_KEY()}`, apikey: SERVICE_KEY() },
+  });
+  if (!userRes.ok) return c.json({ error: "User not found" }, 404);
+  // Only a superadmin may delete another admin — the same asymmetry that keeps
+  // role assignment superadmin-only.
+  const target = await userRes.json();
+  if (["superadmin", "admin"].includes(callerRole(target)) && callerRole(caller) !== "superadmin") {
+    return c.json({ error: "Only superadmins can delete an admin" }, 403);
+  }
+
+  await purgeUserContent(userId);
+
+  const res = await fetch(`${SUPABASE_URL()}/auth/v1/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${SERVICE_KEY()}`, apikey: SERVICE_KEY() },
+  });
   if (!res.ok) return c.json({ error: await res.text() }, res.status);
   return c.json({ ok: true });
 });

@@ -424,7 +424,7 @@ export default function EditProfileModal() {
             ) : (
               <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--color-red)', backgroundColor: 'rgba(220,38,38,0.06)' }}>
                 <div style={{ fontSize: '13px', color: 'var(--color-text-1)', lineHeight: 1.6, marginBottom: '12px' }}>
-                  This permanently deletes your account and signs you out. This cannot be undone. Type <strong>DELETE</strong> to confirm.
+                  This permanently deletes your account and everything you have contributed &mdash; your posts, comments, prayer requests, testimonies, blog posts, resources and reviews, the events you created, your direct messages, and your ministry and group memberships. This cannot be undone. Type <strong>DELETE</strong> to confirm.
                 </div>
                 <input
                   value={deleteConfirmText}

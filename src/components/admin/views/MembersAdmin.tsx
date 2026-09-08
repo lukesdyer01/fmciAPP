@@ -783,8 +783,11 @@ function DeleteConfirmModal({ member, onClose, onDeleted }: { member: Member; on
   async function handleDelete() {
     setStatus('deleting')
     try {
-      const { error: delErr } = await supabase.rpc('admin_delete_user', { target_user_id: member.id })
-      if (delErr) throw new Error(delErr.message)
+      // Not the admin_delete_user RPC: that removes only the auth row, leaving
+      // every post, comment and membership standing under "Unknown". This route
+      // runs the same purge as self-service account deletion, so the promise
+      // below ("all their data") is one the app actually keeps.
+      await api(`/admin/users/${encodeURIComponent(member.id)}`, { method: 'DELETE' })
       onDeleted()
     } catch (e: any) {
       setErrorMsg(e.message ?? 'Failed to delete user.')
