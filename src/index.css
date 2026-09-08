@@ -136,7 +136,13 @@ html[data-theme="dark"] #root {
 .notif-panel        { position: fixed; top: calc(60px + var(--safe-top)); right: 60px; width: 360px; }
 .org-manage-panel   { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
 .admin-manage-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
+/* Slide-over panel pinned to every viewport edge, so it needs the insets back
+   the same way .org-manage-panel and .admin-manage-panel do — without them the
+   header, and the only control that closes the panel, sit under the status bar. */
+.messages-panel     { padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
 .messages-back-btn  { display: none; }
+.messages-home-btn  { display: none; }
+.messages-close-btn { display: inline-flex; }
 .admin-sidebar      { display: flex; }
 .admin-main         { margin-left: 240px; min-width: 0; }
 .admin-topbar       { padding: 14px 32px; }
@@ -239,6 +245,15 @@ html[data-theme="dark"] #root {
   }
   .messages-back-btn {
     display: inline-flex;
+  }
+  /* On a phone the panel is the whole screen, so closing it is "go back to the
+     feed" rather than "dismiss a dialog" — say so in words, and drop the ✕ so
+     there's exactly one way out at this size. */
+  .messages-home-btn {
+    display: inline-flex;
+  }
+  .messages-close-btn {
+    display: none;
   }
   .messages-body[data-active="true"] .messages-list-pane {
     display: none;

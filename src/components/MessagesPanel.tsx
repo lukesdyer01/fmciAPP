@@ -170,9 +170,18 @@ export default function MessagesPanel() {
         width: '760px', maxWidth: '100vw', height: '100vh', backgroundColor: 'var(--color-card)',
         boxShadow: '-8px 0 32px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Messages</div>
-          <button onClick={closeMessages} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
+          {/* Which of these two shows is a breakpoint decision made in CSS — see
+              .messages-home-btn / .messages-close-btn. Both do the same thing;
+              full-screen on a phone wants the labelled way out, the desktop
+              slide-over wants the usual dismiss. */}
+          <button onClick={closeMessages} className="messages-home-btn" style={{
+            background: 'none', border: 'none', cursor: 'pointer', alignItems: 'center', gap: '5px',
+            color: 'var(--color-navy)', fontSize: '14px', fontWeight: 700, padding: '4px 2px',
+            fontFamily: 'var(--font-sans)',
+          }}>← Home</button>
+          <div style={{ flex: 1, fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Messages</div>
+          <button onClick={closeMessages} className="messages-close-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
         <div className="messages-body" data-active={activeConv ? 'true' : 'false'} style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           {/* width/flex-shrink/display all live in CSS (base + mobile override),
