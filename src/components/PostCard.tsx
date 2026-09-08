@@ -67,7 +67,9 @@ export default function PostCard({ post }: { post: Post }) {
   const [active, setActive] = useState<'amen' | 'pray' | 'heart' | null>(null)
   const [showComments, setShowComments] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [reporting, setReporting] = useState(false)
+  // Holds what is being reported (the post itself, or one of its comments) —
+  // both open the same modal.
+  const [reporting, setReporting] = useState<{ type: 'post' | 'comment'; id: string; authorId?: string; label: string } | null>(null)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(post.content ?? '')
   const openProfile = useOpenProfile()
@@ -305,7 +307,7 @@ export default function PostCard({ post }: { post: Post }) {
                         }}>{deletePost.isPending ? 'Deleting…' : '🗑 Delete'}</button>
                         )}
                         {canReport && (
-                          <button onClick={() => { setMenuOpen(false); setReporting(true) }} style={{
+                          <button onClick={() => { setMenuOpen(false); setReporting({ type: 'post', id: post.id, authorId: post.authorId, label: 'this post' }) }} style={{
                             display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
                             cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)',
                             textAlign: 'left', fontFamily: 'var(--font-sans)',
@@ -468,17 +470,18 @@ export default function PostCard({ post }: { post: Post }) {
             submitting={addComment.isPending}
             currentUserId={currentUser?.id}
             isAdmin={isAdmin}
+            onReport={currentUser ? cm => setReporting({ type: 'comment', id: cm.id, authorId: cm.authorId, label: 'this comment' }) : undefined}
           />
         </div>
       )}
 
       {reporting && (
         <ReportModal
-          targetType="post"
-          targetId={post.id}
-          targetAuthorId={post.authorId}
-          targetLabel="this post"
-          onClose={() => setReporting(false)}
+          targetType={reporting.type}
+          targetId={reporting.id}
+          targetAuthorId={reporting.authorId}
+          targetLabel={reporting.label}
+          onClose={() => setReporting(null)}
         />
       )}
     </div>

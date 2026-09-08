@@ -536,6 +536,18 @@ function withComments(p: any, users: any[]) {
 // member, and the blocked member is never told.
 const REPORT_REASONS = ["spam", "harassment", "hate", "sexual", "violence", "misinformation", "other"];
 
+// Same wording the reporter picked from in ReportModal, so the moderator's push
+// and review queue name the reason exactly as the member did.
+const REASON_LABELS: Record<string, string> = {
+  spam: "Spam or misleading",
+  harassment: "Harassment or bullying",
+  hate: "Hate speech",
+  sexual: "Sexual content",
+  violence: "Violence or threats",
+  misinformation: "False information",
+  other: "Something else",
+};
+
 async function getBlockedIds(userId: string): Promise<string[]> {
   const all = await kv.get("user_blocks") ?? {};
   return Array.isArray(all[userId]) ? all[userId] : [];
@@ -546,14 +558,32 @@ async function saveBlockedIds(userId: string, ids: string[]): Promise<void> {
   await kv.set("user_blocks", { ...all, [userId]: ids });
 }
 
-// Drops a blocked member's own posts, and their comments on posts that remain.
+// What a member has reported is hidden from them for good, whatever the
+// moderators later decide about it — having flagged something as objectionable
+// is reason enough never to be shown it again. Derived from content_reports so
+// there is no second store to keep in step.
+async function getReportedByCaller(userId: string): Promise<{ posts: Set<string>; comments: Set<string> }> {
+  const reports = await kv.get("content_reports") ?? [];
+  const posts = new Set<string>();
+  const comments = new Set<string>();
+  for (const r of reports) {
+    if (r.reporterId !== userId) continue;
+    if (r.targetType === "post") posts.add(r.targetId);
+    else if (r.targetType === "comment") comments.add(r.targetId);
+  }
+  return { posts, comments };
+}
+
+// Drops what the caller should not see: a blocked member's own posts and their
+// comments on posts that remain, plus anything the caller reported themselves.
 // Must run before withComments(), which consumes and removes p.comments.
-function withoutBlocked(posts: any[], blocked: Set<string>): any[] {
-  if (blocked.size === 0) return posts;
+function withoutHidden(posts: any[], blocked: Set<string>, reported: { posts: Set<string>; comments: Set<string> }): any[] {
+  if (blocked.size === 0 && reported.posts.size === 0 && reported.comments.size === 0) return posts;
+  const dropComment = (cm: any) => blocked.has(cm.authorId) || reported.comments.has(cm.id);
   return posts
-    .filter((p: any) => !blocked.has(p.authorId))
-    .map((p: any) => (Array.isArray(p.comments) && p.comments.some((cm: any) => blocked.has(cm.authorId))
-      ? { ...p, comments: p.comments.filter((cm: any) => !blocked.has(cm.authorId)) }
+    .filter((p: any) => !blocked.has(p.authorId) && !reported.posts.has(p.id))
+    .map((p: any) => (Array.isArray(p.comments) && p.comments.some(dropComment)
+      ? { ...p, comments: p.comments.filter((cm: any) => !dropComment(cm)) }
       : p));
 }
 
@@ -572,7 +602,8 @@ app.get(`${BASE}/posts`, async (c) => {
   const memberOrgIds = new Set(orgs.filter((o: any) => orgRole(o, caller.id)).map((o: any) => o.id));
   const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
   const blocked = new Set(await getBlockedIds(caller.id));
-  return c.json(withoutBlocked(visible, blocked).map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)));
+  const reported = await getReportedByCaller(caller.id);
+  return c.json(withoutHidden(visible, blocked, reported).map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -1761,6 +1792,29 @@ app.post(`${BASE}/conversations/:id/messages`, async (c) => {
 
 // --- Reports ---------------------------------------------------------------
 
+// Resolves the content a report points at. Null when the post or comment has
+// since been deleted — the queue says so rather than showing a blank row.
+function reportTargetPreview(report: any, posts: any[]): any {
+  // Same content/body fallback the client's adaptPost() uses — the seed posts
+  // carry `body` where everything created since carries `content`.
+  const postText = (p: any) => (typeof p.content === "string" ? p.content : (typeof p.body === "string" ? p.body : ""));
+  if (report.targetType === "post") {
+    const post = posts.find((p: any) => p.id === report.targetId);
+    if (!post) return null;
+    return { kind: "post", text: postText(post), image: post.image ?? null, type: post.type ?? "post", createdAt: post.createdAt ?? null };
+  }
+  if (report.targetType === "comment") {
+    for (const post of posts) {
+      const comment = (Array.isArray(post.comments) ? post.comments : []).find((cm: any) => cm.id === report.targetId);
+      if (comment) return { kind: "comment", text: comment.text ?? "", createdAt: comment.createdAt ?? null, postId: post.id, postText: postText(post) };
+    }
+    return null;
+  }
+  // Reported users and direct messages carry no previewable content here: a DM
+  // lives in a private conversation, and a profile is already linked by name.
+  return null;
+}
+
 app.post(`${BASE}/reports`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
@@ -1779,7 +1833,9 @@ app.post(`${BASE}/reports`, async (c) => {
   if (already) return c.json({ ok: true, duplicate: true });
 
   const report = {
-    id: `r${Date.now()}`,
+    // Random suffix as well as the clock: moderators act on a report by id, and
+    // two filed in the same millisecond would otherwise be resolved together.
+    id: `r${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     targetType: body.targetType,
     targetId: String(body.targetId),
     targetAuthorId: body.targetAuthorId ?? null,
@@ -1790,6 +1846,23 @@ app.post(`${BASE}/reports`, async (c) => {
     createdAt: new Date().toISOString(),
   };
   await kv.set("content_reports", [report, ...reports]);
+
+  // Fire-and-forget, same as the DM and event pushes — a push failure must
+  // never fail the report or delay the reporter's confirmation. A report only
+  // means something if a human hears about it, so every moderator is told.
+  listAuthUsers().then((users: any[]) => {
+    for (const u of users) {
+      if (u.id === caller.id) continue;
+      if (!["admin", "moderator", "superadmin"].includes(callerRole(u))) continue;
+      sendPushToUser(u.id, {
+        title: "New content report",
+        body: `${REASON_LABELS[report.reason] ?? report.reason} — ${report.note || `a ${report.targetType}`}`,
+        url: "/admin",
+        tag: `report-${report.id}`,
+      }).catch(() => {});
+    }
+  }).catch(() => {});
+
   return c.json({ ok: true });
 });
 
@@ -1801,10 +1874,14 @@ app.get(`${BASE}/reports`, async (c) => {
     return c.json({ error: "Not permitted" }, 403);
   }
   const reports = await kv.get("content_reports") ?? [];
+  // The reported content itself, not just its id — a moderator can't judge a
+  // report without seeing what was written.
+  const posts = await kv.get("posts") ?? SEED_POSTS;
   const withNames = await Promise.all(reports.map(async (r: any) => ({
     ...r,
     reporter: await userSummary(r.reporterId),
     targetAuthor: r.targetAuthorId ? await userSummary(r.targetAuthorId) : null,
+    targetPreview: reportTargetPreview(r, posts),
   })));
   return c.json(withNames);
 });

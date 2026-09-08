@@ -7,13 +7,15 @@ import MembersAdmin from './views/MembersAdmin'
 import OrgsAdmin from './views/OrgsAdmin'
 import GroupsAdmin from './views/GroupsAdmin'
 import ContentAdmin from './views/ContentAdmin'
+import ModerationAdmin from './views/ModerationAdmin'
 import EventsAdmin from './views/EventsAdmin'
 import AnalyticsAdmin from './views/AnalyticsAdmin'
 import ResourcesAdmin from './views/ResourcesAdmin'
 import VerificationAdmin from './views/VerificationAdmin'
 import SettingsAdmin from './views/SettingsAdmin'
+import { useReports } from '../../api-client/moderation'
 
-export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'events' | 'resources' | 'verification' | 'analytics' | 'settings'
+export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'moderation' | 'events' | 'resources' | 'verification' | 'analytics' | 'settings'
 
 const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'dashboard',     icon: '◈',  label: 'Dashboard' },
@@ -21,6 +23,7 @@ const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'organizations', icon: '🏛', label: 'Ministries' },
   { id: 'groups',        icon: '🫂', label: 'Groups' },
   { id: 'content',       icon: '🗂', label: 'Content' },
+  { id: 'moderation',    icon: '🚩', label: 'Moderation' },
   { id: 'events',        icon: '📅', label: 'Events' },
   { id: 'resources',     icon: '📚', label: 'Resources' },
   { id: 'verification',  icon: '✓',  label: 'Verification' },
@@ -34,6 +37,10 @@ export default function AdminShell() {
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
   const { currentUser } = useAuth()
+  // Reports are the one queue that goes stale badly, so the count rides in the
+  // nav rather than waiting to be found.
+  const { data: reports } = useReports()
+  const openReports = reports?.filter(r => r.status === 'open').length ?? 0
 
   const view = (() => {
     switch (activeView) {
@@ -42,6 +49,7 @@ export default function AdminShell() {
       case 'organizations': return <OrgsAdmin />
       case 'groups':        return <GroupsAdmin />
       case 'content':       return <ContentAdmin />
+      case 'moderation':    return <ModerationAdmin />
       case 'events':        return <EventsAdmin />
       case 'resources':     return <ResourcesAdmin />
       case 'verification':  return <VerificationAdmin />
@@ -102,6 +110,7 @@ export default function AdminShell() {
               >
                 <span style={{ fontSize: '15px', width: '20px', textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
                 <span style={{ flex: 1 }}>{item.label}</span>
+                {item.id === 'moderation' && openReports > 0 && <CountPill count={openReports} />}
               </button>
             )
           })}
@@ -208,6 +217,7 @@ export default function AdminShell() {
                 color: active ? 'var(--color-gold)' : 'rgba(255,255,255,0.6)',
               }}>
                 <span>{item.icon}</span> {item.label}
+                {item.id === 'moderation' && openReports > 0 && <CountPill count={openReports} />}
               </button>
             )
           })}
@@ -221,5 +231,15 @@ export default function AdminShell() {
 
       {editProfileOpen && <EditProfileModal />}
     </div>
+  )
+}
+
+function CountPill({ count }: { count: number }) {
+  return (
+    <span style={{
+      minWidth: '18px', padding: '1px 6px', borderRadius: '9px', flexShrink: 0,
+      backgroundColor: 'rgba(248,113,113,0.16)', color: '#f87171',
+      fontSize: '10px', fontWeight: 800, textAlign: 'center', lineHeight: '16px',
+    }}>{count}</span>
   )
 }
