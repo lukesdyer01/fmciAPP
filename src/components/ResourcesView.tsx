@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { extractYouTubeId } from '../lib/youtube'
 import { api } from '../api-client/server'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
@@ -35,11 +36,6 @@ export interface Resource {
 
 const CATEGORIES = ['All', 'Apostolic Teaching', 'Leadership', 'Prayer', 'Missions', 'Marketplace', 'Discipleship']
 const TYPES = ['All', 'Books', 'Videos', 'Podcasts']
-
-function extractYouTubeId(url: string): string | null {
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return m ? m[1] : null
-}
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   Book:    { bg: '#EFF6FF', color: '#1D4ED8' },

@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { activeMention, matchesQuery, insertMention, mentionedUsers } from '../lib/mentions'
+import { findYouTubeLink } from '../lib/youtube'
 import { useUIStore } from '../store/ui'
 import { useCreatePost } from '../api-client/posts'
 import { api } from '../api-client/server'
@@ -27,9 +29,45 @@ const TESTIMONY_CATEGORIES = [
   { value: 'other',       label: 'Other',       icon: '✨' },
 ]
 
-function extractYouTubeId(url: string): string | null {
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return m ? m[1] : null
+const MAX_IMAGE_MB = 10
+const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024
+
+// No SVG on purpose: served from the public storage bucket it would be a
+// script-execution vector, and a post photo never needs to be vector art.
+const EXT_BY_MIME: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/pjpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
+  'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif',
+  'image/avif': 'avif', 'image/bmp': 'bmp',
+}
+const KNOWN_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'avif', 'bmp'])
+
+function mimeOf(file: File): string {
+  return file.type.toLowerCase().split(';')[0].trim()
+}
+
+// A pasted image is typically called "image.png", "blob", or nothing at all, so
+// the filename is only trusted when it really ends in a known image extension;
+// otherwise the MIME type names the stored object.
+function imageExt(file: File): string {
+  const named = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (named !== file.name.toLowerCase() && KNOWN_EXTS.has(named)) return named === 'jpeg' ? 'jpg' : named
+  return EXT_BY_MIME[mimeOf(file)] ?? 'jpg'
+}
+
+// Safari and iOS populate clipboardData.files; Chrome and Firefox fill items as
+// well. getAsFile() has to run synchronously — the item list is emptied the
+// moment the paste event finishes dispatching.
+function imageFromClipboard(dt: DataTransfer | null): File | null {
+  if (!dt) return null
+  const fromFiles = Array.from(dt.files).find(f => f.type.startsWith('image/'))
+  if (fromFiles) return fromFiles
+  for (const item of Array.from(dt.items)) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      const f = item.getAsFile()
+      if (f) return f
+    }
+  }
+  return null
 }
 
 interface Props {
@@ -67,17 +105,35 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
   const [pin, setPin] = useState(false)
   const [image, setImage] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [videoId, setVideoId] = useState('')
-  const [showVideoInput, setShowVideoInput] = useState(false)
-  const [videoUrlDraft, setVideoUrlDraft] = useState('')
+  // Which detected link the author has waved away, so dismissing an embed
+  // sticks to that video rather than suppressing every one they go on to paste.
+  const [dismissedVideoId, setDismissedVideoId] = useState('')
   const [composerError, setComposerError] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [testimonyCategory, setTestimonyCategory] = useState('')
   const [taggedUsers, setTaggedUsers] = useState<{ id: string; name: string }[]>([])
-  const [showTagPicker, setShowTagPicker] = useState(false)
-  const [tagQuery, setTagQuery] = useState('')
   const [taggableMembers, setTaggableMembers] = useState<TaggableMember[] | null>(null)
+  // Where the caret is, so the @… being typed can be found. Kept in state
+  // rather than read on demand because the suggestions re-render from it.
+  const [caret, setCaret] = useState(0)
+  const [mentionIndex, setMentionIndex] = useState(0)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Facebook-style link detection: paste a YouTube URL anywhere in the post and
+  // it becomes a player, with no separate control to find. Derived from the text
+  // on every render rather than mirrored into state, so it can never disagree
+  // with what has actually been typed. An attached photo wins — the author
+  // picked that deliberately, where a link may just be part of what they wrote.
+  const detected = findYouTubeLink(text)
+  const videoId = detected && !image && detected.id !== dismissedVideoId ? detected.id : ''
+
+  // Suggestions for the @… under the caret. Derived rather than stored so they
+  // always describe the text as it stands.
+  const mention = activeMention(text, caret)
+  const mentionMatches = mention && !anonymous
+    ? (taggableMembers ?? []).filter(m => matchesQuery(m.name, mention.query)).slice(0, 6)
+    : []
   const userProfile = useUIStore(s => s.userProfile)
   const { mutate: createPost, isPending } = useCreatePost()
 
@@ -103,19 +159,35 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       .catch(() => {})
   }, [fixedOrgId, wallUserId, hidePostAs, currentUser?.id])
 
+  // The one choke point for both ways in — the picker and a paste — so the
+  // checks live here rather than in either caller.
   async function handleImageFile(file: File) {
-    if (!currentUser) return
+    if (!currentUser || uploadingImage) return
+    const mime = mimeOf(file)
+    const ext = imageExt(file)
+    // Some pickers hand back an empty type, and then a recognised extension is
+    // the only evidence available.
+    const looksLikeImage = mime ? !!EXT_BY_MIME[mime] : KNOWN_EXTS.has(ext)
+    if (!looksLikeImage) {
+      setComposerError("That file isn't a supported image — use a JPEG, PNG, GIF, WEBP or HEIC.")
+      return
+    }
+    // Nothing anywhere compresses images on the way in, and a phone photo or a
+    // pasted retina screenshot runs to several megabytes, so it's capped here
+    // rather than discovered as an upload that never finishes on cellular.
+    if (file.size > MAX_IMAGE_BYTES) {
+      setComposerError(`That image is ${(file.size / 1024 / 1024).toFixed(1)} MB — the limit is ${MAX_IMAGE_MB} MB.`)
+      return
+    }
     setUploadingImage(true); setComposerError('')
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
       const path = `${currentUser.id}/post-${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
-        upsert: true, contentType: file.type || 'image/jpeg',
+        upsert: true, contentType: file.type || EXT_BY_MIME[ext] || 'image/jpeg',
       })
       if (uploadErr) throw uploadErr
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       setImage(data.publicUrl)
-      setVideoId(''); setShowVideoInput(false)
     } catch (e: any) {
       setComposerError(e.message ?? 'Failed to upload image.')
     } finally {
@@ -123,28 +195,54 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
     }
   }
 
-  function openTagPicker() {
-    setShowTagPicker(v => !v)
+  // The directory is only fetched once someone actually reaches for a mention,
+  // so composing a plain post costs nothing.
+  function loadTaggableMembers() {
     if (taggableMembers === null) {
       api<TaggableMember[]>('/members').then(setTaggableMembers).catch(() => setTaggableMembers([]))
     }
   }
 
-  function toggleTag(member: TaggableMember) {
-    setTaggedUsers(prev =>
-      prev.some(t => t.id === member.id)
-        ? prev.filter(t => t.id !== member.id)
-        : [...prev, { id: member.id, name: member.name }]
-    )
+  // Paste an image straight into the post. Anything that isn't an image falls
+  // through untouched, so pasting text — a YouTube URL included — behaves
+  // exactly as before and the link detection still picks it up.
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    // Photos are a post-only affordance, exactly as the picker is.
+    if (type !== 'post') return
+    // Copying part of a web page puts both text and an image on the clipboard,
+    // and the text is what the author meant to paste.
+    if (e.clipboardData?.getData('text/plain').trim()) return
+    const file = imageFromClipboard(e.clipboardData)
+    if (!file) return
+    // Only on the branch that found an image — everything else has to fall
+    // through untouched, or pasting a YouTube link stops working.
+    e.preventDefault()
+    handleImageFile(file)
   }
 
-  function confirmVideo() {
-    const id = extractYouTubeId(videoUrlDraft.trim())
-    if (!id) { setComposerError('Enter a valid YouTube video URL.'); return }
-    setVideoId(id)
-    setImage('')
-    setShowVideoInput(false)
-    setComposerError('')
+  function onTextChange(next: string, nextCaret: number) {
+    setText(next)
+    setCaret(nextCaret)
+    setMentionIndex(0)
+    if (activeMention(next, nextCaret)) loadTaggableMembers()
+  }
+
+  function chooseMention(member: TaggableMember) {
+    const active = activeMention(text, caret)
+    if (!active) return
+    const next = insertMention(text, active.start, caret, member.name)
+    setText(next.text)
+    setCaret(next.caret)
+    setMentionIndex(0)
+    setTaggedUsers(prev => prev.some(t => t.id === member.id) ? prev : [...prev, { id: member.id, name: member.name }])
+    // Put the caret back after the name we just inserted; without this it jumps
+    // to the end of the whole post.
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(next.caret, next.caret)
+    })
   }
 
   function handlePost() {
@@ -179,12 +277,13 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       videoId: videoId || undefined,
       isAnonymous: anonymous || undefined,
       testimonyCategory: type === 'testimony' ? testimonyCategory : undefined,
-      taggedUsers: !anonymous && taggedUsers.length > 0 ? taggedUsers : undefined,
+      // Someone tagged and then deleted out of the text shouldn't stay tagged.
+      taggedUsers: !anonymous && mentionedUsers(text, taggedUsers).length > 0 ? mentionedUsers(text, taggedUsers) : undefined,
       ...(type === 'prayer' ? { prayerStatus: 'unanswered' as const } : {}),
     }, {
       onSuccess: () => {
-        setText(''); setImage(''); setVideoId(''); setVideoUrlDraft(''); setShowVideoInput(false)
-        setAnonymous(false); setTestimonyCategory(''); setTaggedUsers([]); setShowTagPicker(false); setTagQuery('')
+        setText(''); setImage(''); setDismissedVideoId(''); setCaret(0)
+        setAnonymous(false); setTestimonyCategory(''); setTaggedUsers([])
         setVisibility('public'); setPin(false)
       },
     })
@@ -324,29 +423,92 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
               padding: '10px 14px', cursor: 'text',
               border: `2px solid ${focused ? 'var(--color-gold)' : 'transparent'}`,
               transition: 'border 0.15s',
+              // The photo control lives in here beside the text rather than in a
+              // row of options below, so attaching a picture reads as part of
+              // writing the post. flex-end keeps it on the last line as the
+              // field grows from one row to three.
+              display: 'flex', alignItems: 'flex-end', gap: '8px',
             }}
             onClick={() => setFocused(true)}
           >
             <textarea
+              ref={textareaRef}
               placeholder={selectedOrg
                 ? `Share something on behalf of ${selectedOrg.name}…`
                 : placeholder ?? 'Share a post, testimony, teaching, or prayer request with the network…'
               }
               value={text}
-              onChange={e => setText(e.target.value)}
+              onChange={e => onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+              // Arrow keys and clicks move the caret without changing the text,
+              // so the mention under it has to be recomputed on selection too.
+              onSelect={e => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
               onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
+              // Delayed so a click on a suggestion lands before the list is torn
+              // down by the blur.
+              onBlur={() => { setFocused(false); setTimeout(() => setCaret(-1), 150) }}
+              onKeyDown={e => {
+                if (mentionMatches.length > 0) {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionMatches.length); return }
+                  if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionMatches.length) % mentionMatches.length); return }
+                  if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); chooseMention(mentionMatches[mentionIndex]); return }
+                  if (e.key === 'Escape') { e.preventDefault(); setCaret(-1); return }
+                }
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost()
+              }}
+              onPaste={onPaste}
               rows={focused ? 3 : 1}
               style={{
-                width: '100%', background: 'none', border: 'none', outline: 'none',
+                // flex + minWidth:0 rather than width:100% — a flex child won't
+                // shrink below its content without it, which pushes the icon out
+                // of the box. padding/margin zeroed so the text baseline and the
+                // button line up.
+                flex: 1, minWidth: 0, padding: 0, margin: 0,
+                background: 'none', border: 'none', outline: 'none',
                 fontSize: '15px', fontFamily: 'var(--font-sans)',
                 color: text ? 'var(--color-text-1)' : 'var(--color-text-3)',
                 resize: 'none', lineHeight: 1.6,
               }}
             />
+            {type === 'post' && (
+              <>
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploadingImage}
+                  aria-label={uploadingImage ? 'Uploading photo' : 'Add photo'}
+                  aria-busy={uploadingImage}
+                  title={uploadingImage ? 'Uploading…' : 'Add photo'}
+                  style={{
+                    flexShrink: 0,
+                    // Thumb-sized, then pulled back into the container's own
+                    // padding so a 36px tap target costs no extra height and the
+                    // one-line composer stays exactly as tall as it was.
+                    width: '36px', height: '36px', margin: '-6px -8px -6px 0',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 0, borderRadius: '50%', border: 'none', background: 'none',
+                    cursor: uploadingImage ? 'default' : 'pointer',
+                    fontSize: '18px', lineHeight: 1,
+                    opacity: uploadingImage ? 0.5 : 1,
+                    transition: 'background 0.15s, opacity 0.15s',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  onMouseEnter={e => { if (!uploadingImage) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
+                >{uploadingImage ? '⏳' : '📷'}</button>
+              </>
+            )}
           </div>
         </div>
+
+        {uploadingImage && !image && (
+          <div style={{
+            marginTop: '12px', borderRadius: '10px', padding: '18px',
+            backgroundColor: 'var(--color-surface)', textAlign: 'center',
+            fontSize: '13px', fontWeight: 600, color: 'var(--color-text-3)',
+          }}>Uploading photo…</div>
+        )}
 
         {/* Image preview */}
         {image && (
@@ -372,7 +534,9 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
                 allowFullScreen
               />
             </div>
-            <button onClick={() => setVideoId('')} style={{
+            {/* Removes the player, not the link: the URL stays in the text the
+                author wrote, they just don't want it expanded. */}
+            <button onClick={() => setDismissedVideoId(videoId)} title="Don't show this video" style={{
               position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%',
               border: 'none', backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer',
               fontSize: '14px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1,
@@ -380,31 +544,6 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
           </div>
         )}
 
-        {/* Video URL input */}
-        {showVideoInput && !videoId && (
-          <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-            <input
-              value={videoUrlDraft}
-              onChange={e => setVideoUrlDraft(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') confirmVideo() }}
-              placeholder="Paste a YouTube video URL…"
-              autoFocus
-              style={{
-                flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)',
-                fontSize: '13px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)',
-                backgroundColor: 'var(--color-surface)', outline: 'none',
-              }}
-            />
-            <button onClick={confirmVideo} style={{
-              padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-navy)',
-              color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-            }}>Add</button>
-            <button onClick={() => { setShowVideoInput(false); setVideoUrlDraft(''); setComposerError('') }} style={{
-              padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'none',
-              color: 'var(--color-text-2)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-            }}>Cancel</button>
-          </div>
-        )}
 
         {/* Anonymous toggle — prayer requests only */}
         {type === 'prayer' && (
@@ -459,71 +598,30 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
           </div>
         )}
 
-        {/* Tagged people chips */}
-        {taggedUsers.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-            {taggedUsers.map(t => (
-              <span key={t.id} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                padding: '4px 6px 4px 10px', borderRadius: '20px',
-                backgroundColor: 'var(--color-gold-bg)', border: '1px solid var(--color-gold-border)',
-                fontSize: '12px', fontWeight: 600, color: 'var(--color-gold)',
-              }}>
-                {t.name}
-                <button
-                  onClick={() => setTaggedUsers(prev => prev.filter(x => x.id !== t.id))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--color-gold)', fontSize: '12px', lineHeight: 1, display: 'flex' }}
-                >✕</button>
-              </span>
+        {/* Mention suggestions — driven by the @ under the caret in the textarea
+            above, so there is no separate control to find. */}
+        {mentionMatches.length > 0 && (
+          <div style={{ marginTop: '10px', border: '1px solid var(--color-border)', borderRadius: '10px', overflow: 'hidden' }}>
+            {mentionMatches.map((m, i) => (
+              <button
+                key={m.id}
+                // onMouseDown, not onClick: the textarea's blur fires first and
+                // would take the list away before a click ever landed.
+                onMouseDown={e => { e.preventDefault(); chooseMention(m) }}
+                onMouseEnter={() => setMentionIndex(i)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 12px',
+                  border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
+                  backgroundColor: i === mentionIndex ? 'var(--color-hover)' : 'transparent',
+                }}
+              >
+                {m.avatarUrl
+                  ? <img src={m.avatarUrl} alt="" style={{ width: '26px', height: '26px', borderRadius: '7px', objectFit: 'cover', flexShrink: 0 }} />
+                  : <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '10px' }}>{(m.name || '?').slice(0, 2).toUpperCase()}</div>
+                }
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+              </button>
             ))}
-          </div>
-        )}
-
-        {/* Tag people picker */}
-        {showTagPicker && (
-          <div style={{ marginTop: '12px', border: '1px solid var(--color-border)', borderRadius: '10px', overflow: 'hidden' }}>
-            <input
-              autoFocus
-              value={tagQuery}
-              onChange={e => setTagQuery(e.target.value)}
-              placeholder="Search people to tag…"
-              style={{
-                width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: 'none', borderBottom: '1px solid var(--color-border)',
-                fontSize: '13px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)',
-                backgroundColor: 'var(--color-surface)', outline: 'none',
-              }}
-            />
-            <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-              {taggableMembers === null && (
-                <div style={{ padding: '14px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-3)' }}>Loading…</div>
-              )}
-              {taggableMembers !== null && taggableMembers
-                .filter(m => m.name.toLowerCase().includes(tagQuery.trim().toLowerCase()))
-                .slice(0, 8)
-                .map(m => {
-                  const selected = taggedUsers.some(t => t.id === m.id)
-                  return (
-                    <button key={m.id} onClick={() => toggleTag(m)} style={{
-                      display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 12px',
-                      border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-                      backgroundColor: selected ? 'var(--color-gold-bg)' : 'transparent',
-                    }}
-                      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-                      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-                    >
-                      {m.avatarUrl
-                        ? <img src={m.avatarUrl} alt="" style={{ width: '26px', height: '26px', borderRadius: '7px', objectFit: 'cover', flexShrink: 0 }} />
-                        : <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '10px' }}>{(m.name || '?').slice(0, 2).toUpperCase()}</div>
-                      }
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                      {selected && <span style={{ color: 'var(--color-gold)', fontSize: '13px' }}>✓</span>}
-                    </button>
-                  )
-                })}
-              {taggableMembers !== null && taggableMembers.filter(m => m.name.toLowerCase().includes(tagQuery.trim().toLowerCase())).length === 0 && (
-                <div style={{ padding: '14px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-3)' }}>No matches</div>
-              )}
-            </div>
           </div>
         )}
 
@@ -533,60 +631,6 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
-        {type === 'post' && (
-          <>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploadingImage}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
-                padding: '7px 12px', borderRadius: '8px', border: 'none',
-                background: 'none', cursor: uploadingImage ? 'default' : 'pointer',
-                fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)',
-                fontFamily: 'var(--font-sans)', transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-            >
-              <span style={{ fontSize: '16px' }}>🖼️</span>
-              {uploadingImage ? 'Uploading…' : 'Photo'}
-            </button>
-            <button
-              onClick={() => { setShowVideoInput(v => !v); setComposerError('') }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
-                padding: '7px 12px', borderRadius: '8px', border: 'none',
-                background: 'none', cursor: 'pointer',
-                fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)',
-                fontFamily: 'var(--font-sans)', transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-            >
-              <span style={{ fontSize: '16px' }}>▶️</span>
-              Video
-            </button>
-          </>
-        )}
-        {!anonymous && (
-          <button
-            onClick={openTagPicker}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '7px 12px', borderRadius: '8px', border: 'none',
-              background: showTagPicker ? 'var(--color-hover)' : 'none', cursor: 'pointer',
-              fontSize: '13px', fontWeight: 600, color: 'var(--color-text-2)',
-              fontFamily: 'var(--font-sans)', transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = showTagPicker ? 'var(--color-hover)' : 'transparent' }}
-          >
-            <span style={{ fontSize: '16px' }}>🏷️</span>
-            {taggedUsers.length > 0 ? `Tagged (${taggedUsers.length})` : 'Tag People'}
-          </button>
-        )}
         <button
           onClick={handlePost}
           disabled={!text.trim() || isPending}

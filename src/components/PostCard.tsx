@@ -8,6 +8,8 @@ import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
 import ReportModal from './ReportModal'
+import { findYouTubeLink } from '../lib/youtube'
+import { segmentLine } from '../lib/mentions'
 import { useBlockMember } from '../api-client/moderation'
 
 export interface Post {
@@ -96,6 +98,20 @@ export default function PostCard({ post }: { post: Post }) {
   const canReport = !!currentUser && !isOwner && !post.isAnonymous
   const canBlock = canReport && !!post.authorId
   const blockMember = useBlockMember()
+
+  // Posts carry videoId when the composer spotted a link as they were written.
+  // Falling back to the text covers everything that didn't come that way —
+  // posts made before this existed, and any later edit that adds a link.
+  const detectedVideo = post.videoId ? null : findYouTubeLink(post.content ?? '')
+  const videoId = post.videoId ?? detectedVideo?.id
+  // When the link was the entire message the player says everything the URL
+  // did, so the raw text underneath is just noise. Anything written around the
+  // link is left exactly as typed.
+  const bodyText = detectedVideo && (post.content ?? '').trim() === detectedVideo.url ? '' : (post.content ?? '')
+  // Anyone mentioned inline is already named in the post, so the "with …" line
+  // only carries the rest — which in practice means posts tagged through the
+  // old picker, before mentions were written into the text.
+  const untaggedInText = (post.taggedUsers ?? []).filter(t => !bodyText.includes(`@${t.name}`))
 
   async function handleBlock() {
     if (!post.authorId) return
@@ -224,10 +240,10 @@ export default function PostCard({ post }: { post: Post }) {
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-2)' }}>Wrote on {post.wallUserName}'s page</span>
                 </div>
               )}
-              {(post.taggedUsers ?? []).length > 0 && (
+              {untaggedInText.length > 0 && (
                 <div style={{ fontSize: '12px', color: 'var(--color-text-3)', marginTop: '3px' }}>
                   with{' '}
-                  {(post.taggedUsers ?? []).map((t, i, arr) => (
+                  {untaggedInText.map((t, i, arr) => (
                     <span key={t.id}>
                       <span onClick={() => openProfile(t.id)} style={{ fontWeight: 700, color: 'var(--color-text-2)', cursor: 'pointer' }}>{t.name}</span>
                       {i < arr.length - 1 && (i === arr.length - 2 ? ' and ' : ', ')}
@@ -381,13 +397,17 @@ export default function PostCard({ post }: { post: Post }) {
           </div>
         ) : (
           <>
-            {(post.content ?? '').split('\n').map((line, i) => (
+            {bodyText !== '' && bodyText.split('\n').map((line, i) => (
               <p key={i} style={{ margin: i === 0 ? '0 0 8px' : '8px 0 0', fontSize: '15px', lineHeight: 1.7, color: 'var(--color-text-1)' }}>
-                {line.split(/(#[\p{L}\d_]+)/gu).map((part, j) =>
-                  part.startsWith('#') && part.length > 1
-                    ? <span key={j} onClick={() => viewHashtag(part.slice(1).toLowerCase())} style={{ color: 'var(--color-gold)', fontWeight: 700, cursor: 'pointer' }}>{part}</span>
-                    : <span key={j}>{part}</span>
-                )}
+                {segmentLine(line, post.taggedUsers ?? []).map((seg, j) => {
+                  if (seg.kind === 'hashtag') {
+                    return <span key={j} onClick={() => viewHashtag(seg.tag)} style={{ color: 'var(--color-gold)', fontWeight: 700, cursor: 'pointer' }}>{seg.text}</span>
+                  }
+                  if (seg.kind === 'mention') {
+                    return <span key={j} onClick={() => openProfile(seg.userId)} style={{ color: 'var(--color-navy)', fontWeight: 700, cursor: 'pointer' }}>{seg.text}</span>
+                  }
+                  return <span key={j}>{seg.text}</span>
+                })}
               </p>
             ))}
             {post.editedAt && (
@@ -404,10 +424,10 @@ export default function PostCard({ post }: { post: Post }) {
         </div>
       )}
 
-      {post.videoId && (
+      {videoId && (
         <div style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
           <iframe
-            src={`https://www.youtube.com/embed/${post.videoId}`}
+            src={`https://www.youtube.com/embed/${videoId}`}
             title="YouTube video"
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
