@@ -232,8 +232,9 @@ export default function Topbar() {
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
         </button>
-        {/* Avatar — hover to see profile preview, Edit Profile, Admin Panel, Sign Out */}
-        <ProfileHoverCard />
+        {/* Avatar — hover to see profile preview, Edit Profile, Admin Panel, Sign Out.
+            Phones hide it: the drawer's profile header already carries all of these. */}
+        <div className="topbar-avatar"><ProfileHoverCard /></div>
       </div>
       {editProfileOpen && <EditProfileModal />}
 
