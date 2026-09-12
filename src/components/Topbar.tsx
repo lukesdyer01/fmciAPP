@@ -6,13 +6,8 @@ import ProfileHoverCard from './ProfileHoverCard'
 import { api } from '../api-client/server'
 import { useConversations } from '../api-client/messages'
 import { playNotificationSound } from '../lib/notificationSound'
+import { useSearchResults } from '../lib/search'
 import type { ActiveView } from '../App'
-
-interface SearchMember { id: string; name: string; title: string; church: string; avatarUrl: string }
-interface SearchEvent { id: string; title: string; startDate: string; location: string }
-interface SearchOrg { id: string; name: string; type: string; location: string; img: string }
-interface SearchGroup { id: string; name: string; type: string; img: string }
-interface SearchResource { id: string; title: string; author: string; type: string }
 
 function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
   query: string
@@ -20,27 +15,8 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
   onOpenProfile: (id: string) => void
   onClose: () => void
 }) {
-  const [members, setMembers] = useState<SearchMember[]>([])
-  const [events, setEvents] = useState<SearchEvent[]>([])
-  const [orgs, setOrgs] = useState<SearchOrg[]>([])
-  const [groups, setGroups] = useState<SearchGroup[]>([])
-  const [resources, setResources] = useState<SearchResource[]>([])
-
-  useEffect(() => {
-    api<SearchMember[]>('/members').then(setMembers).catch(() => {})
-    api<SearchEvent[]>('/events').then(setEvents).catch(() => {})
-    api<SearchOrg[]>('/orgs').then(setOrgs).catch(() => {})
-    api<SearchGroup[]>('/groups').then(setGroups).catch(() => {})
-    api<SearchResource[]>('/resources').then(setResources).catch(() => {})
-  }, [])
-
-  const q = query.trim().toLowerCase()
-  const matchMembers = members.filter(m => m.name?.toLowerCase().includes(q) || m.church?.toLowerCase().includes(q)).slice(0, 5)
-  const matchEvents = events.filter(e => e.title?.toLowerCase().includes(q)).slice(0, 5)
-  const matchOrgs = orgs.filter(o => o.name?.toLowerCase().includes(q)).slice(0, 5)
-  const matchGroups = groups.filter(g => g.name?.toLowerCase().includes(q)).slice(0, 5)
-  const matchResources = resources.filter(r => r.title?.toLowerCase().includes(q) || r.author?.toLowerCase().includes(q)).slice(0, 5)
-  const totalMatches = matchMembers.length + matchEvents.length + matchOrgs.length + matchGroups.length + matchResources.length
+  const results = useSearchResults(query)
+  const totalMatches = results.total
 
   const sectionLabel: React.CSSProperties = {
     fontSize: '11px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase',
@@ -62,10 +38,10 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
         {totalMatches === 0 && (
           <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '13px' }}>No results for "{query}"</div>
         )}
-        {matchMembers.length > 0 && (
+        {results.members.length > 0 && (
           <div>
             <div style={sectionLabel}>People</div>
-            {matchMembers.map(m => (
+            {results.members.map(m => (
               <button key={m.id} onClick={() => { onOpenProfile(m.id); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
@@ -79,10 +55,10 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
             ))}
           </div>
         )}
-        {matchOrgs.length > 0 && (
+        {results.orgs.length > 0 && (
           <div>
             <div style={sectionLabel}>Ministries</div>
-            {matchOrgs.map(o => (
+            {results.orgs.map(o => (
               <button key={o.id} onClick={() => { onNavigate('orgs'); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
@@ -96,10 +72,10 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
             ))}
           </div>
         )}
-        {matchGroups.length > 0 && (
+        {results.groups.length > 0 && (
           <div>
             <div style={sectionLabel}>Groups</div>
-            {matchGroups.map(g => (
+            {results.groups.map(g => (
               <button key={g.id} onClick={() => { onNavigate('groups'); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
@@ -113,10 +89,10 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
             ))}
           </div>
         )}
-        {matchEvents.length > 0 && (
+        {results.events.length > 0 && (
           <div>
             <div style={sectionLabel}>Events</div>
-            {matchEvents.map(ev => (
+            {results.events.map(ev => (
               <button key={ev.id} onClick={() => { onNavigate('events'); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
@@ -130,10 +106,10 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
             ))}
           </div>
         )}
-        {matchResources.length > 0 && (
+        {results.resources.length > 0 && (
           <div>
             <div style={sectionLabel}>Resources</div>
-            {matchResources.map(r => (
+            {results.resources.map(r => (
               <button key={r.id} onClick={() => { onNavigate('resources'); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
@@ -159,7 +135,7 @@ export default function Topbar() {
   const setActiveView = useUIStore(s => s.setActiveView)
   const openProfile = useOpenProfile()
   const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
-  const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
+  const setSearchOpen = useUIStore(s => s.setSearchOpen)
   const { data: conversations } = useConversations()
   const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
   const prevUnreadTotal = useRef<number | null>(null)
@@ -194,17 +170,16 @@ export default function Topbar() {
       paddingTop: 'var(--safe-top)',
       boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
     }}>
-      {/* Hamburger — mobile only, opens the slide-out nav drawer. `display` is
-          intentionally omitted from the inline style and owned entirely by the
-          .mobile-nav-toggle CSS class, since an inline display would always
-          beat the class's responsive show/hide (inline styles win the cascade). */}
-      <button className="mobile-nav-toggle" onClick={() => setMobileNavOpen(true)} title="Menu" style={{
-        width: '36px', height: '36px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+      {/* Search — phones get a dedicated icon that opens the full-screen
+          overlay (the desktop search box is hidden below 768px). */}
+      <button className="mobile-search-toggle" onClick={() => setSearchOpen(true)} title="Search" style={{
+        width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
         backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)',
         alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s', flexShrink: 0,
       }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
       </button>
 
@@ -283,7 +258,7 @@ export default function Topbar() {
 }
 
 const iconBtn: React.CSSProperties = {
-  width: '36px', height: '36px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+  width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
   backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   transition: 'background 0.15s',

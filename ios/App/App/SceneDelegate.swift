@@ -2,6 +2,14 @@ import UIKit
 import SwiftUI
 import Capacitor
 
+// The app's topbar is navy, so the status bar text must be light to stay
+// readable over it. CAPBridgeViewController's default is dark text.
+class FMCIBridgeViewController: CAPBridgeViewController {
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        .lightContent
+    }
+}
+
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
     private var splash: UIHostingController<LoadingVideoView>?
@@ -10,7 +18,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        let bridge = CAPBridgeViewController()
+        let bridge = FMCIBridgeViewController()
         window?.rootViewController = bridge
         window?.makeKeyAndVisible()
 

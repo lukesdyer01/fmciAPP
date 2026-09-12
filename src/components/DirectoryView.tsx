@@ -4,6 +4,7 @@ import VerifiedBadge from './VerifiedBadge'
 import { api } from '../api-client/server'
 import { useOpenProfile } from './ProfileView'
 import { useUIStore } from '../store/ui'
+import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
 
 interface Member {
   id: string
@@ -36,12 +37,17 @@ export default function DirectoryView() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    api<Member[]>('/members')
+  function loadMembers() {
+    setLoading(true)
+    return api<Member[]>('/members')
       .then(setMembers)
       .catch(() => setMembers([]))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadMembers() }, [])
+
+  const { refreshing, pulling, distance } = usePullToRefresh(loadMembers)
 
   const filtered = members.filter(m =>
     (search === '' ||
@@ -55,6 +61,7 @@ export default function DirectoryView() {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+      <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       {/* Header */}
       <div style={{
         backgroundColor: 'var(--color-card)', borderRadius: '12px',

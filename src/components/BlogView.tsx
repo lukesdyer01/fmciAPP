@@ -7,6 +7,7 @@ import { useOpenProfile } from './ProfileView'
 import BlogBlockRenderer from './BlogBlockRenderer'
 import CreateBlogPostModal, { BLOG_TAGS } from './CreateBlogPostModal'
 import type { BlogBlock } from './BlockEditor'
+import { useSwipeBack } from '../hooks/useSwipeBack'
 
 export interface BlogComment {
   id: string
@@ -107,6 +108,7 @@ const BLOG_REACTIONS: { type: 'amen' | 'pray' | 'heart'; icon: string; label: st
 ]
 
 function BlogPostDetailView({ post: initialPost, onBack, onChanged }: { post: BlogPost; onBack: () => void; onChanged: () => void }) {
+  useSwipeBack(onBack)
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
   const openProfile = useOpenProfile()

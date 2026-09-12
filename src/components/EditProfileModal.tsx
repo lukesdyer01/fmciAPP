@@ -198,14 +198,14 @@ export default function EditProfileModal() {
   }
 
   return (
-    <div style={{
+    <div className="sheet-backdrop" style={{
       position: 'fixed', inset: 0, zIndex: 400,
       backgroundColor: 'rgba(0,0,0,0.55)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '20px',
       backdropFilter: 'blur(4px)',
     }} onClick={e => { if (e.target === e.currentTarget) setEditProfileOpen(false) }}>
-      <div style={{
+      <div className="sheet-card" style={{
         backgroundColor: 'var(--color-card)',
         borderRadius: '16px',
         border: '1px solid var(--color-border)',

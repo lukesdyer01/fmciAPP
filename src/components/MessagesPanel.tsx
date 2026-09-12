@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useUIStore } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
 import { useConversations, useConversationMessages, useStartConversation, useSendMessage, type ConversationSummary } from '../api-client/messages'
+import { useSwipeBack } from '../hooks/useSwipeBack'
+import { hapticSuccess } from '../lib/haptics'
 
 function timeAgo(iso: string) {
   const ms = Date.now() - new Date(iso).getTime()
@@ -71,6 +73,7 @@ function ConversationList({ conversations, loading, activeId, onSelect }: {
 }
 
 function Thread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
+  useSwipeBack(onBack)
   const { currentUser } = useAuth()
   const { data: messages, isLoading } = useConversationMessages(conversation.id)
   const sendMessage = useSendMessage()
@@ -83,6 +86,7 @@ function Thread({ conversation, onBack }: { conversation: ConversationSummary; o
 
   function handleSend() {
     if (!text.trim() || sendMessage.isPending) return
+    hapticSuccess()
     sendMessage.mutate({ conversationId: conversation.id, text: text.trim() }, {
       onSuccess: () => setText(''),
     })

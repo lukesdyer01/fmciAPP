@@ -8,6 +8,7 @@ import PostCard, { type Post } from './PostCard'
 import EditProfileModal from './EditProfileModal'
 import VerifiedBadge from './VerifiedBadge'
 import { openExternal } from '../lib/openExternal'
+import { useSwipeBack } from '../hooks/useSwipeBack'
 
 export interface MemberProfile {
   id: string
@@ -36,6 +37,7 @@ export function useOpenProfile() {
 }
 
 export default function ProfileView({ userId, onBack }: { userId: string; onBack: () => void }) {
+  useSwipeBack(onBack)
   const { currentUser } = useAuth()
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)

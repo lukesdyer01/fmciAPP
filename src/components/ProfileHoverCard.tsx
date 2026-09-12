@@ -47,8 +47,8 @@ export default function ProfileHoverCard() {
           toggle would immediately close what hover just opened. */}
       <button onClick={() => setOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '4px', display: 'block' }} title={userProfile.name || 'Profile'}>
         {userProfile.avatarUrl
-          ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', display: 'block', border: '2px solid rgba(255,255,255,0.3)' }} />
-          : <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '13px', border: '2px solid rgba(255,255,255,0.3)' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
+          ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', display: 'block', border: '2px solid rgba(255,255,255,0.3)' }} />
+          : <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '14px', border: '2px solid rgba(255,255,255,0.3)' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
         }
       </button>
 

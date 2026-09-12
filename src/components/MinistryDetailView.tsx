@@ -7,6 +7,7 @@ import { EventCard, UpcomingEvents, type EventItem } from './EventCard'
 import { useFeedPosts } from '../api-client/posts'
 import { typeLabel, typeStyle, ROLE_STYLE } from './OrgView'
 import { useOpenProfile } from './ProfileView'
+import { useSwipeBack } from '../hooks/useSwipeBack'
 
 interface OrgMember {
   userId: string
@@ -79,6 +80,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
   onRequestJoin: () => void
   requestJoinBusy: boolean
 }) {
+  useSwipeBack(onBack)
   const [tab, setTab] = useState<'feed' | 'prayer' | 'testimonies' | 'events' | 'members' | 'about'>('feed')
   const [events, setEvents] = useState<EventItem[]>([])
   const [eventsLoading, setEventsLoading] = useState(true)

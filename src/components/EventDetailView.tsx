@@ -6,12 +6,14 @@ import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { type EventItem, formatEventWhen, TYPE_COLOR } from './EventCard'
 import CommentThread from './CommentThread'
 import { openExternal } from '../lib/openExternal'
+import { useSwipeBack } from '../hooks/useSwipeBack'
 
 // A single event's permalink page — full info, RSVP, and its discussion
 // thread. Replaces the old scroll-to-card-in-the-list behavior so a
 // specific meeting (especially a recurring one) always has a stable,
 // bookmarkable/shareable URL instead of getting lost in a flat feed.
 export default function EventDetailView({ eventId, onBack }: { eventId: string; onBack: () => void }) {
+  useSwipeBack(onBack)
   const [event, setEvent] = useState<EventItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)

@@ -91,6 +91,16 @@ interface UIState {
   mobileNavOpen: boolean
   setMobileNavOpen: (open: boolean) => void
 
+  // Full-screen search overlay (mobile only — the desktop search box lives in
+  // the Topbar and never sets this).
+  searchOpen: boolean
+  setSearchOpen: (open: boolean) => void
+
+  // Per-view scroll positions so returning to a list (feed → profile → back)
+  // restores the reader's place instead of dumping them at the top.
+  scrollPositions: Record<string, number>
+  saveScroll: (key: string, y: number) => void
+
   composerDraft: string
   setComposerDraft: (text: string) => void
   clearComposerDraft: () => void
@@ -154,7 +164,13 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set, get) => ({
   activeView: INITIAL_URL_STATE.activeView,
-  setActiveView: view => { pushUrl(VIEW_TO_PATH[view] ?? '/'); set({ activeView: view, profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false }) },
+  setActiveView: view => {
+    // Leaving a view for another tab: remember where the reader was so
+    // switching back restores their place.
+    get().saveScroll(get().activeView, window.scrollY)
+    pushUrl(VIEW_TO_PATH[view] ?? '/')
+    set({ activeView: view, profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+  },
 
   notifOpen: false,
   setNotifOpen: open => set({ notifOpen: open }),
@@ -165,6 +181,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   mobileNavOpen: false,
   setMobileNavOpen: open => set({ mobileNavOpen: open }),
 
+  searchOpen: false,
+  setSearchOpen: open => set({ searchOpen: open }),
+
+  scrollPositions: {},
+  saveScroll: (key, y) => set(s => ({ scrollPositions: { ...s.scrollPositions, [key]: y } })),
+
   composerDraft: '',
   setComposerDraft: text => set({ composerDraft: text }),
   clearComposerDraft: () => set({ composerDraft: '' }),
@@ -173,23 +195,43 @@ export const useUIStore = create<UIState>((set, get) => ({
   setAdminMode: on => { pushUrl(on ? '/admin' : (VIEW_TO_PATH[get().activeView] ?? '/')); set({ adminMode: on }) },
 
   profileId: INITIAL_URL_STATE.profileId,
-  openProfile: id => { pushUrl(`/profile/${id}`); set({ profileId: id, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null }) },
+  openProfile: id => {
+    get().saveScroll(get().activeView, window.scrollY)
+    pushUrl(`/profile/${id}`)
+    set({ profileId: id, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null })
+  },
   closeProfile: () => { pushUrl(VIEW_TO_PATH[get().activeView] ?? '/'); set({ profileId: null }) },
 
   viewingOrgId: INITIAL_URL_STATE.viewingOrgId,
-  viewOrg: id => { pushUrl(`/ministries/${id}`); set({ viewingOrgId: id, activeView: 'orgs', profileId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewOrg: id => {
+    get().saveScroll(get().activeView, window.scrollY)
+    pushUrl(`/ministries/${id}`)
+    set({ viewingOrgId: id, activeView: 'orgs', profileId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+  },
   closeOrgView: () => { pushUrl(VIEW_TO_PATH.orgs); set({ viewingOrgId: null }) },
 
   viewingBlogPostId: INITIAL_URL_STATE.viewingBlogPostId,
-  viewBlogPost: id => { pushUrl(`/blog/${id}`); set({ viewingBlogPostId: id, activeView: 'blog', profileId: null, viewingOrgId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewBlogPost: id => {
+    get().saveScroll(get().activeView, window.scrollY)
+    pushUrl(`/blog/${id}`)
+    set({ viewingBlogPostId: id, activeView: 'blog', profileId: null, viewingOrgId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+  },
   closeBlogPostView: () => { pushUrl(VIEW_TO_PATH.blog); set({ viewingBlogPostId: null }) },
 
   viewingEventId: INITIAL_URL_STATE.viewingEventId,
-  viewEvent: id => { pushUrl(`/events/${id}`); set({ viewingEventId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewEvent: id => {
+    get().saveScroll(get().activeView, window.scrollY)
+    pushUrl(`/events/${id}`)
+    set({ viewingEventId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+  },
   closeEventView: () => { pushUrl(VIEW_TO_PATH.events); set({ viewingEventId: null }) },
 
   viewingSeriesId: INITIAL_URL_STATE.viewingSeriesId,
-  viewMeetingSeries: id => { pushUrl(`/meeting-series/${id}`); set({ viewingSeriesId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewMeetingSeries: id => {
+    get().saveScroll(get().activeView, window.scrollY)
+    pushUrl(`/meeting-series/${id}`)
+    set({ viewingSeriesId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, notifOpen: false, mobileNavOpen: false })
+  },
   closeMeetingSeriesView: () => { pushUrl(VIEW_TO_PATH.events); set({ viewingSeriesId: null }) },
 
   messagesOpen: false,

@@ -1,4 +1,4 @@
-import { useEffect, Component, type ReactNode } from 'react'
+import { useEffect, useRef, Component, type ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './api-client/queryClient'
 import { AuthProvider } from './providers/AuthProvider'
@@ -17,6 +17,8 @@ import AdminShell from './components/admin/AdminShell'
 import ProfileView from './components/ProfileView'
 import MessagesPanel from './components/MessagesPanel'
 import MobileNavDrawer from './components/MobileNavDrawer'
+import BottomTabBar from './components/BottomTabBar'
+import MobileSearchOverlay from './components/MobileSearchOverlay'
 import InstallPrompt from './components/InstallPrompt'
 import PushPrompt from './components/PushPrompt'
 import AuthGate from './components/AuthGate'
@@ -50,10 +52,29 @@ function AppShell() {
   const closeProfile = useUIStore(s => s.closeProfile)
   const messagesOpen = useUIStore(s => s.messagesOpen)
   const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
+  const searchOpen = useUIStore(s => s.searchOpen)
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
   const syncFromUrl = useUIStore(s => s.syncFromUrl)
+  const viewingOrgId = useUIStore(s => s.viewingOrgId)
+  const viewingBlogPostId = useUIStore(s => s.viewingBlogPostId)
+  const viewingEventId = useUIStore(s => s.viewingEventId)
+  const viewingSeriesId = useUIStore(s => s.viewingSeriesId)
+  const scrollPositions = useUIStore(s => s.scrollPositions)
   const { role } = useSupabaseRole()
   const { currentUser } = useAuth()
+
+  // Scroll preservation: opening a detail view (profile, ministry, event,
+  // article, series) saves the list's position; closing it restores the
+  // reader exactly where they were instead of dumping them at the top.
+  const detailOpen = !!(profileId || viewingOrgId || viewingBlogPostId || viewingEventId || viewingSeriesId)
+  const prevDetailOpen = useRef(detailOpen)
+  useEffect(() => {
+    if (prevDetailOpen.current && !detailOpen) {
+      const y = scrollPositions[activeView]
+      if (y) window.scrollTo({ top: y })
+    }
+    prevDetailOpen.current = detailOpen
+  }, [detailOpen, activeView, scrollPositions])
 
   useHeartbeat()
 
@@ -113,7 +134,7 @@ function AppShell() {
       <Topbar />
       <div className="app-grid">
         <LeftSidebar activeView={activeView} setActiveView={setActiveView} />
-        <main style={{ padding: '20px 12px', minHeight: 'calc(100vh - 64px)' }}>
+        <main className="app-main" style={{ padding: '20px 12px', minHeight: 'calc(100vh - 64px)' }}>
           {profileId !== null
             ? <ProfileView userId={profileId} onBack={closeProfile} />
             : <Feed activeView={activeView} />}
@@ -122,6 +143,8 @@ function AppShell() {
       </div>
       {messagesOpen && <MessagesPanel />}
       {mobileNavOpen && <MobileNavDrawer />}
+      {searchOpen && <MobileSearchOverlay onClose={() => useUIStore.getState().setSearchOpen(false)} />}
+      <BottomTabBar />
       <InstallPrompt />
       <PushPrompt />
     </div>

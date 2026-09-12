@@ -31,11 +31,11 @@ export default function ReportModal({ targetType, targetId, targetAuthorId, targ
   }
 
   return (
-    <div onClick={onClose} style={{
+    <div onClick={onClose} className="sheet-backdrop" style={{
       position: 'fixed', inset: 0, zIndex: 600, backgroundColor: 'rgba(0,0,0,0.45)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div onClick={e => e.stopPropagation()} className="sheet-card" style={{
         backgroundColor: 'var(--color-card)', borderRadius: '16px', width: '100%', maxWidth: '440px',
         maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
       }}>

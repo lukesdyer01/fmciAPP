@@ -6,6 +6,7 @@ import CreateMeetingSeriesModal from './CreateMeetingSeriesModal'
 import EventDetailView from './EventDetailView'
 import MeetingSeriesView from './MeetingSeriesView'
 import { useUIStore } from '../store/ui'
+import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
 
 const FILTERS = ['All', 'Conference', 'Prayer Call', 'Teaching', 'Leadership Meeting', 'Gathering', 'Book Study', 'Movement']
 
@@ -37,6 +38,8 @@ export default function EventsView() {
 
   useEffect(() => { load() }, [])
 
+  const { refreshing, pulling, distance } = usePullToRefresh(load)
+
   const filtered = events.filter(e => filter === 'All' || e.type === filter)
 
   if (viewingSeriesId) {
@@ -49,6 +52,7 @@ export default function EventsView() {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+      <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Events</h1>

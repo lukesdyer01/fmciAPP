@@ -8,6 +8,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
 import ReportModal from './ReportModal'
+import { hapticImpact } from '../lib/haptics'
 import { findYouTubeLink } from '../lib/youtube'
 import { segmentLine } from '../lib/mentions'
 import { useBlockMember } from '../api-client/moderation'
@@ -121,6 +122,7 @@ export default function PostCard({ post }: { post: Post }) {
   }
 
   const handleReaction = (type: 'amen' | 'pray' | 'heart') => {
+    hapticImpact()
     setReactions(r => {
       const next = { ...r }
       if (active === type) { next[type]--; setActive(null) }

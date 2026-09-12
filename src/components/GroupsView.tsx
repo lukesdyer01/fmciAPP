@@ -6,6 +6,8 @@ import { api } from '../api-client/server'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
+import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
+import { useSwipeBack } from '../hooks/useSwipeBack'
 
 interface Group {
   id: string
@@ -50,6 +52,7 @@ const TYPE_STYLE: Record<Group['type'], { color: string; bg: string }> = {
 }
 
 function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBack: () => void; onLeft: () => void; onUpdated: () => void }) {
+  useSwipeBack(onBack)
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
   const openProfile = useOpenProfile()
@@ -381,9 +384,10 @@ function CreateGroupModal({ group, onClose, onSaved }: { group?: Group; onClose:
   return (
     <div
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      className="sheet-backdrop"
       style={{ position: 'fixed', inset: 0, zIndex: 400, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' }}
     >
-      <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '16px', border: '1px solid var(--color-border)', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+      <div className="sheet-card" style={{ backgroundColor: 'var(--color-card)', borderRadius: '16px', border: '1px solid var(--color-border)', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)' }}>
           <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>{group ? 'Edit Group' : 'Create Group'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
@@ -471,6 +475,8 @@ export default function GroupsView() {
 
   useEffect(() => { load() }, [])
 
+  const { refreshing, pulling, distance } = usePullToRefresh(load)
+
   async function handleJoin(group: Group) {
     setJoiningId(group.id)
     try {
@@ -490,6 +496,7 @@ export default function GroupsView() {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+      <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-sans)' }}>Groups</h1>

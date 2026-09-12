@@ -18,6 +18,7 @@ import type { ActiveView } from '../App'
 import { useFeedPosts, type FeedPost } from '../api-client/posts'
 import { api } from '../api-client/server'
 import { useUIStore } from '../store/ui'
+import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
 
 type FeedEntry =
   | { kind: 'post'; ts: number; post: FeedPost }
@@ -96,7 +97,7 @@ function FeedToggle({ filter, setFilter, primaryMinistry }: {
 
 function MainFeed() {
   const [filter, setFilter] = useState<FeedFilter>('network')
-  const { data: allPosts, isLoading, isError } = useFeedPosts()
+  const { data: allPosts, isLoading, isError, refetch: refetchPosts } = useFeedPosts()
   const [events, setEvents] = useState<EventItem[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
@@ -104,6 +105,13 @@ function MainFeed() {
   const activeHashtag = useUIStore(s => s.activeHashtag)
   const clearHashtag = useUIStore(s => s.clearHashtag)
   const primaryMinistryId = useUIStore(s => s.userProfile.primaryMinistryId)
+
+  const refreshAll = async () => {
+    await refetchPosts()
+    await api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
+    await api<BlogPost[]>('/blog-posts').then(setBlogPosts).catch(() => setBlogPosts([]))
+  }
+  const { refreshing, pulling, distance } = usePullToRefresh(refreshAll)
 
   // Filter out truly orphaned posts (completely missing author). Members-only
   // ministry posts/events are NOT filtered out here — the backend already
@@ -157,6 +165,7 @@ function MainFeed() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+      <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       {primaryMinistry && <FeedToggle filter={filter} setFilter={setFilter} primaryMinistry={primaryMinistry} />}
       {activeHashtag && (
         <div style={{
@@ -210,6 +219,20 @@ function MainFeed() {
           </div>
           <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
             Check back later, or switch back to All Network.
+          </div>
+        </div>
+      )}
+      {!isLoading && filter === 'network' && merged.length === 0 && (
+        <div style={{
+          backgroundColor: 'var(--color-card)', borderRadius: '12px',
+          border: '1px solid var(--color-border)', padding: '40px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🌐</div>
+          <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '6px' }}>
+            Nothing in the network feed yet
+          </div>
+          <div style={{ fontSize: '14px', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
+            Be the first to share something with the FMCI family — pull down to refresh anytime.
           </div>
         </div>
       )}

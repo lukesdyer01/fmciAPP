@@ -76,9 +76,10 @@ export default function CreateBlogPostModal({ post, onClose, onSaved }: {
   return (
     <div
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      className="sheet-backdrop"
       style={{ position: 'fixed', inset: 0, zIndex: 400, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' }}
     >
-      <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '16px', border: '1px solid var(--color-border)', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+      <div className="sheet-card" style={{ backgroundColor: 'var(--color-card)', borderRadius: '16px', border: '1px solid var(--color-border)', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, backgroundColor: 'var(--color-card)', zIndex: 1, borderRadius: '16px 16px 0 0' }}>
           <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>
             {post ? 'Edit Post' : 'Write a Post'}

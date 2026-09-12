@@ -6,6 +6,7 @@ import { useUIStore } from '../store/ui'
 import { type EventItem, formatEventWhen, TYPE_COLOR } from './EventCard'
 import CreateEventModal from './CreateEventModal'
 import { openExternal } from '../lib/openExternal'
+import { useSwipeBack } from '../hooks/useSwipeBack'
 
 interface MeetingSeries {
   id: string
@@ -29,6 +30,7 @@ interface MeetingSeries {
 // one stable URL you can always come back to, unlike a comment thread
 // buried in a single event card.
 export default function MeetingSeriesView({ seriesId, onBack }: { seriesId: string; onBack: () => void }) {
+  useSwipeBack(onBack)
   const [series, setSeries] = useState<MeetingSeries | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAddOccurrence, setShowAddOccurrence] = useState(false)
