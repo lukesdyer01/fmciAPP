@@ -30,6 +30,14 @@ export function useConversations() {
   })
 }
 
+export function useArchivedConversations() {
+  return useQuery({
+    queryKey: [...messageKeys.list(), 'archived'] as const,
+    queryFn: () => api<ConversationSummary[]>('/conversations?archived=1'),
+    refetchInterval: 15_000,
+  })
+}
+
 export function useConversationMessages(conversationId: string | null) {
   return useQuery({
     queryKey: messageKeys.thread(conversationId ?? ''),
@@ -56,5 +64,32 @@ export function useSendMessage() {
       qc.invalidateQueries({ queryKey: messageKeys.thread(vars.conversationId) })
       qc.invalidateQueries({ queryKey: messageKeys.list() })
     },
+  })
+}
+
+export function useArchiveConversation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      api(`/conversations/${conversationId}/archive`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: messageKeys.all }),
+  })
+}
+
+export function useUnarchiveConversation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      api(`/conversations/${conversationId}/unarchive`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: messageKeys.all }),
+  })
+}
+
+export function useDeleteConversation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      api(`/conversations/${encodeURIComponent(conversationId)}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: messageKeys.all }),
   })
 }

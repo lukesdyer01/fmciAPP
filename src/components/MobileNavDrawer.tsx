@@ -1,7 +1,7 @@
-// The "More" drawer — secondary destinations only. The primary sections
-// (Home, Ministries, Events, Groups) live in the bottom tab bar; this holds
-// everything else, plus the member's profile header, theme toggle, and admin
-// entry. Opened by the More tab (and previously the hamburger).
+// The "More" drawer — secondary destinations only. Home and Events live in the
+// bottom tab bar; Ministries and Groups moved here when Notifications and
+// Messages took their tab slots. The drawer also holds the member's profile
+// header, theme toggle, and admin entry. Opened by the More tab.
 
 import { useEffect, useState } from 'react'
 import { NAV } from './LeftSidebar'
@@ -14,8 +14,9 @@ import { supabase } from '../lib/supabase'
 import VerifiedBadge from './VerifiedBadge'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 
-// The four primary destinations now live in the bottom tab bar.
-const TAB_VIEWS = new Set(['feed', 'orgs', 'events', 'groups'])
+// The view destinations that live in the bottom tab bar. Notifications and
+// Messages are panels, not views, so they never appear here.
+const TAB_VIEWS = new Set(['feed', 'events', 'directory'])
 
 export default function MobileNavDrawer() {
   const activeView = useUIStore(s => s.activeView)

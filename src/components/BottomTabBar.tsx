@@ -2,17 +2,23 @@
 // desktop sidebars take over). Five destinations, thumb-reachable, one tap.
 // Tapping the active tab scrolls to the top, the standard social-app behavior.
 //
-// The "More" tab opens the slide-out drawer (the existing MobileNavDrawer,
-// now holding only secondary destinations). The bar hides while the keyboard
-// is up and while Messages is full-screen, so it never fights those surfaces.
+// Notifications and Messages are panels, not views — the bell opens the
+// full-window Notifications panel, the chat bubble opens the full-screen
+// Messages panel (and carries the unread badge). The "More" tab opens the
+// slide-out drawer (the existing MobileNavDrawer, holding the secondary
+// destinations). The bar hides while the keyboard is up and while either
+// panel is full-screen, so it never fights those surfaces.
 
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useUIStore } from '../store/ui'
 import { hapticSelection } from '../lib/haptics'
+import { useConversations } from '../api-client/messages'
 import type { ActiveView } from '../App'
 
-const TABS: { id: ActiveView | 'more'; label: string; icon: (active: boolean) => ReactNode }[] = [
+type TabId = ActiveView | 'more' | 'notifications' | 'messages'
+
+const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[] = [
   {
     id: 'feed', label: 'Home',
     icon: active => (
@@ -23,14 +29,11 @@ const TABS: { id: ActiveView | 'more'; label: string; icon: (active: boolean) =>
     ),
   },
   {
-    id: 'orgs', label: 'Ministries',
+    id: 'notifications', label: 'Notifications',
     icon: active => (
-      // Hand holding a heart — the serving/care gesture for ministries.
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16" />
-        <path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" />
-        <path d="m2 15 6 6" />
-        <path d="M19.5 8.5c.7-.7 1.5-1.6 1.5-2.7A2.73 2.73 0 0 0 16 4a2.78 2.78 0 0 0-5 1.8c0 1.2.8 2 1.5 2.8L16 12Z" />
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </svg>
     ),
   },
@@ -46,12 +49,21 @@ const TABS: { id: ActiveView | 'more'; label: string; icon: (active: boolean) =>
     ),
   },
   {
-    id: 'groups', label: 'Groups',
+    id: 'directory', label: 'Members',
     icon: active => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    id: 'messages', label: 'Messages',
+    icon: active => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
   },
@@ -73,6 +85,11 @@ export default function BottomTabBar() {
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
   const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
   const messagesOpen = useUIStore(s => s.messagesOpen)
+  const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
+  const notifOpen = useUIStore(s => s.notifOpen)
+  const setNotifOpen = useUIStore(s => s.setNotifOpen)
+  const { data: conversations } = useConversations()
+  const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
 
   // Hide while the keyboard is up (Facebook/Instagram behavior) — the WebView
@@ -88,12 +105,20 @@ export default function BottomTabBar() {
     return () => vv.removeEventListener('resize', onResize)
   }, [])
 
-  if (messagesOpen || keyboardOpen) return null
+  if (messagesOpen || notifOpen || keyboardOpen) return null
 
   function onTab(tab: (typeof TABS)[number]) {
     hapticSelection()
     if (tab.id === 'more') {
       setMobileNavOpen(true)
+      return
+    }
+    if (tab.id === 'notifications') {
+      setNotifOpen(true)
+      return
+    }
+    if (tab.id === 'messages') {
+      setMessagesOpen(true)
       return
     }
     if (tab.id === activeView) {
@@ -121,7 +146,10 @@ export default function BottomTabBar() {
       }}
     >
       {TABS.map(tab => {
-        const active = tab.id === 'more' ? moreActive : activeView === tab.id
+        const active = tab.id === 'more' ? moreActive
+          : tab.id === 'notifications' ? notifOpen
+          : tab.id === 'messages' ? messagesOpen
+          : activeView === tab.id
         return (
           <button
             key={tab.id}
@@ -137,7 +165,18 @@ export default function BottomTabBar() {
               transition: 'color 0.15s',
             }}
           >
-            {tab.icon(active)}
+            <span style={{ position: 'relative', display: 'flex' }}>
+              {tab.icon(active)}
+              {tab.id === 'messages' && unreadTotal > 0 && (
+                <span style={{
+                  position: 'absolute', top: '-4px', right: '-9px',
+                  minWidth: '16px', height: '16px', borderRadius: '8px',
+                  backgroundColor: 'var(--color-red)', color: '#fff',
+                  fontSize: '9px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 4px', border: '2px solid var(--color-card)',
+                }}>{unreadTotal > 9 ? '9+' : unreadTotal}</span>
+              )}
+            </span>
             <span style={{
               fontSize: '10px', fontWeight: active ? 800 : 600,
               letterSpacing: '0.2px',

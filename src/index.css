@@ -142,10 +142,12 @@ html[data-theme="dark"] #root {
 /* Topbar sections that hide/reflow on mobile */
 .topbar-brand        { display: flex; align-items: center; gap: 8px; min-width: 200px; flex-shrink: 0; }
 .topbar-brand-title  { font-size: 22px; line-height: 56px; }
-.topbar-avatar       { display: flex; align-items: center; }
+.topbar-avatar       { display: flex; align-items: center; flex-shrink: 0; }
 .topbar-nav-pills   { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .topbar-secondary-icon { display: flex; }
-.notif-panel        { position: fixed; top: calc(60px + var(--safe-top)); right: 60px; width: 360px; }
+.notifications-panel  { padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
+.notifications-home-btn  { display: none; }
+.notifications-close-btn { display: inline-flex; }
 .org-manage-panel   { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
 .admin-manage-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
 /* Slide-over panel pinned to every viewport edge, so it needs the insets back
@@ -203,10 +205,18 @@ html[data-theme="dark"] #root {
   .topbar-brand {
     min-width: 0;
   }
-  .notif-panel {
-    right: 10px;
-    left: 10px;
-    width: auto;
+  .notifications-panel {
+    width: 100%;
+    height: 100dvh !important; /* dvh accounts for mobile browser chrome (address bar, keyboard) that vh ignores */
+  }
+  /* On a phone the panel is the whole screen, so closing it is "go back to the
+     feed" rather than "dismiss a dialog" — say so in words, and drop the ✕ so
+     there's exactly one way out at this size. */
+  .notifications-home-btn {
+    display: inline-flex;
+  }
+  .notifications-close-btn {
+    display: none;
   }
 
   .org-manage-panel,
@@ -338,5 +348,33 @@ html[data-theme="dark"] #root {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Member Directory compact layout ────────────────────────────────────── */
+.directory-filters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.directory-select {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  background-color: #fff;
+  color: var(--color-text-1);
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+}
+@media (max-width: 768px) {
+  .directory-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .directory-select {
+    font-size: 12px;
+    padding: 6px 10px;
   }
 }

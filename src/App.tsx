@@ -16,6 +16,7 @@ import RightSidebar from './components/RightSidebar'
 import AdminShell from './components/admin/AdminShell'
 import ProfileView from './components/ProfileView'
 import MessagesPanel from './components/MessagesPanel'
+import NotificationsPanel from './components/NotificationsPanel'
 import MobileNavDrawer from './components/MobileNavDrawer'
 import BottomTabBar from './components/BottomTabBar'
 import MobileSearchOverlay from './components/MobileSearchOverlay'
@@ -51,6 +52,7 @@ function AppShell() {
   const profileId = useUIStore(s => s.profileId)
   const closeProfile = useUIStore(s => s.closeProfile)
   const messagesOpen = useUIStore(s => s.messagesOpen)
+  const notifOpen = useUIStore(s => s.notifOpen)
   const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
   const searchOpen = useUIStore(s => s.searchOpen)
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
@@ -142,6 +144,7 @@ function AppShell() {
         <RightSidebar />
       </div>
       {messagesOpen && <MessagesPanel />}
+      {notifOpen && <NotificationsPanel />}
       {mobileNavOpen && <MobileNavDrawer />}
       {searchOpen && <MobileSearchOverlay onClose={() => useUIStore.getState().setSearchOpen(false)} />}
       <BottomTabBar />

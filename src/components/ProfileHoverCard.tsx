@@ -9,6 +9,9 @@ import VerifiedBadge from './VerifiedBadge'
 
 export default function ProfileHoverCard() {
   const [open, setOpen] = useState(false)
+  // If the avatar image fails to load (expired storage URL, offline, etc.) we
+  // fall back to the initials chip instead of showing a broken-image glyph.
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const userProfile = useUIStore(s => s.userProfile)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
@@ -30,6 +33,11 @@ export default function ProfileHoverCard() {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
+  // A new avatar URL (profile edited) should retry loading, not stay failed.
+  useEffect(() => {
+    setAvatarFailed(false)
+  }, [userProfile.avatarUrl])
+
   function closeAnd(action: () => void) {
     setOpen(false)
     action()
@@ -46,10 +54,17 @@ export default function ProfileHoverCard() {
           usually already opened this before the click even registers, so a
           toggle would immediately close what hover just opened. */}
       <button onClick={() => setOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '4px', display: 'block' }} title={userProfile.name || 'Profile'}>
-        {userProfile.avatarUrl
-          ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', display: 'block', border: '2px solid rgba(255,255,255,0.3)' }} />
-          : <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '14px', border: '2px solid rgba(255,255,255,0.3)' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
-        }
+        {/* Same wrapper pattern as every other avatar in the app: a fixed-size
+            overflow:hidden circle with the image filling it at 100%. Putting
+            object-fit + border-radius + border directly on the img (with the
+            global box-sizing:border-box) is a known WebKit rendering quirk
+            that can distort the image. */}
+        <div style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
+          {userProfile.avatarUrl && !avatarFailed
+            ? <img src={userProfile.avatarUrl} alt={userProfile.name} onError={() => setAvatarFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            : <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '14px' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
+          }
+        </div>
       </button>
 
       {open && (

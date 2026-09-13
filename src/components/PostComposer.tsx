@@ -246,7 +246,8 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
   }
 
   function handlePost() {
-    if (!text.trim() || isPending) return
+    // A photo alone is a valid post — text is optional when an image is attached.
+    if ((!text.trim() && !image) || isPending) return
     if (type === 'testimony' && !testimonyCategory) { setComposerError('Choose a category for this testimony.'); return }
     // Set only when the user has actively selected an org identity via the
     // pill — orgId still gets set below whenever fixedOrgId is present (so
@@ -444,8 +445,11 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
               onSelect={e => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
               onFocus={() => setFocused(true)}
               // Delayed so a click on a suggestion lands before the list is torn
-              // down by the blur.
-              onBlur={() => { setFocused(false); setTimeout(() => setCaret(-1), 150) }}
+              // down by the blur — and so the composer's collapse (rows 3→1)
+              // doesn't move the Post button out from under a click still in
+              // flight. Without the delay, the first tap on Post is eaten by
+              // the layout shift and nothing happens until a second tap.
+              onBlur={() => { setTimeout(() => { setFocused(false); setCaret(-1) }, 300) }}
               onKeyDown={e => {
                 if (mentionMatches.length > 0) {
                   if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionMatches.length); return }
@@ -469,7 +473,9 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
                 resize: 'none', lineHeight: 1.6,
               }}
             />
-            {type === 'post' && (
+            {/* The photo control only appears once the composer is actually
+                open — a collapsed one-line box stays clean. */}
+            {type === 'post' && focused && (
               <>
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
@@ -630,20 +636,24 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
-        <button
-          onClick={handlePost}
-          disabled={!text.trim() || isPending}
-          style={{
-            marginLeft: 'auto', padding: '8px 22px', borderRadius: '8px', border: 'none',
-            backgroundColor: text.trim() && !isPending ? 'var(--color-navy)' : 'var(--color-border)',
-            color: text.trim() && !isPending ? '#fff' : 'var(--color-text-3)',
-            fontSize: '14px', fontWeight: 700,
-            cursor: text.trim() && !isPending ? 'pointer' : 'not-allowed',
-            fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
-          }}
-        >{isPending ? 'Posting…' : 'Post'}</button>
-      </div>
+      {/* Post button — only while the composer is open, matching the photo
+          control. A collapsed one-line box has no actions to discover. */}
+      {focused && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
+          <button
+            onClick={handlePost}
+            disabled={(!text.trim() && !image) || isPending}
+            style={{
+              marginLeft: 'auto', padding: '8px 22px', borderRadius: '8px', border: 'none',
+              backgroundColor: (text.trim() || image) && !isPending ? 'var(--color-navy)' : 'var(--color-border)',
+              color: (text.trim() || image) && !isPending ? '#fff' : 'var(--color-text-3)',
+              fontSize: '14px', fontWeight: 700,
+              cursor: (text.trim() || image) && !isPending ? 'pointer' : 'not-allowed',
+              fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
+            }}
+          >{isPending ? 'Posting…' : 'Post'}</button>
+        </div>
+      )}
     </div>
   )
 }

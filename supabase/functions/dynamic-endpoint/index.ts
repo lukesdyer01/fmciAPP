@@ -1713,9 +1713,15 @@ app.get(`${BASE}/conversations`, async (c) => {
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const conversations = await kv.get("conversations") ?? [];
   const blocked = new Set(await getBlockedIds(caller.id));
+  // ?archived=1 lists the caller's archived conversations; the default is the
+  // inbox. Deleted conversations are hidden from both until a new message
+  // arrives (POST /conversations/:id/messages clears deletedBy for everyone).
+  const archived = c.req.query("archived") === "1";
   const mine = conversations.filter((conv: any) => Array.isArray(conv.participantIds) &&
     conv.participantIds.includes(caller.id) &&
-    !conv.participantIds.some((id: string) => blocked.has(id)));
+    !conv.participantIds.some((id: string) => blocked.has(id)) &&
+    !conv.deletedBy?.[caller.id] &&
+    (archived ? !!conv.archivedBy?.[caller.id] : !conv.archivedBy?.[caller.id]));
   const summaries = await Promise.all(mine.map(async (conv: any) => {
     const otherId = conv.participantIds.find((id: string) => id !== caller.id);
     const other = await userSummary(otherId);
@@ -1774,7 +1780,11 @@ app.post(`${BASE}/conversations/:id/messages`, async (c) => {
   if (!conv || !conv.participantIds.includes(caller.id)) return c.json({ error: "Conversation not found" }, 404);
   const message = { id: `m${Date.now()}`, senderId: caller.id, text: String(text).trim(), createdAt: new Date().toISOString() };
   const messages = [...(Array.isArray(conv.messages) ? conv.messages : []), message];
-  const updated = { ...conv, messages, updatedAt: message.createdAt, lastReadAt: { ...(conv.lastReadAt ?? {}), [caller.id]: message.createdAt } };
+  // A new message resurfaces the conversation for anyone who deleted it —
+  // the other person reaching out again is exactly when it should come back.
+  const deletedBy = { ...(conv.deletedBy ?? {}) };
+  for (const uid of conv.participantIds) delete deletedBy[uid];
+  const updated = { ...conv, messages, updatedAt: message.createdAt, lastReadAt: { ...(conv.lastReadAt ?? {}), [caller.id]: message.createdAt }, deletedBy };
   await kv.set("conversations", conversations.map((x: any) => x.id === id ? updated : x));
   // Fire-and-forget — a slow/failed push must never delay or fail the
   // message send itself. Only the OTHER participant(s) get notified.
@@ -1788,6 +1798,53 @@ app.post(`${BASE}/conversations/:id/messages`, async (c) => {
     }).catch(() => {});
   }
   return c.json(message, 201);
+});
+
+// --- Conversation management: archive, unarchive, delete --------------------
+// All three are per-user and silent — the other participant's copy is never
+// touched, and they are never told. Delete is a soft delete: the conversation
+// stays in storage and resurfaces for the caller the moment either side sends
+// a new message (the sender clears deletedBy for everyone).
+
+app.post(`${BASE}/conversations/:id/archive`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const conversations = await kv.get("conversations") ?? [];
+  const conv = conversations.find((x: any) => x.id === id);
+  if (!conv || !conv.participantIds.includes(caller.id)) return c.json({ error: "Conversation not found" }, 404);
+  const updated = { ...conv, archivedBy: { ...(conv.archivedBy ?? {}), [caller.id]: true } };
+  await kv.set("conversations", conversations.map((x: any) => x.id === id ? updated : x));
+  return c.json({ ok: true });
+});
+
+app.post(`${BASE}/conversations/:id/unarchive`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const conversations = await kv.get("conversations") ?? [];
+  const conv = conversations.find((x: any) => x.id === id);
+  if (!conv || !conv.participantIds.includes(caller.id)) return c.json({ error: "Conversation not found" }, 404);
+  const archivedBy = { ...(conv.archivedBy ?? {}) };
+  delete archivedBy[caller.id];
+  const updated = { ...conv, archivedBy };
+  await kv.set("conversations", conversations.map((x: any) => x.id === id ? updated : x));
+  return c.json({ ok: true });
+});
+
+app.delete(`${BASE}/conversations/:id`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { id } = c.req.param();
+  const conversations = await kv.get("conversations") ?? [];
+  const conv = conversations.find((x: any) => x.id === id);
+  if (!conv || !conv.participantIds.includes(caller.id)) return c.json({ error: "Conversation not found" }, 404);
+  const deletedBy = { ...(conv.deletedBy ?? {}), [caller.id]: true };
+  const archivedBy = { ...(conv.archivedBy ?? {}) };
+  delete archivedBy[caller.id];
+  const updated = { ...conv, deletedBy, archivedBy };
+  await kv.set("conversations", conversations.map((x: any) => x.id === id ? updated : x));
+  return c.json({ ok: true });
 });
 
 // --- Reports ---------------------------------------------------------------

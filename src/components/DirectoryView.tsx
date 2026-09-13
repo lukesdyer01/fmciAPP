@@ -33,7 +33,8 @@ export default function DirectoryView() {
   const [additionalFilter, setAdditionalFilter] = useState('All Additional Roles')
   const [region, setRegion] = useState('All Regions')
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [view, setView] = useState<'grid' | 'list'>(() => (window.innerWidth <= 768 ? 'list' : 'grid'))
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -59,24 +60,40 @@ export default function DirectoryView() {
     (additionalFilter === 'All Additional Roles' || m.additionalRoles.includes(additionalFilter))
   )
 
+  const activeFilterCount = [
+    search !== '',
+    region !== 'All Regions',
+    leadershipFilter !== 'All FMCI Leadership Roles',
+    fiveFoldFilter !== 'All 5-Fold Roles',
+    additionalFilter !== 'All Additional Roles',
+  ].filter(Boolean).length
+
+  function clearFilters() {
+    setSearch('')
+    setRegion('All Regions')
+    setLeadershipFilter('All FMCI Leadership Roles')
+    setFiveFoldFilter('All 5-Fold Roles')
+    setAdditionalFilter('All Additional Roles')
+  }
+
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
       <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       {/* Header */}
       <div style={{
         backgroundColor: 'var(--color-card)', borderRadius: '12px',
-        border: '1px solid var(--color-border)', padding: '20px 24px', marginBottom: '16px',
+        border: '1px solid var(--color-border)', padding: '16px 18px', marginBottom: '12px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
           <div>
-            <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Member Directory</h1>
-            <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Verified FMCI members, leaders, and ministry partners worldwide</p>
+            <h1 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Member Directory</h1>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-2)' }}>Verified FMCI members, leaders, and ministry partners worldwide</p>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
             {(['grid', 'list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)} style={{
-                padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
-                cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
+                padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-border)',
+                cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 600,
                 backgroundColor: view === v ? 'var(--color-navy)' : 'transparent',
                 color: view === v ? '#fff' : 'var(--color-text-2)',
                 transition: 'all 0.15s',
@@ -85,58 +102,66 @@ export default function DirectoryView() {
           </div>
         </div>
 
-        {/* Search */}
-        <div style={{ position: 'relative', marginBottom: '12px' }}>
-          <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '15px', color: 'var(--color-text-3)' }}>🔍</span>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, church, calling, or location…"
-            style={{
-              width: '100%', padding: '11px 16px 11px 42px', borderRadius: '10px',
-              border: '1.5px solid var(--color-border)', fontSize: '14px',
-              fontFamily: 'var(--font-sans)', outline: 'none', boxSizing: 'border-box',
-              color: 'var(--color-text-1)', backgroundColor: 'var(--color-surface)',
-            }}
-            onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}
-            onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-border)' }}
-          />
-        </div>
+        {/* Search & Filters toggle (collapsed by default) */}
+        <button onClick={() => setFiltersOpen(o => !o)} style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 14px', borderRadius: '10px', border: '1.5px solid var(--color-border)',
+          backgroundColor: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+          fontSize: '13px', fontWeight: 600, color: 'var(--color-text-1)',
+        }}>
+          <span>🔍 Search &amp; Filters{filtersOpen ? ' ▴' : ' ▾'}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {activeFilterCount > 0 && (
+              <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)' }}>
+                {activeFilterCount} active
+              </span>
+            )}
+            {activeFilterCount > 0 && (
+              <span onClick={e => { e.stopPropagation(); clearFilters() }} style={{ fontSize: '12px', color: 'var(--color-text-2)', textDecoration: 'underline', cursor: 'pointer' }}>Clear</span>
+            )}
+          </span>
+        </button>
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <select value={region} onChange={e => setRegion(e.target.value)} style={{
-            padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
-            fontSize: '13px', fontFamily: 'var(--font-sans)', backgroundColor: '#fff',
-            color: 'var(--color-text-1)', cursor: 'pointer', outline: 'none',
-          }}>
-            {REGIONS.map(r => <option key={r}>{r}</option>)}
-          </select>
-          <select value={leadershipFilter} onChange={e => setLeadershipFilter(e.target.value)} style={{
-            padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
-            fontSize: '13px', fontFamily: 'var(--font-sans)', backgroundColor: '#fff',
-            color: 'var(--color-text-1)', cursor: 'pointer', outline: 'none',
-          }}>
-            <option>All FMCI Leadership Roles</option>
-            {FMCI_LEADERSHIP_ROLES.map(r => <option key={r}>{r}</option>)}
-          </select>
-          <select value={fiveFoldFilter} onChange={e => setFiveFoldFilter(e.target.value)} style={{
-            padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
-            fontSize: '13px', fontFamily: 'var(--font-sans)', backgroundColor: '#fff',
-            color: 'var(--color-text-1)', cursor: 'pointer', outline: 'none',
-          }}>
-            <option>All 5-Fold Roles</option>
-            {FIVE_FOLD_ROLES.map(r => <option key={r}>{r}</option>)}
-          </select>
-          <select value={additionalFilter} onChange={e => setAdditionalFilter(e.target.value)} style={{
-            padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)',
-            fontSize: '13px', fontFamily: 'var(--font-sans)', backgroundColor: '#fff',
-            color: 'var(--color-text-1)', cursor: 'pointer', outline: 'none',
-          }}>
-            <option>All Additional Roles</option>
-            {ADDITIONAL_ROLES.map(r => <option key={r}>{r}</option>)}
-          </select>
-        </div>
+        {filtersOpen && (
+          <>
+            {/* Search */}
+            <div style={{ position: 'relative', marginTop: '10px' }}>
+              <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '15px', color: 'var(--color-text-3)' }}>🔍</span>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name, church, calling, or location…"
+                style={{
+                  width: '100%', padding: '11px 16px 11px 42px', borderRadius: '10px',
+                  border: '1.5px solid var(--color-border)', fontSize: '14px',
+                  fontFamily: 'var(--font-sans)', outline: 'none', boxSizing: 'border-box',
+                  color: 'var(--color-text-1)', backgroundColor: 'var(--color-surface)',
+                }}
+                onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}
+                onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-border)' }}
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="directory-filters" style={{ marginTop: '8px' }}>
+              <select className="directory-select" value={region} onChange={e => setRegion(e.target.value)}>
+                {REGIONS.map(r => <option key={r}>{r}</option>)}
+              </select>
+              <select className="directory-select" value={leadershipFilter} onChange={e => setLeadershipFilter(e.target.value)}>
+                <option>All FMCI Leadership Roles</option>
+                {FMCI_LEADERSHIP_ROLES.map(r => <option key={r}>{r}</option>)}
+              </select>
+              <select className="directory-select" value={fiveFoldFilter} onChange={e => setFiveFoldFilter(e.target.value)}>
+                <option>All 5-Fold Roles</option>
+                {FIVE_FOLD_ROLES.map(r => <option key={r}>{r}</option>)}
+              </select>
+              <select className="directory-select" value={additionalFilter} onChange={e => setAdditionalFilter(e.target.value)}>
+                <option>All Additional Roles</option>
+                {ADDITIONAL_ROLES.map(r => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Results count */}
@@ -241,51 +266,43 @@ function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id
 function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
-      backgroundColor: 'var(--color-card)', borderRadius: '12px',
-      border: '1px solid var(--color-border)', padding: '16px 20px',
-      display: 'flex', alignItems: 'center', gap: '16px',
+      backgroundColor: 'var(--color-card)', borderRadius: '10px',
+      border: '1px solid var(--color-border)', padding: '10px 12px',
+      display: 'flex', alignItems: 'center', gap: '10px',
       cursor: 'pointer', transition: 'background 0.15s',
     }}
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--color-hover)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--color-card)' }}
     >
       {member.avatarUrl
-        ? <img src={member.avatarUrl} alt={member.name} style={{ width: '52px', height: '52px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0 }} />
-        : <div style={{ width: '52px', height: '52px', borderRadius: '12px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px' }}>{(member.name || '?').slice(0, 2).toUpperCase()}</div>
+        ? <img src={member.avatarUrl} alt={member.name} style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+        : <div style={{ width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '15px' }}>{(member.name || '?').slice(0, 2).toUpperCase()}</div>
       }
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '2px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 800, fontSize: '14px', color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {member.name}
-          {member.badges.includes('verified') && <VerifiedBadge size={14} />}
+          {member.badges.includes('verified') && <VerifiedBadge size={12} />}
         </div>
-        <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '4px' }}>{member.title} · {member.church} · {member.location}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-          {member.badges.filter(b => b !== 'verified').map((b, j) => <Badge key={j} variant={b} size="sm" />)}
-          {member.fmciLeadershipRole && (
-            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-navy)', color: '#fff', fontWeight: 700 }}>👑 {member.fmciLeadershipRole}</span>
-          )}
-          {member.ministryRoles.map(r => (
-            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', fontWeight: 700 }}>{r}</span>
-          ))}
-          {member.additionalRoles.map(r => (
-            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', fontWeight: 700 }}>{r}</span>
-          ))}
-          {member.callings.map((c, j) => (
-            <span key={j} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', fontWeight: 500 }}>{c}</span>
-          ))}
-        </div>
+        {member.title && (
+          <div style={{ fontSize: '12px', color: 'var(--color-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.title}</div>
+        )}
+        {member.church && (
+          <div style={{ fontSize: '11px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.church}{member.location ? ` · ${member.location}` : ''}</div>
+        )}
       </div>
-      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-        <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} style={{
-          padding: '8px 16px', borderRadius: '8px', border: 'none',
-          backgroundColor: 'var(--color-navy)', color: '#fff',
-          fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-        }}>View Profile</button>
-        <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} style={{
-          padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--color-border)',
-          background: 'none', color: 'var(--color-text-1)',
-          fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-        }}>Message</button>
+      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+        <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} title="View Profile" aria-label="View Profile" style={{
+          width: '40px', height: '40px', borderRadius: '50%', border: 'none',
+          backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '16px',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-sans)',
+        }}>👤</button>
+        <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} title="Message" aria-label="Message" style={{
+          width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--color-border)',
+          background: 'none', color: 'var(--color-text-1)', fontSize: '16px',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-sans)',
+        }}>💬</button>
       </div>
     </div>
   )
