@@ -34,6 +34,19 @@
 :root {
   --safe-top:    env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Feed item frame — desktop keeps the floating-card look (rounded, bordered,
+     shadowed, gapped). The .main-feed container overrides these on phones so
+     items go full-bleed: no corners, no frame, hairline dividers instead of
+     gaps (the modern social-feed look). Components reference these variables
+     inline; only the values change per breakpoint. */
+  --feed-item-radius:        12px;
+  --feed-item-border:        1px solid var(--color-border);
+  --feed-item-pinned-border: 1px solid var(--color-gold-border);
+  --feed-item-shadow:        0 1px 4px rgba(0,0,0,0.06);
+  --feed-item-pinned-shadow: 0 2px 12px rgba(200,155,60,0.12);
+  --feed-item-gap:           12px;
+  --feed-item-divider:       none;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -124,6 +137,16 @@ html[data-theme="dark"] #root {
   min-width: 0;
 }
 
+/* Main feed column. Desktop: centered 680px column. Phones: the whole feed
+   goes full-bleed — white background edge to edge, and the feed-item frame
+   variables flip to the flat look (no radius/border/shadow/gap, hairline
+   dividers). Scoped to this container so post/event cards used outside the
+   home feed (profile walls, org pages) keep their card look on mobile. */
+.main-feed {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
 .mobile-nav-toggle { display: none; }
 .admin-mobile-nav { display: none; }
 .admin-back-mobile { display: none; }
@@ -172,6 +195,20 @@ html[data-theme="dark"] #root {
   }
   .grid-stats-3, .grid-stats-4 {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .main-feed {
+    max-width: none;
+    margin: 0;
+    background-color: var(--color-card);
+    min-height: 100dvh; /* white extends to the bottom even with short content */
+    --feed-item-radius:        0;
+    --feed-item-border:        none;
+    --feed-item-pinned-border: none;
+    --feed-item-shadow:        none;
+    --feed-item-pinned-shadow: none;
+    --feed-item-gap:           0;
+    --feed-item-divider:       1px solid var(--color-border);
   }
 
   .app-grid {

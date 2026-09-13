@@ -166,9 +166,10 @@ export default function PostCard({ post }: { post: Post }) {
   return (
     <div style={{
       backgroundColor: 'var(--color-card)',
-      borderRadius: '12px', marginBottom: '12px',
-      border: `1px solid ${post.pinned ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
-      boxShadow: post.pinned ? '0 2px 12px rgba(200,155,60,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
+      borderRadius: 'var(--feed-item-radius)', marginBottom: 'var(--feed-item-gap)',
+      border: post.pinned ? 'var(--feed-item-pinned-border)' : 'var(--feed-item-border)',
+      boxShadow: post.pinned ? 'var(--feed-item-pinned-shadow)' : 'var(--feed-item-shadow)',
+      borderBottom: 'var(--feed-item-divider)',
       overflow: 'hidden',
     }}>
       {/* Pinned banner */}
@@ -484,7 +485,7 @@ export default function PostCard({ post }: { post: Post }) {
 
       {/* Comments */}
       {showComments && (
-        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)' }}>
           <CommentThread
             comments={post.commentsList ?? []}
             onSubmit={text => addComment.mutate({ postId: post.id, text })}

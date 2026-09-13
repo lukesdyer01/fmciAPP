@@ -69,8 +69,9 @@ export function BlogPostFeedCard({ post }: { post: BlogPost }) {
 
   return (
     <div onClick={() => viewBlogPost(post.id)} style={{
-      backgroundColor: 'var(--color-card)', borderRadius: '12px', marginBottom: '12px',
-      border: '1px solid var(--color-border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      backgroundColor: 'var(--color-card)', borderRadius: 'var(--feed-item-radius)',
+      marginBottom: 'var(--feed-item-gap)', border: 'var(--feed-item-border)',
+      boxShadow: 'var(--feed-item-shadow)', borderBottom: 'var(--feed-item-divider)',
       overflow: 'hidden', cursor: 'pointer', display: 'flex', gap: '14px', padding: '14px',
     }}>
       <div style={{

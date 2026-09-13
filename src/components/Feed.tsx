@@ -28,8 +28,10 @@ type FeedEntry =
 function PostSkeleton() {
   return (
     <div style={{
-      backgroundColor: 'var(--color-card)', borderRadius: '12px', marginBottom: '12px',
-      border: '1px solid var(--color-border)', padding: '16px', overflow: 'hidden',
+      backgroundColor: 'var(--color-card)', borderRadius: 'var(--feed-item-radius)',
+      marginBottom: 'var(--feed-item-gap)', border: 'var(--feed-item-border)',
+      borderBottom: 'var(--feed-item-divider)', boxShadow: 'var(--feed-item-shadow)',
+      padding: '16px', overflow: 'hidden',
     }}>
       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
         <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: 'var(--color-border)', flexShrink: 0 }} />
@@ -164,7 +166,7 @@ function MainFeed() {
   }
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+    <div className="main-feed">
       <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       {primaryMinistry && <FeedToggle filter={filter} setFilter={setFilter} primaryMinistry={primaryMinistry} />}
       {activeHashtag && (
@@ -210,8 +212,9 @@ function MainFeed() {
       )}
       {!isLoading && filter === 'ministry' && primaryMinistry && merged.length === 0 && (
         <div style={{
-          backgroundColor: 'var(--color-card)', borderRadius: '12px',
-          border: '1px solid var(--color-border)', padding: '40px 24px', textAlign: 'center',
+          backgroundColor: 'var(--color-card)', borderRadius: 'var(--feed-item-radius)',
+          border: 'var(--feed-item-border)', borderBottom: 'var(--feed-item-divider)',
+          boxShadow: 'var(--feed-item-shadow)', padding: '40px 24px', textAlign: 'center',
         }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏛</div>
           <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '6px' }}>
@@ -224,8 +227,9 @@ function MainFeed() {
       )}
       {!isLoading && filter === 'network' && merged.length === 0 && (
         <div style={{
-          backgroundColor: 'var(--color-card)', borderRadius: '12px',
-          border: '1px solid var(--color-border)', padding: '40px 24px', textAlign: 'center',
+          backgroundColor: 'var(--color-card)', borderRadius: 'var(--feed-item-radius)',
+          border: 'var(--feed-item-border)', borderBottom: 'var(--feed-item-divider)',
+          boxShadow: 'var(--feed-item-shadow)', padding: '40px 24px', textAlign: 'center',
         }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🌐</div>
           <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-text-1)', marginBottom: '6px' }}>
@@ -240,7 +244,7 @@ function MainFeed() {
         if (entry.kind === 'post') return <PostCard key={`p-${entry.post.id}`} post={entry.post as unknown as Post} />
         if (entry.kind === 'blogPost') return <BlogPostFeedCard key={`b-${entry.blogPost.id}`} post={entry.blogPost} />
         return (
-          <div key={`e-${entry.event.id}`} style={{ marginBottom: '12px' }}>
+          <div key={`e-${entry.event.id}`} style={{ marginBottom: 'var(--feed-item-gap)', borderBottom: 'var(--feed-item-divider)' }}>
             <EventCard event={entry.event} onChanged={loadEvents} onEdit={setEditingEvent} />
           </div>
         )

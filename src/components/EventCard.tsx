@@ -113,9 +113,10 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
 
   return (
     <div id={`event-${event.id}`} className="grid-cover-280" style={{
-      backgroundColor: 'var(--color-card)', borderRadius: '12px',
-      border: `1px solid ${event.official ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
-      boxShadow: event.official ? '0 2px 12px rgba(184,145,42,0.1)' : '0 1px 4px rgba(0,0,0,0.05)',
+      backgroundColor: 'var(--color-card)', borderRadius: 'var(--feed-item-radius)',
+      border: event.official ? 'var(--feed-item-pinned-border)' : 'var(--feed-item-border)',
+      boxShadow: event.official ? 'var(--feed-item-pinned-shadow)' : 'var(--feed-item-shadow)',
+      borderBottom: 'var(--feed-item-divider)',
       overflow: 'hidden',
     }}>
       <div style={{ position: 'relative', overflow: 'hidden', minHeight: '200px', backgroundColor: 'var(--color-surface)' }}>
