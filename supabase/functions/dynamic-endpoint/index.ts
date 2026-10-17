@@ -33,6 +33,18 @@ app.use("/*", cors({
   maxAge: 600,
 }));
 
+// Incomplete accounts may upload through Storage/Auth or delete their account,
+// but cannot bypass onboarding through the Edge API.
+app.use(`${BASE}/*`, async (c, next) => {
+  if (c.req.method !== "OPTIONS" && !(c.req.method === "DELETE" && c.req.path === `${BASE}/me`)) {
+    const caller = await getCallerUser(c.req.header("Authorization"));
+    if (caller && caller.user_metadata?.onboarding_complete === false) {
+      return c.json({ error: "Complete signup and upload a profile photo before continuing" }, 403);
+    }
+  }
+  await next();
+});
+
 const SUPABASE_URL = () => Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY  = () => Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -328,7 +340,7 @@ app.get(`${BASE}/members`, async (c) => {
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const users = await listAuthUsers();
   const members = users
-    .filter((u: any) => u.id !== caller.id)
+    .filter((u: any) => u.id !== caller.id && u.user_metadata?.onboarding_complete !== false)
     .filter((u: any) => {
       const status = u.user_metadata?.status === "suspended" ? "suspended" : u.confirmed_at ? "active" : "pending";
       return status === "active";
@@ -413,6 +425,44 @@ app.get(`${BASE}/members/:id`, async (c) => {
     verified: !!u.user_metadata?.verified,
     joinedAt: u.created_at,
   });
+});
+
+// Fivefold roles are public only after a trusted admin reviews each request.
+app.get(`${BASE}/ministry-role-requests/mine`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  const { data, error } = await kvClient().from("ministry_role_requests")
+    .select("role,status,requested_at,reviewed_at").eq("user_id", caller.id);
+  if (error) return c.json({ error: "Unable to load role requests" }, 500);
+  return c.json(data);
+});
+
+app.get(`${BASE}/ministry-role-requests`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller || !["admin", "superadmin"].includes(caller.app_metadata?.role)) return c.json({ error: "Forbidden" }, 403);
+  const { data, error } = await kvClient().from("ministry_role_requests").select("*").order("requested_at", { ascending: false });
+  if (error) return c.json({ error: "Unable to load role requests" }, 500);
+  const userIds = [...new Set((data ?? []).map((r: any) => r.user_id))];
+  const users = await Promise.all(userIds.map(id => kvClient().auth.admin.getUserById(id as string)));
+  const byId = new Map(users.filter(r => r.data.user).map(r => [r.data.user!.id, r.data.user!]));
+  return c.json((data ?? []).map((r: any) => {
+    const user = byId.get(r.user_id);
+    return { userId: r.user_id, role: r.role, status: r.status, requestedAt: r.requested_at,
+      name: user?.user_metadata?.full_name ?? "", email: user?.email ?? "", church: user?.user_metadata?.church ?? "" };
+  }));
+});
+
+app.post(`${BASE}/ministry-role-requests/:userId/:role/:decision`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller || !["admin", "superadmin"].includes(caller.app_metadata?.role)) return c.json({ error: "Forbidden" }, 403);
+  const { userId, role, decision } = c.req.param();
+  if (!["approve", "deny"].includes(decision)) return c.json({ error: "Invalid decision" }, 400);
+  const { data, error } = await kvClient().rpc("review_ministry_role", {
+    p_admin: caller.id, p_user: userId, p_role: role, p_status: decision === "approve" ? "approved" : "denied",
+  });
+  if (error) return c.json({ error: "Unable to review role" }, 500);
+  if (!data) return c.json({ error: "This request was withdrawn. Refresh the list." }, 409);
+  return c.json({ ok: true });
 });
 
 app.post(`${BASE}/verification-requests`, async (c) => {
@@ -2356,7 +2406,7 @@ const FMCI_LEADERSHIP_ROLES = ["Apostolic Leadership Team", "Apostolic Council",
 
 app.post(`${BASE}/admin/update-member`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  if (!caller || !["superadmin", "admin"].includes(caller.app_metadata?.role)) return c.json({ error: "Forbidden" }, 403);
   const { userId, patch } = await c.req.json();
   if (!userId || !patch) return c.json({ error: "userId and patch required" }, 400);
   // FMCI Leadership Role is superadmin-only — a plain admin's request silently
@@ -2374,9 +2424,21 @@ app.post(`${BASE}/admin/update-member`, async (c) => {
   });
   if (!userRes.ok) return c.json({ error: "User not found" }, 404);
   const user = await userRes.json();
-  const merged = { ...user.user_metadata, ...patch };
+  const merged = { ...user.user_metadata, ...patch,
+    ...(Array.isArray(patch.ministryRoles) ? { requestedMinistryRoles: patch.ministryRoles } : {}),
+  };
   const res = await updateUserMeta(userId, merged);
   if (!res.ok) return c.json({ error: await res.text() }, res.status);
+  // An admin explicitly assigning a fivefold role also approves that role.
+  if (Array.isArray(patch.ministryRoles)) {
+    for (const role of patch.ministryRoles) {
+      if (!["Pastor", "Teacher", "Evangelist", "Apostle", "Prophet"].includes(role)) continue;
+      const { error } = await kvClient().rpc("review_ministry_role", {
+        p_admin: caller.id, p_user: userId, p_role: role, p_status: "approved",
+      });
+      if (error) return c.json({ error: "Profile saved but role approval failed. Please review the request." }, 500);
+    }
+  }
   return c.json({ ok: true });
 });
 

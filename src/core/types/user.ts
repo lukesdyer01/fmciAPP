@@ -16,6 +16,7 @@ export interface User {
   website: string | null
   phone: string | null
   ministryRoles: string[]
+  requestedMinistryRoles?: string[]
   additionalRoles: string[]
   communicationPrefs: string[]
   // Self-reported year the person considers themselves an FMCI member since

@@ -31,6 +31,7 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
     website: meta.website ?? null,
     phone: meta.phone ?? null,
     ministryRoles: Array.isArray(meta.ministryRoles) ? meta.ministryRoles : [],
+    requestedMinistryRoles: Array.isArray(meta.requestedMinistryRoles) ? meta.requestedMinistryRoles : (Array.isArray(meta.ministryRoles) ? meta.ministryRoles : []),
     additionalRoles: Array.isArray(meta.additionalRoles) ? meta.additionalRoles : [],
     communicationPrefs: Array.isArray(meta.communicationPrefs) ? meta.communicationPrefs : [],
     memberSince: meta.memberSince ?? null,
@@ -62,27 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Re-sync when the session refreshes (e.g. after a token refresh or role change)
   useEffect(() => {
-    setCurrentUser(prev => {
-      const fresh = buildUserFromSession(session, role)
-      // Preserve any local edits to fields not owned by the session
-      return {
-        ...fresh,
-        displayName: prev.displayName || fresh.displayName,
-        avatarUrl: prev.avatarUrl || fresh.avatarUrl,
-        bio: prev.bio || fresh.bio,
-        title: prev.title || fresh.title,
-        church: prev.church || fresh.church,
-        location: prev.location || fresh.location,
-        website: prev.website || fresh.website,
-        phone: prev.phone || fresh.phone,
-        ministryRoles: prev.ministryRoles.length ? prev.ministryRoles : fresh.ministryRoles,
-        additionalRoles: prev.additionalRoles.length ? prev.additionalRoles : fresh.additionalRoles,
-        communicationPrefs: prev.communicationPrefs.length ? prev.communicationPrefs : fresh.communicationPrefs,
-        memberSince: prev.memberSince || fresh.memberSince,
-        primaryMinistryId: prev.primaryMinistryId || fresh.primaryMinistryId,
-      }
-    })
-  }, [session.user.id, role])
+    setCurrentUser(buildUserFromSession(session, role))
+  }, [session.user, role])
 
   const memberships = MOCK_MEMBERSHIPS.map(m => ({ ...m, userId: session.user.id }))
   const currentMembership = memberships.find(m => m.organizationId === activeOrgId) ?? null

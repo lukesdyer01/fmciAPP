@@ -1,10 +1,9 @@
+import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../../../core/types/ministryRoles'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useSupabaseRole } from '../../../contexts/SupabaseRoleContext'
 import { api } from '../../../api-client/server'
 
-const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
-const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 const COMMUNICATION_PREFS = ['Phone Call', 'Text Message', 'Email']
 const FMCI_LEADERSHIP_ROLES = ['Apostolic Leadership Team', 'Apostolic Council', 'Apostolic Team Leader']
 

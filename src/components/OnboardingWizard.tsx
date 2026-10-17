@@ -1,10 +1,9 @@
+import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useRef } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 
-const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
-const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 // Same stored values EditProfileModal.tsx uses for this field — the labels
 // below are just phrased to match how the user described this step.
 const COMMUNICATION_PREFS = [
@@ -18,7 +17,7 @@ const TOTAL_STEPS = 3
 
 export default function OnboardingWizard({ session }: { session: Session }) {
   const [step, setStep] = useState(1)
-  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState(session.user.user_metadata?.avatar_url ?? '')
   const [title, setTitle] = useState('')
   const [church, setChurch] = useState('')
   const [location, setLocation] = useState('')
@@ -37,6 +36,8 @@ export default function OnboardingWizard({ session }: { session: Session }) {
   }
 
   async function handleImageFile(file: File) {
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) { setError('Choose a JPG, PNG, WebP, or GIF profile photo.'); return }
+    if (file.size > 5 * 1024 * 1024) { setError('Choose a profile photo smaller than 5 MB.'); return }
     setUploading(true); setError('')
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
@@ -46,6 +47,8 @@ export default function OnboardingWizard({ session }: { session: Session }) {
       })
       if (uploadErr) throw uploadErr
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      const { error: saveError } = await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } })
+      if (saveError) throw saveError
       setAvatarUrl(data.publicUrl)
     } catch (e: any) {
       setError(e.message ?? 'Failed to upload image.')
@@ -55,6 +58,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
   }
 
   async function save() {
+    if (!avatarUrl || uploading) { setError('Upload a profile photo to finish creating your account.'); setStep(1); return }
     setSaving(true); setError('')
     try {
       // Spread the existing metadata first — full_name (set at signup) and
@@ -65,7 +69,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
           ...session.user.user_metadata,
           avatar_url: avatarUrl || session.user.user_metadata?.avatar_url,
           title, church, location, phone, communicationPrefs,
-          ministryRoles, additionalRoles, memberSince,
+          requestedMinistryRoles: ministryRoles, additionalRoles, memberSince,
           onboarding_complete: true,
         },
       })
@@ -80,6 +84,8 @@ export default function OnboardingWizard({ session }: { session: Session }) {
   }
 
   function next() {
+    if (step === 1 && !avatarUrl) { setError('Please upload your profile photo to continue.'); return }
+    setError('')
     if (step < TOTAL_STEPS) setStep(s => s + 1)
     else save()
   }
@@ -138,17 +144,17 @@ export default function OnboardingWizard({ session }: { session: Session }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Tell us about your ministry</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div onClick={() => fileRef.current?.click()} style={{
+                <button type="button" aria-label="Upload required profile photo" disabled={uploading} onClick={() => fileRef.current?.click()} style={{ border: 0, padding: 0,
                   width: '64px', height: '64px', borderRadius: '14px', flexShrink: 0, cursor: 'pointer',
                   overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
                 }}>
                   {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '📷'}
-                </div>
-                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                </button>
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: 'none' }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
                 <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
-                  {uploading ? 'Uploading…' : 'Add a profile photo (optional)'}
+                  {uploading ? 'Uploading…' : <><strong>Profile photo required</strong><br /><button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} style={{ padding: 0, background: 'none', border: 0, color: 'var(--color-gold)', cursor: 'pointer', marginTop: '4px' }}>{avatarUrl ? 'Change photo' : 'Choose photo'}</button><br /><span style={{ fontSize: '11px' }}>JPG, PNG, WebP, or GIF · Up to 5 MB</span></>}
                 </div>
               </div>
               <div>
@@ -189,6 +195,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>What's your ministry role?</h2>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)', fontSize: '13px', lineHeight: 1.5 }}>Fivefold roles require admin approval before appearing on your profile. Additional roles can be selected freely.</p>
               <div>
                 <label style={labelStyle}>5-fold Role <span style={{ fontWeight: 400, textTransform: 'none' }}>(select all that apply)</span></label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -233,18 +240,18 @@ export default function OnboardingWizard({ session }: { session: Session }) {
           )}
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-            <button
-              onClick={() => step > 1 ? setStep(s => s - 1) : save()}
+            {step > 1 && <button
+              onClick={() => setStep(s => s - 1)}
               disabled={saving}
               style={{
                 flex: 1, padding: '12px', borderRadius: '10px', cursor: saving ? 'default' : 'pointer',
                 border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent',
                 color: 'rgba(255,255,255,0.6)', fontSize: '14px', fontWeight: 700, fontFamily: 'var(--font-sans)',
               }}
-            >{step > 1 ? '← Back' : 'Skip for now'}</button>
+            >← Back</button>}
             <button
               onClick={next}
-              disabled={saving || uploading}
+              disabled={saving || uploading || (step === 1 && !avatarUrl)}
               style={{
                 flex: 2, padding: '12px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer',
                 background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)',

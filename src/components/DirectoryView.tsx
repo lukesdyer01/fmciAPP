@@ -1,3 +1,4 @@
+import { MINISTRY_ROLES as FIVE_FOLD_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import VerifiedBadge from './VerifiedBadge'
@@ -21,8 +22,6 @@ interface Member {
 }
 
 const FMCI_LEADERSHIP_ROLES = ['Apostolic Leadership Team', 'Apostolic Council', 'Apostolic Team Leader']
-const FIVE_FOLD_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
-const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', 'Europe', 'Asia', 'Latin America', 'Caribbean']
 
 export default function DirectoryView() {

@@ -1,3 +1,4 @@
+import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useRef, useEffect } from 'react'
 import { useUIStore, type UserProfile } from '../store/ui'
 import { useAuth } from '../providers/AuthProvider'
@@ -11,8 +12,6 @@ interface MyMinistry {
   members: { userId: string }[]
 }
 
-const MINISTRY_ROLES = ['Pastor', 'Teacher', 'Evangelist', 'Apostle', 'Prophet']
-const ADDITIONAL_ROLES = ['Missionary', 'Intercessor']
 const COMMUNICATION_PREFS = ['Phone Call', 'Text Message', 'Email']
 const CURRENT_YEAR = new Date().getFullYear()
 // Covers a long-tenured minister who joined FMCI well before the app existed.
@@ -64,10 +63,11 @@ export default function EditProfileModal() {
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const { currentUser, updateCurrentUser } = useAuth()
 
-  const [draft, setDraft] = useState<UserProfile>({ ...userProfile })
+  const [draft, setDraft] = useState<UserProfile>({ ...userProfile, ministryRoles: currentUser?.requestedMinistryRoles ?? userProfile.ministryRoles })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [uploading, setUploading] = useState<'avatarUrl' | null>(null)
   const [uploadError, setUploadError] = useState('')
+  const [roleReviews, setRoleReviews] = useState<Record<string, string>>({})
   const [myMinistries, setMyMinistries] = useState<MyMinistry[]>([])
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -77,6 +77,9 @@ export default function EditProfileModal() {
 
   useEffect(() => {
     if (!currentUser) return
+    api<{ role: string; status: string }[]>('/ministry-role-requests/mine')
+      .then(rows => setRoleReviews(Object.fromEntries(rows.map(row => [row.role, row.status]))))
+      .catch(() => {})
     api<MyMinistry[]>('/orgs/my')
       .then(orgs => setMyMinistries(orgs.filter(o => o.members?.some(m => m.userId === currentUser.id))))
       .catch(() => setMyMinistries([]))
@@ -138,7 +141,7 @@ export default function EditProfileModal() {
     try {
       // Profile fields live on the user's own Supabase Auth record — this is the
       // only per-user store for them, unlike the old shared/global profile endpoint.
-      const { error } = await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.updateUser({
         data: {
           full_name: draft.name,
           avatar_url: draft.avatarUrl,
@@ -148,7 +151,7 @@ export default function EditProfileModal() {
           location: draft.location,
           website: draft.website,
           phone: draft.phone,
-          ministryRoles: draft.ministryRoles,
+          requestedMinistryRoles: draft.ministryRoles,
           additionalRoles: draft.additionalRoles,
           communicationPrefs: draft.communicationPrefs,
           memberSince: draft.memberSince,
@@ -156,7 +159,8 @@ export default function EditProfileModal() {
         },
       })
       if (error) throw error
-      updateUserProfile(draft)
+      const approvedRoles = data.user?.user_metadata?.ministryRoles ?? []
+      updateUserProfile({ ...draft, ministryRoles: approvedRoles })
       updateCurrentUser({
         displayName: draft.name,
         avatarUrl: draft.avatarUrl,
@@ -167,7 +171,8 @@ export default function EditProfileModal() {
         website: draft.website,
         email: draft.email,
         phone: draft.phone,
-        ministryRoles: draft.ministryRoles,
+        ministryRoles: approvedRoles,
+        requestedMinistryRoles: draft.ministryRoles,
         additionalRoles: draft.additionalRoles,
         communicationPrefs: draft.communicationPrefs,
         memberSince: draft.memberSince,
@@ -335,6 +340,7 @@ export default function EditProfileModal() {
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 5-fold Role <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>
               </label>
+              <p style={{ color: 'var(--color-text-3)', fontSize: '12px', lineHeight: 1.5 }}>New fivefold roles are submitted for admin approval. Only approved roles appear on your profile.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {MINISTRY_ROLES.map(role => {
                   const active = draft.ministryRoles.includes(role)
@@ -351,7 +357,7 @@ export default function EditProfileModal() {
                         color: active ? '#fff' : 'var(--color-text-2)',
                         transition: 'all 0.15s',
                       }}
-                    >{active ? '✓ ' : ''}{role}</button>
+                    >{active ? '✓ ' : ''}{role}{active && !userProfile.ministryRoles.includes(role) ? (roleReviews[role] === 'denied' ? ' · Not approved' : ' · Awaiting approval') : ''}</button>
                   )
                 })}
               </div>

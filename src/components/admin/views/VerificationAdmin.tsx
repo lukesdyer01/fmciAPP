@@ -1,3 +1,4 @@
+import MinistryRoleApprovals from './MinistryRoleApprovals'
 import { useState, useEffect } from 'react'
 import { api } from '../../../api-client/server'
 
@@ -55,6 +56,8 @@ export default function VerificationAdmin() {
   }
 
   return (
+    <>
+    <MinistryRoleApprovals />
     <div className={detail ? 'grid-aside-400' : 'grid-1'}>
       {/* List */}
       <div>
@@ -163,6 +166,7 @@ export default function VerificationAdmin() {
         </div>
       )}
     </div>
+    </>
   )
 }
 
