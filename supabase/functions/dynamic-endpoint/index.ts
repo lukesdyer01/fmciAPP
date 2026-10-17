@@ -2462,20 +2462,61 @@ app.post(`${BASE}/admin/bootstrap`, async (c) => {
   return c.json({ ok: true, message: "You are now a super administrator. Sign out and sign back in to activate your access." });
 });
 
-const DEFAULT_SETTINGS = { openRegistration: true };
+// Invitations are created only by trusted platform admins. Tokens are never stored raw.
+app.post(`${BASE}/admin/invitations`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller || !["admin", "superadmin"].includes(caller.app_metadata?.role)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const body = await c.req.json();
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    return c.json({ error: "Enter a valid email address" }, 400);
+  }
+  const token = crypto.randomUUID() + crypto.randomUUID();
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+  const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
+  const { error } = await kvClient().from("network_invitations").upsert({
+    email, token_hash: tokenHash, expires_at: expiresAt, created_by: caller.id,
+  }, { onConflict: "email" });
+  if (error) return c.json({ error: "Unable to create invitation" }, 500);
+  return c.json({ email, token, expiresAt });
+});
 
-// Unauthenticated-readable (behind the anon key only) — AuthGate needs this
-// before a visitor has an account, to decide whether to allow signup at all.
-app.get(`${BASE}/settings`, async (c) => c.json(await kv.get("settings") ?? DEFAULT_SETTINGS));
+// Preserve explicit admin-created accounts without signing the admin out.
+app.post(`${BASE}/admin/users`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller || !["admin", "superadmin"].includes(caller.app_metadata?.role)) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  const role = body.role ?? "member";
+  if (!["member", "admin", "superadmin"].includes(role) || (role !== "member" && caller.app_metadata.role !== "superadmin")) return c.json({ error: "Forbidden" }, 403);
+  if (typeof body.email !== "string" || typeof body.password !== "string" || body.password.length < 8) return c.json({ error: "Valid email and password required" }, 400);
+  const email = body.email.trim().toLowerCase();
+  const token = crypto.randomUUID() + crypto.randomUUID();
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("");
+  const client = kvClient();
+  const { error: inviteError } = await client.from("network_invitations").upsert({ email, token_hash: tokenHash, expires_at: new Date(Date.now() + 60000).toISOString(), created_by: caller.id });
+  if (inviteError) return c.json({ error: "Unable to authorize account creation" }, 500);
+  const { data, error } = await client.auth.admin.createUser({
+    email, password: body.password, email_confirm: true,
+    app_metadata: { role },
+    user_metadata: { full_name: body.fullName, title: body.title, church: body.church, location: body.location, onboarding_complete: false, invitation_token: token },
+  });
+  if (error) {
+    await client.from("network_invitations").delete().eq("email", email).eq("token_hash", tokenHash);
+    return c.json({ error: error.message }, 400);
+  }
+  return c.json({ id: data.user.id });
+});
 
+// Registration is always invite-only; retired openRegistration values cannot reopen it.
+app.get(`${BASE}/settings`, (c) => c.json({ openRegistration: false, inviteOnly: true }));
 app.put(`${BASE}/settings`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
-  const body = await c.req.json();
-  const current = await kv.get("settings") ?? DEFAULT_SETTINGS;
-  const updated = { ...current, ...body };
-  await kv.set("settings", updated);
-  return c.json(updated);
+  if (!caller || !["admin", "superadmin"].includes(caller.app_metadata?.role)) return c.json({ error: "Forbidden" }, 403);
+  return c.json({ openRegistration: false, inviteOnly: true });
 });
 
 // ── Analytics ────────────────────────────────────────────────────────────

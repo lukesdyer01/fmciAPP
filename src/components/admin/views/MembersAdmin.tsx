@@ -113,23 +113,11 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
     if (err) { setErrorMsg(err); setStatus('error'); return }
     setStatus('saving'); setErrorMsg('')
     try {
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email: form.email.trim(),
-        password: form.password,
-        options: {
-          data: {
-            full_name: form.fullName.trim(),
-            title: form.title.trim(),
-            church: form.church.trim(),
-            location: form.location.trim(),
-          },
-        },
-      })
-      if (signUpErr) throw new Error(signUpErr.message)
-      if (form.role !== 'member' && signUpData.user) {
-        const { error: roleErr } = await supabase.rpc('admin_set_role', { target_user_id: signUpData.user.id, new_role: form.role })
-        if (roleErr) throw new Error(roleErr.message)
-      }
+      await api('/admin/users', { method: 'POST', body: JSON.stringify({
+        email: form.email.trim(), password: form.password, role: form.role,
+        fullName: form.fullName.trim(), title: form.title.trim(),
+        church: form.church.trim(), location: form.location.trim(),
+      }) })
       setStatus('success')
       setTimeout(() => { onCreated(); onClose() }, 900)
     } catch (e: any) {

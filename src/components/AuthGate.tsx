@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { SupabaseRoleProvider } from '../contexts/SupabaseRoleContext'
-import { api } from '../api-client/server'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 import OnboardingWizard from './OnboardingWizard'
 import PrivacyPolicyView from './PrivacyPolicyView'
@@ -15,6 +14,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,12 +31,6 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         if (error) throw error
         if (data.session) onSession(data.session)
       } else if (mode === 'signup') {
-        const settings = await api<{ openRegistration: boolean }>('/settings').catch(() => ({ openRegistration: true }))
-        if (!settings.openRegistration) {
-          setError('Registration is currently closed. Contact an administrator for an invitation.')
-          setLoading(false)
-          return
-        }
         const { data, error } = await supabase.auth.signUp({
           email, password,
           // onboarding_complete: false marks this as a brand-new account so
@@ -44,7 +38,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           // existing accounts never have this key at all, which is what
           // keeps the wizard from ever appearing for them (see AuthGate's
           // strict === false gate below).
-          options: { data: { full_name: name, onboarding_complete: false } },
+          options: { data: { full_name: name, onboarding_complete: false, invitation_token: inviteCode.trim() } },
         })
         if (error) throw error
         if (data.session) {
@@ -66,7 +60,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         setMode('login')
       }
     } catch (err: any) {
-      setError(err.message ?? 'Something went wrong.')
+      setError(mode === 'signup' && /database error|invitation/i.test(err.message ?? '') ? 'Unable to create your account. Check your invitation code and invited email address, or ask your administrator for a new invitation.' : err.message ?? 'Something went wrong.')
     } finally {
       setLoading(false)
     }
@@ -90,7 +84,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
 
   const subtitles: Record<AuthMode, string> = {
     login: 'Sign in to access the FMCI Network',
-    signup: 'Create your FMCI Network account',
+    signup: 'Membership is by invitation. Use the email address your invitation was issued to.',
     forgot: "We'll send a reset link to your email",
   }
 
@@ -130,6 +124,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           <p style={{ margin: '0 0 28px', fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{subtitles[mode]}</p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {mode === 'signup' && <div><label htmlFor="invitation-code" style={{ display: 'block', color: '#fff', marginBottom: '6px', fontSize: '12px' }}>Invitation code</label><input id="invitation-code" value={inviteCode} onChange={e => setInviteCode(e.target.value)} required autoComplete="off" placeholder="Enter your invitation code" style={inputStyle} /></div>}
             {mode === 'signup' && (
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</label>
@@ -202,10 +197,10 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           {/* Toggle mode */}
           <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>
             {mode === 'login' ? (
-              <>Don&apos;t have an account?{' '}
+              <>Have an invitation?{' '}
                 <button onClick={() => { setMode('signup'); setError(''); setInfo('') }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gold)', fontWeight: 700, fontSize: '14px', fontFamily: 'var(--font-sans)' }}>
-                  Sign up
+                  Accept invitation
                 </button>
               </>
             ) : (
