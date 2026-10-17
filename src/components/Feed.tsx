@@ -10,6 +10,7 @@ import ResourcesView from './ResourcesView'
 import BlogView, { BlogPostFeedCard, type BlogPost } from './BlogView'
 import GlobalMapView from './GlobalMapView'
 import AboutView from './AboutView'
+import InviteMembersView from './InviteMembersView'
 import PrivacyPolicyView from './PrivacyPolicyView'
 import OrgView from './OrgView'
 import { EventCard, type EventItem } from './EventCard'
@@ -254,6 +255,7 @@ function MainFeed() {
 }
 
 export default function Feed({ activeView }: { activeView: ActiveView }) {
+  if (activeView === 'invite') return <InviteMembersView />
   if (activeView === 'directory') return <DirectoryView />
   if (activeView === 'orgs')      return <OrgView />
   if (activeView === 'groups')    return <GroupsView />

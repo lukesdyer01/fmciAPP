@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { SupabaseRoleProvider } from '../contexts/SupabaseRoleContext'
+import { readInvitationLink } from '../lib/invitations'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 import OnboardingWizard from './OnboardingWizard'
 import PrivacyPolicyView from './PrivacyPolicyView'
@@ -9,12 +10,19 @@ import PrivacyPolicyView from './PrivacyPolicyView'
 type AuthMode = 'login' | 'signup' | 'forgot'
 
 function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
-  const [mode, setMode] = useState<AuthMode>('login')
+  const [invitation] = useState(() => readInvitationLink(window.location.hash))
+  const [mode, setMode] = useState<AuthMode>(invitation ? 'signup' : 'login')
   const [showPrivacy, setShowPrivacy] = useState(false)
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(invitation?.email ?? '')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [inviteCode, setInviteCode] = useState('')
+  const [inviteCode, setInviteCode] = useState(invitation?.token ?? '')
+
+  useEffect(() => {
+    // Remove the secret from the address bar after capturing it. Leave Supabase
+    // recovery/confirmation fragments alone.
+    if (invitation) window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  }, [invitation])
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
@@ -60,7 +68,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         setMode('login')
       }
     } catch (err: any) {
-      setError(mode === 'signup' && /database error|invitation/i.test(err.message ?? '') ? 'Unable to create your account. Check your invitation code and invited email address, or ask your administrator for a new invitation.' : err.message ?? 'Something went wrong.')
+      setError(mode === 'signup' && /database error|invitation/i.test(err.message ?? '') ? 'Unable to create your account. Check your invitation code and invited email address, or ask the person who invited you for a new invitation.' : err.message ?? 'Something went wrong.')
     } finally {
       setLoading(false)
     }

@@ -19,3 +19,10 @@ Verify in staging before rollout:
 - Admin Members account creation preserves the administrator’s session.
 
 Production uses Supabase project jbtlmdrmysrgvdpbveyu and GitHub Pages for fmci.network, deployed by .github/workflows/deploy.yml on pushes to main. Supabase authentication is provided by the local CLI login; no deployment secrets are committed. Run supabase/tests/invite-only.sql in a transaction to verify invitation behavior; all test records are rolled back.
+
+
+## Member invitation links
+
+Signed-in members can open Invite someone from the desktop sidebar or mobile More menu. POST /invitations accepts a recipient email and creates a seven-day, single-use invitation. Anonymous and suspended accounts cannot issue invitations. Members cannot replace another invitation for the same email; administrators can replace invitations from Settings. The member endpoint never accepts a role or creator id from the request.
+
+Links use https://fmci.network/#invite=TOKEN&email=EMAIL so the secret is not sent in HTTP requests or referrers. The signup screen captures the fragment, clears it from the address bar, and fills in the email and code. The database still checks both values when creating the account. Admin invitation messages use the same link format. Creating a link does not send an email.

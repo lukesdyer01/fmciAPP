@@ -1,4 +1,4 @@
-import { Hono } from "npm:hono";
+import { Hono, type Context } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
@@ -2462,12 +2462,16 @@ app.post(`${BASE}/admin/bootstrap`, async (c) => {
   return c.json({ ok: true, message: "You are now a super administrator. Sign out and sign back in to activate your access." });
 });
 
-// Invitations are created only by trusted platform admins. Tokens are never stored raw.
-app.post(`${BASE}/admin/invitations`, async (c) => {
+// Signed-in members can invite someone; only admins may replace an existing code.
+async function createInvitation(c: Context, adminOnly: boolean) {
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller || !["admin", "superadmin"].includes(caller.app_metadata?.role)) {
-    return c.json({ error: "Forbidden" }, 403);
+  if (!caller) return c.json({ error: "Sign in to invite someone" }, 401);
+  if (caller.is_anonymous || caller.user_metadata?.status === "suspended" ||
+      (caller.banned_until && new Date(caller.banned_until).getTime() > Date.now())) {
+    return c.json({ error: "This account cannot create invitations" }, 403);
   }
+  const isAdmin = ["admin", "superadmin"].includes(caller.app_metadata?.role);
+  if (adminOnly && !isAdmin) return c.json({ error: "Forbidden" }, 403);
   const body = await c.req.json();
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
@@ -2477,12 +2481,17 @@ app.post(`${BASE}/admin/invitations`, async (c) => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
   const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
-  const { error } = await kvClient().from("network_invitations").upsert({
-    email, token_hash: tokenHash, expires_at: expiresAt, created_by: caller.id,
-  }, { onConflict: "email" });
+  const record = { email, token_hash: tokenHash, expires_at: expiresAt, created_by: caller.id };
+  const table = kvClient().from("network_invitations");
+  const { error } = isAdmin
+    ? await table.upsert(record, { onConflict: "email" })
+    : await table.insert(record);
+  if (error?.code === "23505") return c.json({ error: "An invitation already exists for this email. Ask an administrator to replace it." }, 409);
   if (error) return c.json({ error: "Unable to create invitation" }, 500);
   return c.json({ email, token, expiresAt });
-});
+}
+app.post(`${BASE}/invitations`, c => createInvitation(c, false));
+app.post(`${BASE}/admin/invitations`, c => createInvitation(c, true));
 
 // Preserve explicit admin-created accounts without signing the admin out.
 app.post(`${BASE}/admin/users`, async (c) => {
