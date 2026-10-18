@@ -23,19 +23,16 @@
   "reviewContact": {
     "name": "Luke Dyer",
     "email": "luke@dyerplex.com",
-    "phone": null
+    "phone": "+1 512-565-6867"
   },
-  "legalPublisher": null,
+  "legalPublisher": "Luke Dyer",
   "fmciAuthorizationConfirmed": true,
   "releaseMode": "Manual release after approval",
   "description": "Connect with the FMCI community in one place. Share updates, pray for one another, discover ministries and members, join groups, read articles, explore resources, and take part in events. Stay connected through direct messages and notifications.\n\nFMCI Network is free and invitation only, for adults 18 and older. Ask an existing member for a personal invitation. A profile image is required to finish signup. Fivefold ministry roles are reviewed by an administrator before appearing on profiles. Members can report content, block unwanted contact, and delete their accounts in the app.",
   "keywords": "ministry,church,prayer,fellowship,community,faith,events,christian",
   "reviewNotes": "FMCI Network is a free invitation-only community for adults 18+. Supply a dedicated, fully onboarded review login in App Store Connect. Existing members confirm adult eligibility before continuing. Signup requires an uploaded image; ministry role selections remain pending until approved in Admin > Verification. Safety & Support is available in the desktop sidebar and mobile More menu and accepts reports about any content or message. Content menus also provide reporting and blocking. Account deletion is available in Profile > Edit Profile and during unfinished signup. There are no paid memberships, content purchases, subscriptions, or in-app purchases. Provide separate registration/deletion test instructions without relying on an invitation that expires during review.",
   "requiresBeforeSubmission": [
-    "Account Holder acceptance of updated Apple Developer Program License Agreement",
     "Physical-iPhone recording requested by Apple, starting at launch and showing registration/login/deletion/reporting/blocking",
-    "Exact legal publisher/copyright name",
-    "App Review contact phone",
     "Dedicated review credentials and registration/deletion access",
     "Current iOS screenshots and final listing fields",
     "Final App Privacy answers including embedded services",
@@ -45,7 +42,7 @@
   "uploadedBuild": {
     "version": "1.0.2",
     "build": 4,
-    "uploadStatus": "Xcode export and upload succeeded; App Store processing not yet independently verified"
+    "uploadStatus": "Processed: TestFlight shows build 4 Ready to Submit"
   },
   "appStoreConnectVerified": {
     "appId": "6809304019",
@@ -54,6 +51,10 @@
     "ageRating": "18+ override",
     "ageSuitabilityUrl": "https://fmci.network/terms/",
     "priorRejection": "Guideline 2.1 information request",
-    "agreement": "Updated Apple Developer Program License Agreement pending Account Holder acceptance"
-  }
+    "agreement": "User confirmed acceptance; refreshed App Store Connect no longer displays the agreement warning",
+    "copyright": "2026 Luke Dyer",
+    "reviewContact": "Luke Dyer, 512-565-6867, luke@dyerplex.com",
+    "supportUrl": "https://fmci.network/support/"
+  },
+  "copyright": "2026 Luke Dyer"
 }
