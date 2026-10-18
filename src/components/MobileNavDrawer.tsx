@@ -12,7 +12,6 @@ import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useOpenProfile } from './ProfileView'
 import { supabase } from '../lib/supabase'
 import VerifiedBadge from './VerifiedBadge'
-import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
 
 // The view destinations that live in the bottom tab bar. Notifications and
 // Messages are panels, not views, so they never appear here.
@@ -64,12 +63,11 @@ export default function MobileNavDrawer() {
         transform: visible ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px', borderBottom: '1px solid var(--color-border)' }}>
-          <img src={fmciLogo} alt="FMCI" style={{ height: '28px', width: '28px', objectFit: 'contain', flexShrink: 0 }} />
-          <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-1)', letterSpacing: '0.5px' }}>FMCI NETWORK</div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 8px' }}>
           <button aria-label="Close menu" onClick={close} style={{
-            marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '44px', height: '44px', background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1,
           }}>✕</button>
         </div>
 
