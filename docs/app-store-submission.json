@@ -1,12 +1,14 @@
 {
-  "status": "Prepared values; not applied to App Store Connect",
+  "status": "Partially applied: USA-only availability and 18+ rating saved; free price verified. Remaining listing and privacy fields require finalization.",
   "bundleId": "network.fmci.app",
   "name": "FMCI Network",
   "subtitle": "Connect. Pray. Grow.",
   "primaryCategory": "Social Networking",
   "minimumMembershipAge": 18,
   "ageRatingInstructions": "Answer the current questionnaire accurately for social networking, user-generated content, messaging, and external content; apply an 18+ override if needed to match membership eligibility.",
-  "territories": ["USA"],
+  "territories": [
+    "USA"
+  ],
   "price": "Free",
   "paidFeatures": false,
   "inAppPurchases": false,
@@ -14,13 +16,44 @@
   "supportUrl": "https://fmci.network/support/",
   "privacyUrl": "https://fmci.network/privacy/",
   "communityRulesUrl": "https://fmci.network/terms/",
-  "supportContact": { "name": "Luke Dyer", "email": "luke@dyerplex.com" },
-  "reviewContact": { "name": "Luke Dyer", "email": "luke@dyerplex.com", "phone": null },
+  "supportContact": {
+    "name": "Luke Dyer",
+    "email": "luke@dyerplex.com"
+  },
+  "reviewContact": {
+    "name": "Luke Dyer",
+    "email": "luke@dyerplex.com",
+    "phone": null
+  },
   "legalPublisher": null,
   "fmciAuthorizationConfirmed": true,
   "releaseMode": "Manual release after approval",
   "description": "Connect with the FMCI community in one place. Share updates, pray for one another, discover ministries and members, join groups, read articles, explore resources, and take part in events. Stay connected through direct messages and notifications.\n\nFMCI Network is free and invitation only, for adults 18 and older. Ask an existing member for a personal invitation. A profile image is required to finish signup. Fivefold ministry roles are reviewed by an administrator before appearing on profiles. Members can report content, block unwanted contact, and delete their accounts in the app.",
   "keywords": "ministry,church,prayer,fellowship,community,faith,events,christian",
   "reviewNotes": "FMCI Network is a free invitation-only community for adults 18+. Supply a dedicated, fully onboarded review login in App Store Connect. Existing members confirm adult eligibility before continuing. Signup requires an uploaded image; ministry role selections remain pending until approved in Admin > Verification. Safety & Support is available in the desktop sidebar and mobile More menu and accepts reports about any content or message. Content menus also provide reporting and blocking. Account deletion is available in Profile > Edit Profile and during unfinished signup. There are no paid memberships, content purchases, subscriptions, or in-app purchases. Provide separate registration/deletion test instructions without relying on an invitation that expires during review.",
-  "requiresBeforeSubmission": ["Exact legal publisher/copyright name", "App Review contact phone", "Dedicated review credentials", "Screenshots from the current iOS build", "Final App Privacy answers including embedded services", "Device verification of recovery emails and production push", "Apply territory, pricing, and age rating in App Store Connect"]
+  "requiresBeforeSubmission": [
+    "Account Holder acceptance of updated Apple Developer Program License Agreement",
+    "Physical-iPhone recording requested by Apple, starting at launch and showing registration/login/deletion/reporting/blocking",
+    "Exact legal publisher/copyright name",
+    "App Review contact phone",
+    "Dedicated review credentials and registration/deletion access",
+    "Current iOS screenshots and final listing fields",
+    "Final App Privacy answers including embedded services",
+    "Physical-device verification of recovery email and production push",
+    "Verify build processing, select build, and provide completed response to the existing 2.1 rejection"
+  ],
+  "uploadedBuild": {
+    "version": "1.0.2",
+    "build": 4,
+    "uploadStatus": "Xcode export and upload succeeded; App Store processing not yet independently verified"
+  },
+  "appStoreConnectVerified": {
+    "appId": "6809304019",
+    "availability": "United States only; 1 available, 174 unavailable",
+    "currentUSPrice": "$0.00",
+    "ageRating": "18+ override",
+    "ageSuitabilityUrl": "https://fmci.network/terms/",
+    "priorRejection": "Guideline 2.1 information request",
+    "agreement": "Updated Apple Developer Program License Agreement pending Account Holder acceptance"
+  }
 }

@@ -1,6 +1,6 @@
 # FMCI Network — App Store submission readiness
 
-Audited October 17, 2026 against the source code and the signed 1.0.2 (3) archive. This is a readiness assessment, not an approval guarantee. App Store Connect listing fields, processing messages, agreements, and previous review correspondence have not been inspected. No application code was changed for this audit.
+Audited October 17, 2026 against the source code and the signed 1.0.2 (3) archive. This is a readiness assessment, not an approval guarantee. The initial audit preceded implementation. Subsequent fixes, deployment, build upload, and live App Store Connect findings are recorded below.
 
 ## Confirmed submission decisions
 
@@ -12,7 +12,7 @@ User confirmed October 17, 2026:
 - Initial App Store availability: United States only.
 - Commercial model: entirely free; no paid memberships, paid content, subscriptions, or in-app purchases.
 
-These are submission decisions, not confirmation that App Store Connect settings or signup enforcement have been changed. Update the existing under-16 privacy language to 18+ and implement the corresponding signup age requirement. The App Store age questionnaire must still accurately reflect the actual content and features.
+These decisions were subsequently applied to signup and policy pages; the live store settings verified below reflect the current state. The App Store age questionnaire must still accurately reflect the actual content and features.
 
 ## Current position
 
@@ -134,3 +134,12 @@ Recommended sequence: fix the high-priority findings → run disposable-account/
 The source now includes adult declarations for new and existing accounts, Luke Dyer's support details, shared privacy/support/community-rule content and static public pages, a UserDefaults privacy manifest, password recovery, deletion actions during unfinished signup, owned-upload cleanup, private API access, trusted administrator authorization (including database RPCs), protected verification/status claims, first-line text filtering, general safety reporting, and direct-message blocking enforcement. Optional first-party analytics can be disabled; IP geolocation has been removed.
 
 These changes do not automatically configure App Store Connect. Prepared listing values are in app-store-submission.json. Automated text filtering does not classify images or guarantee that every abusive phrase is detected: reports and ongoing human moderation remain necessary. Validate external-media provider privacy behavior, recovery-email delivery, and production push on device before claiming those checks complete.
+
+
+## App Store Connect findings from the live account
+
+The app record is 6809304019. The earlier iOS 1.0 submission was rejected under 2.1 (Information Needed), rather than an observed 4.2 rejection. Apple's September 7 message explicitly requests: (1) a recording on a physical device running the latest operating system, starting with launch and showing registration/login/deletion and UGC reporting/blocking; (2) purpose and audience; (3) setup/feature instructions and review credentials; (4) external service list; (5) regional behavior; and (6) relevant authorization/rights documentation. No physical iPhone was connected during preparation; available devices were simulators, which do not satisfy that recording request.
+
+The live account also displays an updated Apple Developer Program License Agreement requiring Account Holder review and acceptance before submission. No agreement was accepted by the assistant. Draft a response to the existing review message and duplicate the requested information in Review Notes once the recording and credentials are ready. Do not claim the video has been provided before it exists.
+
+Verified October 17: version 1.0.2 build 4 was signed and uploaded successfully (Xcode EXPORT SUCCEEDED). App Store processing and final build selection remain pending verification. USA-only availability is saved (1 available, 174 unavailable); current US price is $0.00. The age-rating questionnaire now records age assurance and an 18+ override, with https://fmci.network/terms/ as the age-suitability URL. The existing questionnaire content-frequency answers were retained and should be reviewed against actual moderated content before submission. Remaining listing fields and App Privacy declarations have not been finalized. A response draft is saved in apple-review-response-draft.md; it has not been sent to Apple.
