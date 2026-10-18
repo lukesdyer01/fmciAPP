@@ -14,6 +14,7 @@ import type { ReactNode } from 'react'
 import { useUIStore } from '../store/ui'
 import { hapticSelection } from '../lib/haptics'
 import { useConversations } from '../api-client/messages'
+import { useAutoHideNavigation } from '../hooks/useAutoHideNavigation'
 import type { ActiveView } from '../App'
 
 type TabId = ActiveView | 'notifications' | 'messages'
@@ -80,6 +81,10 @@ export default function BottomTabBar() {
   const { data: conversations } = useConversations()
   const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
+  const routeKey = useUIStore(s => [s.activeView, s.profileId, s.viewingOrgId, s.viewingBlogPostId, s.viewingEventId, s.viewingSeriesId].join('|'))
+  const overlayOpen = useUIStore(s => s.mobileNavOpen || s.searchOpen || s.editProfileOpen)
+  const { hidden, navRef } = useAutoHideNavigation(routeKey, messagesOpen || notifOpen || keyboardOpen || overlayOpen)
+
 
   // Hide while the keyboard is up (Facebook/Instagram behavior) — the WebView
   // resizes on iOS, so a shrinking visualViewport means the keyboard is out.
@@ -90,6 +95,7 @@ export default function BottomTabBar() {
       const vh = window.innerHeight
       setKeyboardOpen(vv.height < vh - 80)
     }
+    onResize()
     vv.addEventListener('resize', onResize)
     return () => vv.removeEventListener('resize', onResize)
   }, [])
@@ -108,7 +114,8 @@ export default function BottomTabBar() {
     }
     if (tab.id === activeView) {
       // Tap the active tab → scroll to top, the standard behavior.
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      const scroller = [document.getElementById('root'), document.body, document.documentElement].find(node => node && node.scrollTop > 0) ?? document.scrollingElement
+      scroller?.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     setActiveView(tab.id)
@@ -116,17 +123,11 @@ export default function BottomTabBar() {
 
   return (
     <nav
-      className="bottom-tab-bar"
-      style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
-        backgroundColor: 'var(--color-card)',
-        borderTop: '1px solid var(--color-border)',
-        display: 'flex',
-        // The home indicator sits below the bar's content — the bar itself
-        // paints the full inset so the white background runs edge to edge.
-        paddingBottom: 'var(--safe-bottom)',
-        boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
-      }}
+      ref={navRef}
+      className={`bottom-tab-bar${hidden ? ' bottom-tab-bar-hidden' : ''}`}
+      aria-label="Main navigation"
+      aria-hidden={hidden || undefined}
+      inert={hidden}
     >
       {TABS.map(tab => {
         const active = tab.id === 'notifications' ? notifOpen

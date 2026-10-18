@@ -154,7 +154,30 @@ html[data-theme="dark"] #root {
 /* Bottom tab bar — phones only. Desktop keeps the sidebars, so the bar is
    hidden ≥768px. The main column gets matching bottom padding so the last
    card never sits under the bar. */
-.bottom-tab-bar { display: none; }
+.bottom-tab-bar {
+  display: none;
+  position: fixed;
+  bottom: calc(12px + var(--safe-bottom));
+  left: max(12px, calc((100% - 560px) / 2));
+  right: max(12px, calc((100% - 560px) / 2));
+  z-index: 200;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 4px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.bottom-tab-bar-hidden {
+  transform: translateY(calc(100% + 24px + var(--safe-bottom)));
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bottom-tab-bar { transition: none; }
+}
 .mobile-search-toggle { display: none; }
 
 @keyframes fmci-spin {
@@ -228,7 +251,7 @@ html[data-theme="dark"] #root {
     display: flex;
   }
   .app-main {
-    padding-bottom: calc(76px + var(--safe-bottom)) !important; /* clears the fixed tab bar */
+    padding-bottom: calc(96px + var(--safe-bottom)) !important; /* constant clearance for the floating bar */
   }
 
   .topbar-nav-pills,
