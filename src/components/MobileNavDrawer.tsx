@@ -63,7 +63,7 @@ export default function MobileNavDrawer() {
         transform: visible ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 8px' }}>
+        <div style={{ position: 'absolute', top: 'calc(var(--safe-top) + 14px)', right: '8px', zIndex: 1 }}>
           <button aria-label="Close menu" onClick={close} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: '44px', height: '44px', background: 'none', border: 'none', cursor: 'pointer',
@@ -77,7 +77,7 @@ export default function MobileNavDrawer() {
             onClick={() => { close(); openProfile(currentUser.id) }}
             style={{
               display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-              padding: '14px 16px', border: 'none', borderBottom: '1px solid var(--color-border-light)',
+              padding: '14px 56px 14px 16px', border: 'none', borderBottom: '1px solid var(--color-border-light)',
               background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
             }}
           >
