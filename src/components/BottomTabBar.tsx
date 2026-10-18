@@ -4,9 +4,9 @@
 //
 // Notifications and Messages are panels, not views — the bell opens the
 // full-window Notifications panel, the chat bubble opens the full-screen
-// Messages panel (and carries the unread badge). The "More" tab opens the
-// slide-out drawer (the existing MobileNavDrawer, holding the secondary
-// destinations). The bar hides while the keyboard is up and while either
+// Messages panel (and carries the unread badge). The header menu opens the
+// drawer containing secondary destinations. The bar hides while the keyboard
+// is up and while either
 // panel is full-screen, so it never fights those surfaces.
 
 import { useEffect, useState } from 'react'
@@ -16,7 +16,7 @@ import { hapticSelection } from '../lib/haptics'
 import { useConversations } from '../api-client/messages'
 import type { ActiveView } from '../App'
 
-type TabId = ActiveView | 'more' | 'notifications' | 'messages'
+type TabId = ActiveView | 'notifications' | 'messages'
 
 const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[] = [
   {
@@ -67,23 +67,12 @@ const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[]
       </svg>
     ),
   },
-  {
-    id: 'more', label: 'More',
-    icon: active => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="1" />
-        <circle cx="19" cy="12" r="1" />
-        <circle cx="5" cy="12" r="1" />
-      </svg>
-    ),
-  },
+
 ]
 
 export default function BottomTabBar() {
   const activeView = useUIStore(s => s.activeView)
   const setActiveView = useUIStore(s => s.setActiveView)
-  const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
-  const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
   const messagesOpen = useUIStore(s => s.messagesOpen)
   const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
   const notifOpen = useUIStore(s => s.notifOpen)
@@ -109,10 +98,6 @@ export default function BottomTabBar() {
 
   function onTab(tab: (typeof TABS)[number]) {
     hapticSelection()
-    if (tab.id === 'more') {
-      setMobileNavOpen(true)
-      return
-    }
     if (tab.id === 'notifications') {
       setNotifOpen(true)
       return
@@ -129,8 +114,6 @@ export default function BottomTabBar() {
     setActiveView(tab.id)
   }
 
-  const moreActive = mobileNavOpen
-
   return (
     <nav
       className="bottom-tab-bar"
@@ -146,8 +129,7 @@ export default function BottomTabBar() {
       }}
     >
       {TABS.map(tab => {
-        const active = tab.id === 'more' ? moreActive
-          : tab.id === 'notifications' ? notifOpen
+        const active = tab.id === 'notifications' ? notifOpen
           : tab.id === 'messages' ? messagesOpen
           : activeView === tab.id
         return (

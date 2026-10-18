@@ -1,7 +1,7 @@
-// The "More" drawer — secondary destinations only. Home and Events live in the
+// The mobile navigation drawer — secondary destinations only. Home and Events live in the
 // bottom tab bar; Ministries and Groups moved here when Notifications and
 // Messages took their tab slots. The drawer also holds the member's profile
-// header, theme toggle, and admin entry. Opened by the More tab.
+// header, theme toggle, and admin entry. Opened by the header hamburger button.
 
 import { useEffect, useState } from 'react'
 import { NAV } from './LeftSidebar'
@@ -56,7 +56,7 @@ export default function MobileNavDrawer() {
         opacity: visible ? 1 : 0, transition: 'opacity 0.2s',
       }}
     >
-      <div style={{
+      <div id="mobile-navigation" aria-label="Main menu" style={{
         position: 'absolute', top: 0, left: 0, bottom: 0, width: '78vw', maxWidth: '300px',
         backgroundColor: 'var(--color-card)', boxShadow: '4px 0 24px rgba(0,0,0,0.25)',
         display: 'flex', flexDirection: 'column',
@@ -67,7 +67,7 @@ export default function MobileNavDrawer() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px', borderBottom: '1px solid var(--color-border)' }}>
           <img src={fmciLogo} alt="FMCI" style={{ height: '28px', width: '28px', objectFit: 'contain', flexShrink: 0 }} />
           <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-1)', letterSpacing: '0.5px' }}>FMCI NETWORK</div>
-          <button onClick={close} style={{
+          <button aria-label="Close menu" onClick={close} style={{
             marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px',
           }}>✕</button>

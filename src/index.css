@@ -241,6 +241,13 @@ html[data-theme="dark"] #root {
   }
   .topbar-brand {
     min-width: 0;
+    flex-shrink: 1;
+  }
+  .topbar-brand-title {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .notifications-panel {
     width: 100%;

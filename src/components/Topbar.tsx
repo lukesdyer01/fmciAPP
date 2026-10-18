@@ -129,6 +129,8 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
 }
 
 export default function Topbar() {
+  const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
+  const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
   const setActiveView = useUIStore(s => s.setActiveView)
   const openProfile = useOpenProfile()
@@ -167,6 +169,24 @@ export default function Topbar() {
       paddingTop: 'var(--safe-top)',
       boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
     }}>
+      <button
+        type="button"
+        className="mobile-nav-toggle"
+        aria-label="Open menu"
+        aria-expanded={mobileNavOpen}
+        aria-controls="mobile-navigation"
+        onClick={() => setMobileNavOpen(true)}
+        style={{
+          width: '44px', height: '44px', flexShrink: 0, padding: 0,
+          alignItems: 'center', justifyContent: 'center',
+          border: 'none', borderRadius: '8px', background: 'transparent',
+          color: '#fff', cursor: 'pointer',
+        }}
+      >
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
       {/* Brand */}
       <div className="topbar-brand" onClick={() => setActiveView('feed')} style={{ cursor: 'pointer' }}>
         <div className="topbar-brand-title" style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>FMCI NETWORK</div>
