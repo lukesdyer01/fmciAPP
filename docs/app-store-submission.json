@@ -42,7 +42,7 @@
   "uploadedBuild": {
     "version": "1.0.2",
     "build": 6,
-    "uploadStatus": "Signed final archive verified; upload in progress"
+    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 6 uploaded; Apple processing and final selection still require verification"
   },
   "appStoreConnectVerified": {
     "appId": "6809304019",

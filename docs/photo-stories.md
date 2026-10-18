@@ -40,3 +40,5 @@ Provision matching `STORY_CLEANUP_SECRET` in Edge secrets and `fmci_story_cleanu
 - Browser visual check covers feed placement, creation dialog, photo selection/compressed preview, playback/pause, saved reaction feedback, and focus return. The separate disposable playback identity and its photos were then removed; no Story was published from the real review identity.
 
 Physical-iPhone acceptance testing remains necessary for library format conversion, orientation, touch/hold playback, background/resume, accessibility, and weak/offline connections. The App Review physical-device demonstration and final privacy questionnaire remain separate submission requirements.
+
+Signed iOS version 1.0.2 build 6 was archived, verified to contain the latest web assets and root privacy manifest, and uploaded successfully (Xcode EXPORT SUCCEEDED). App Store processing/final selection and physical-iPhone acceptance testing remain pending.
