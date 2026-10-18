@@ -422,3 +422,49 @@ html[data-theme="dark"] #root {
     padding: 6px 10px;
   }
 }
+
+/* Photo Stories */
+.stories-section { margin-bottom: 14px; }
+.stories-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px; }
+.stories-row button { flex: 0 0 94px; min-height: 112px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-card); color: var(--color-text-1); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; font: 600 12px var(--font-sans); }
+.story-create-card > span { display: grid; place-items: center; height: 54px; width: 54px; background: var(--color-navy); color: white; border-radius: 50%; font-size: 30px; }
+.story-avatar { display: grid; place-items: center; height: 54px; width: 54px; border-radius: 50%; border: 3px solid var(--color-border); overflow: hidden; }
+.story-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.story-unseen .story-avatar { border-color: var(--color-gold); }
+.story-author-card > span:last-child { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.story-backdrop, .story-player-backdrop { position: fixed; inset: 0; z-index: 500; background: #000b; display: flex; justify-content: center; align-items: center; }
+.story-composer { width: min(100%, 460px); max-height: 100dvh; overflow-y: auto; background: var(--color-card); color: var(--color-text-1); border-radius: 16px; padding: max(20px, var(--safe-top)) 20px max(20px, var(--safe-bottom)); box-sizing: border-box; }
+.story-toolbar { display: flex; align-items: center; gap: 8px; }
+.story-toolbar > :first-child { flex: 1; min-width: 0; }
+.story-toolbar h2 { font-size: 20px; margin: 0; }
+.story-toolbar button, .story-player-bottom button { min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; cursor: pointer; font: inherit; color: inherit; background: #8882; }
+.story-photo-picker { display: block; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; }
+.story-photo-picker input { display: block; max-width: 100%; margin-top: 8px; }
+.story-preview { display: block; max-height: 35dvh; max-width: 100%; margin: 12px auto; object-fit: contain; }
+.story-caption-label { display: block; margin-top: 12px; }
+.story-caption-label textarea { display: block; width: 100%; box-sizing: border-box; min-height: 76px; padding: 10px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-1); border-radius: 8px; margin-top: 6px; font: inherit; }
+.story-hint { font-size: 12px; color: var(--color-text-2); line-height: 1.6; }
+.story-error { padding: 10px; color: #d34646; background: var(--color-card); border-radius: 8px; }
+.story-publish { width: 100%; min-height: 44px; background: var(--color-navy); color: white; border: 0; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.story-composer button:disabled, .story-player button:disabled { opacity: 0.5; cursor: default; }
+.story-player-backdrop { background: #080b10; }
+.story-player { position: relative; width: min(100%, 520px); height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; color: white; background: #151a22; padding: max(8px, var(--safe-top)) 12px max(8px, var(--safe-bottom)); }
+.story-progress { display: flex; gap: 4px; padding-bottom: 8px; }
+.story-progress span { flex: 1; height: 3px; background: #ffffff40; border-radius: 2px; overflow: hidden; }
+.story-progress i { display: block; height: 100%; background: white; }
+.story-player-toolbar strong { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.story-player-toolbar small { display: block; color: #ccc; margin-top: 4px; }
+.story-image-area { position: relative; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 0; user-select: none; -webkit-touch-callout: none; }
+.story-image-area img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
+.story-image-area > span { position: absolute; }
+.story-player-caption { margin: 8px 0; max-height: 20dvh; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.story-player-bottom { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.story-reactions { display: flex; flex: 1; justify-content: center; gap: 4px; }
+.story-reactions button { padding: 4px 6px; font-size: 12px; }
+.story-reactions button[aria-pressed="true"] { background: #a27823; }
+.story-options, .story-viewers { position: absolute; z-index: 2; background: var(--color-card); color: var(--color-text-1); border: 1px solid var(--color-border); border-radius: 12px; padding: 12px; }
+.story-options { top: calc(var(--safe-top) + 70px); right: 12px; }
+.story-options > button { display: block; width: 100%; padding: 12px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.story-viewers { bottom: calc(var(--safe-bottom) + 64px); left: 12px; right: 12px; max-height: 55dvh; overflow-y: auto; }
+.story-retry { border: 0; background: none; color: var(--color-text-2); cursor: pointer; padding: 8px; }
+@media (max-width: 480px) { .story-composer { height: 100dvh; border-radius: 0; } }

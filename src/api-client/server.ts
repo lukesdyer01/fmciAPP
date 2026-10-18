@@ -20,7 +20,7 @@ export async function api<T = unknown>(path: string, options?: RequestInit): Pro
 
   function request(token: string) {
     const headers = new Headers(options?.headers)
-    if (options?.body != null && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+    if (options?.body != null && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
     headers.set('Authorization', `Bearer ${token}`)
     return fetch(`${BASE}${path}`, { ...options, headers })
   }

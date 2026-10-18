@@ -3,37 +3,152 @@
     "title": "FMCI Network Privacy Policy",
     "updated": "October 17, 2026",
     "sections": [
-      {"title":"Who we are","paragraphs":["FMCI Network is an invitation-only Christian community for adults aged 18 and older. The app is free, with no paid memberships, subscriptions, or in-app purchases. Initial App Store availability is the United States. For support or privacy requests, contact Luke Dyer at luke@dyerplex.com."]},
-      {"title":"Information we collect","paragraphs":["We collect your name, email address, authentication information, confirmation that you are at least 18, and a required profile image. Optional profile details include your biography, ministry affiliation, ministry-role requests, additional roles, phone number, website, and location. Ministry affiliations and roles may reveal religious beliefs.","We store the posts, comments, prayer requests, testimonies, articles, resources, event activity, messages, reactions, reports, and memberships you submit. We also process invitation recipient email addresses and invitation records.","We collect account-linked session and screen-usage information, a random session identifier, device/browser categories, and activity timestamps for first-party analytics. You may disable these analytics in your profile settings. We do not use advertising identifiers or sell personal information. Hosting and authentication providers may process IP addresses and operational logs to deliver and protect the service."]},
-      {"title":"How information is used","paragraphs":["We use information to authenticate members, show profiles and community content, deliver messages and notifications, manage invitations and memberships, review ministry roles, respond to reports and support requests, prevent abuse, and operate and improve the service.","Fivefold ministry selections are requests until an administrator approves them. Additional roles are self-selected and do not grant platform permissions."]},
-      {"title":"Visibility and messages","paragraphs":["Community content is available to signed-in members, subject to ministry membership and other access controls. Your profile photo and the profile information you choose to publish are visible to other members. Email addresses and phone numbers entered on a profile may be visible to members; omit optional contact details you do not want shared.","Direct messages are available to conversation participants. They are not end-to-end encrypted. Authorized administrators may access reported information to investigate abuse, provide support, secure the service, or meet legal obligations.","Uploaded media uses public storage URLs. A person who obtains a media URL may be able to view the file without an account. Do not upload confidential documents or information you are not authorized to share."]},
-      {"title":"Service providers and external content","paragraphs":["Supabase provides authentication, database, storage, and backend services. GitHub Pages hosts the website. Apple delivers native push notifications. Our service providers process information necessary to provide those services. Data may be processed outside the United States, including in Canada.","Maps use OpenStreetMap services. Embedded videos and externally hosted images may send technical information such as an IP address to their providers when displayed. External links open third-party services with their own privacy policies. We do not send your private messages to map or video providers."]},
-      {"title":"Device permissions and local storage","paragraphs":["Photo selection and optional camera access let you upload images. You can choose an existing image rather than use the camera. Push notifications are optional, and declining them does not prevent community access. Manage permissions in iOS Settings.","We store authentication sessions and preferences on your device to keep you signed in and remember choices. We do not access your address book or request device GPS location for the current app."]},
-      {"title":"Retention and account deletion","paragraphs":["We keep account and community information while it is needed to operate your account and service. First-party session and page-view analytics are retained in a rolling 90-day window. Operational logs and backups follow provider retention periods and may persist for a limited period after deletion.","Delete your account from Profile → Edit Profile → Delete Account. You can also delete an unfinished account from the signup/onboarding screen. Deletion removes your authentication account, owned uploads, contributions, memberships, messages, invitation records, and role requests. Contributions by other members remain; your activity on them is removed where stored. Retained aggregate analytics no longer name your account. We may retain information when legally required and will explain any applicable exception.","You may request access, correction, or assistance with deletion by emailing luke@dyerplex.com. We do not require contacting support to use in-app account deletion."]},
-      {"title":"Adults only","paragraphs":["You must be at least 18 to use FMCI Network. We ask you to confirm this at signup or before accessing an existing account. This is an age declaration, not government-ID verification. If you believe a person under 18 has an account, report the account or email luke@dyerplex.com so we can investigate and remove it as appropriate."]},
-      {"title":"Safety, security, and changes","paragraphs":["We use access controls and encrypted network connections to protect information, but no service can guarantee absolute security. Report suspected abuse or unauthorized access promptly. Do not share invitation links publicly or publish another person's private information without permission.","We may update this policy as the service changes. The date above identifies the current version. Contact Luke Dyer at luke@dyerplex.com with privacy questions or requests."]}
+      {
+        "title": "Who we are",
+        "paragraphs": [
+          "FMCI Network is an invitation-only Christian community for adults aged 18 and older. The app is free, with no paid memberships, subscriptions, or in-app purchases. Initial App Store availability is the United States. For support or privacy requests, contact Luke Dyer at luke@dyerplex.com."
+        ]
+      },
+      {
+        "title": "Information we collect",
+        "paragraphs": [
+          "We collect your name, email address, authentication information, confirmation that you are at least 18, and a required profile image. Optional profile details include your biography, ministry affiliation, ministry-role requests, additional roles, phone number, website, and location. Ministry affiliations and roles may reveal religious beliefs.",
+          "We store the posts, comments, prayer requests, testimonies, articles, resources, event activity, messages, reactions, reports, and memberships you submit. We also process invitation recipient email addresses and invitation records.",
+          "We collect account-linked session and screen-usage information, a random session identifier, device/browser categories, and activity timestamps for first-party analytics. You may disable these analytics in your profile settings. We do not use advertising identifiers or sell personal information. Hosting and authentication providers may process IP addresses and operational logs to deliver and protect the service."
+        ]
+      },
+      {
+        "title": "How information is used",
+        "paragraphs": [
+          "We use information to authenticate members, show profiles and community content, deliver messages and notifications, manage invitations and memberships, review ministry roles, respond to reports and support requests, prevent abuse, and operate and improve the service.",
+          "Fivefold ministry selections are requests until an administrator approves them. Additional roles are self-selected and do not grant platform permissions."
+        ]
+      },
+      {
+        "title": "Visibility and messages",
+        "paragraphs": [
+          "Community content is available to signed-in members, subject to ministry membership and other access controls. Your profile photo and the profile information you choose to publish are visible to other members. Email addresses and phone numbers entered on a profile may be visible to members; omit optional contact details you do not want shared.",
+          "Direct messages are available to conversation participants. They are not end-to-end encrypted. Authorized administrators may access reported information to investigate abuse, provide support, secure the service, or meet legal obligations.",
+          "Profile and ordinary post media use public storage URLs. A person who obtains those URLs may be able to view the files without an account. Story photos use separate private storage with short-lived viewing links. Do not upload confidential documents or information you are not authorized to share."
+        ]
+      },
+      {
+        "title": "Photo Stories",
+        "paragraphs": [
+          "Stories are photo updates visible to eligible FMCI members, subject to blocks and reporting. Story authors can see who viewed each photo and each viewer\u2019s reaction while the Story is active. Viewer records are part of the Story feature and are separate from optional usage analytics.",
+          "Stories disappear from the app after 24 hours. There is no Story archive. Automated cleanup normally removes the uploaded photo and associated viewer/reaction records within the next five minutes; transient failures are retried. Previously issued photo links expire within 60 seconds or the remaining Story lifetime. People who have viewed a photo can still take screenshots or save their own copies.",
+          "Photos are compressed and photo metadata is removed before storage. Up to 10 Story photos can be published per member per rolling 24 hours. Deleting a Story does not reset the limit. Report records may remain after the photo has expired or been removed."
+        ]
+      },
+      {
+        "title": "Service providers and external content",
+        "paragraphs": [
+          "Supabase provides authentication, database, storage, and backend services. GitHub Pages hosts the website. Apple delivers native push notifications. Our service providers process information necessary to provide those services. Data may be processed outside the United States, including in Canada.",
+          "Maps use OpenStreetMap services. Embedded videos and externally hosted images may send technical information such as an IP address to their providers when displayed. External links open third-party services with their own privacy policies. We do not send your private messages to map or video providers."
+        ]
+      },
+      {
+        "title": "Device permissions and local storage",
+        "paragraphs": [
+          "Photo selection and optional camera access let you upload images. You can choose an existing image rather than use the camera. Push notifications are optional, and declining them does not prevent community access. Manage permissions in iOS Settings.",
+          "We store authentication sessions and preferences on your device to keep you signed in and remember choices. We do not access your address book or request device GPS location for the current app."
+        ]
+      },
+      {
+        "title": "Retention and account deletion",
+        "paragraphs": [
+          "We keep account and community information while it is needed to operate your account and service. First-party session and page-view analytics are retained in a rolling 90-day window. Operational logs and backups follow provider retention periods and may persist for a limited period after deletion.",
+          "Delete your account from Profile \u2192 Edit Profile \u2192 Delete Account. You can also delete an unfinished account from the signup/onboarding screen. Deletion removes your authentication account, owned uploads, contributions, memberships, messages, invitation records, and role requests. Contributions by other members remain; your activity on them is removed where stored. Retained aggregate analytics no longer name your account. We may retain information when legally required and will explain any applicable exception.",
+          "You may request access, correction, or assistance with deletion by emailing luke@dyerplex.com. We do not require contacting support to use in-app account deletion."
+        ]
+      },
+      {
+        "title": "Adults only",
+        "paragraphs": [
+          "You must be at least 18 to use FMCI Network. We ask you to confirm this at signup or before accessing an existing account. This is an age declaration, not government-ID verification. If you believe a person under 18 has an account, report the account or email luke@dyerplex.com so we can investigate and remove it as appropriate."
+        ]
+      },
+      {
+        "title": "Safety, security, and changes",
+        "paragraphs": [
+          "We use access controls and encrypted network connections to protect information, but no service can guarantee absolute security. Report suspected abuse or unauthorized access promptly. Do not share invitation links publicly or publish another person's private information without permission.",
+          "We may update this policy as the service changes. The date above identifies the current version. Contact Luke Dyer at luke@dyerplex.com with privacy questions or requests."
+        ]
+      }
     ]
   },
   "support": {
-    "title":"FMCI Network Support",
-    "updated":"October 17, 2026",
-    "sections":[
-      {"title":"Contact support","paragraphs":["Luke Dyer monitors support at luke@dyerplex.com. Contact us for sign-in problems, invitations, account deletion, privacy questions, or technical issues. Describe what happened and include your app version and device model. Never email your password or invitation code."]},
-      {"title":"Joining and access","paragraphs":["FMCI Network is free and invitation only, for adults aged 18 and older. Ask an existing member for a personal invitation. Each invitation is tied to an email address, expires after seven days, and works once. Signup requires a profile image. Fivefold role selections require admin approval."]},
-      {"title":"Report content or a member","paragraphs":["Use a content menu to report or block someone, or open Safety & Support in the app to report any community content, discussion, or message. Include the page link or conversation details and explain the concern. Administrators review reports and can remove content or restrict accounts. You can also email luke@dyerplex.com. If someone is in immediate danger, contact emergency services."]},
-      {"title":"Delete your account","paragraphs":["Open Profile → Edit Profile → Delete Account, type DELETE, and confirm. During unfinished signup, use Delete account on the onboarding screen. This deletes your account and associated contributions and uploads. If the operation fails, retry or contact support."]},
-      {"title":"Availability and price","paragraphs":["The iOS app launches in the United States. The service is free, with no paid memberships, subscriptions, or in-app purchases."]}
+    "title": "FMCI Network Support",
+    "updated": "October 17, 2026",
+    "sections": [
+      {
+        "title": "Contact support",
+        "paragraphs": [
+          "Luke Dyer monitors support at luke@dyerplex.com. Contact us for sign-in problems, invitations, account deletion, privacy questions, or technical issues. Describe what happened and include your app version and device model. Never email your password or invitation code."
+        ]
+      },
+      {
+        "title": "Joining and access",
+        "paragraphs": [
+          "FMCI Network is free and invitation only, for adults aged 18 and older. Ask an existing member for a personal invitation. Each invitation is tied to an email address, expires after seven days, and works once. Signup requires a profile image. Fivefold role selections require admin approval."
+        ]
+      },
+      {
+        "title": "Report content or a member",
+        "paragraphs": [
+          "Use a content menu to report or block someone, or open Safety & Support in the app to report any community content, discussion, or message. Include the page link or conversation details and explain the concern. Administrators review reports and can remove content or restrict accounts. You can also email luke@dyerplex.com. If someone is in immediate danger, contact emergency services."
+        ]
+      },
+      {
+        "title": "Delete your account",
+        "paragraphs": [
+          "Open Profile \u2192 Edit Profile \u2192 Delete Account, type DELETE, and confirm. During unfinished signup, use Delete account on the onboarding screen. This deletes your account and associated contributions and uploads. If the operation fails, retry or contact support."
+        ]
+      },
+      {
+        "title": "Availability and price",
+        "paragraphs": [
+          "The iOS app launches in the United States. The service is free, with no paid memberships, subscriptions, or in-app purchases."
+        ]
+      }
     ]
   },
   "terms": {
-    "title":"FMCI Network Community Rules",
-    "updated":"October 17, 2026",
-    "sections":[
-      {"title":"Membership","paragraphs":["FMCI Network is a free, invitation-only community for adults 18 and older. Provide accurate account information, protect your sign-in details, and invite people you know. Do not sell, automate, or publicly distribute invitations."]},
-      {"title":"Respect and safety","paragraphs":["Do not post harassment, targeted hate, threats, sexual exploitation, pornography, graphic abuse, spam, scams, impersonation, illegal content, or private information without permission. These rules apply to profiles, photos, posts, prayer requests, comments, articles, resources, events, and direct messages. Respect copyright and obtain permission to share another person's work.","Discuss faith respectfully. Do not target people for abuse because of their beliefs or identity. A ministry title or badge is not permission to mistreat another member."]},
-      {"title":"Moderation","paragraphs":["We filter prohibited text and investigate member reports, including reports about uploaded media. Filtering is not perfect; report content that should not be here. Administrators may remove content, deny role claims, restrict features, suspend accounts, or revoke invitations when investigating or enforcing these rules. Report abusive users through the app and use blocking to stop unwanted contact.","To ask for review of a moderation decision, contact Luke Dyer at luke@dyerplex.com. Include the relevant account or content details without sharing passwords."]},
-      {"title":"Role claims and privacy","paragraphs":["Fivefold roles appear publicly only after admin approval. Do not claim to speak officially for FMCI or a ministry without authorization. Read the Privacy Policy to understand profile visibility, media links, messaging, and account deletion."]},
-      {"title":"Support and emergencies","paragraphs":["Contact Luke Dyer at luke@dyerplex.com for support and safety concerns. FMCI Network is not an emergency or crisis-response service. Contact emergency services for immediate danger."]}
+    "title": "FMCI Network Community Rules",
+    "updated": "October 17, 2026",
+    "sections": [
+      {
+        "title": "Membership",
+        "paragraphs": [
+          "FMCI Network is a free, invitation-only community for adults 18 and older. Provide accurate account information, protect your sign-in details, and invite people you know. Do not sell, automate, or publicly distribute invitations."
+        ]
+      },
+      {
+        "title": "Respect and safety",
+        "paragraphs": [
+          "Do not post harassment, targeted hate, threats, sexual exploitation, pornography, graphic abuse, spam, scams, impersonation, illegal content, or private information without permission. These rules apply to profiles, photos, posts, prayer requests, comments, articles, resources, events, and direct messages. Respect copyright and obtain permission to share another person's work.",
+          "Discuss faith respectfully. Do not target people for abuse because of their beliefs or identity. A ministry title or badge is not permission to mistreat another member."
+        ]
+      },
+      {
+        "title": "Moderation",
+        "paragraphs": [
+          "We filter prohibited text and investigate member reports, including reports about uploaded media. Filtering is not perfect; report content that should not be here. Administrators may remove content, deny role claims, restrict features, suspend accounts, or revoke invitations when investigating or enforcing these rules. Report abusive users through the app and use blocking to stop unwanted contact.",
+          "To ask for review of a moderation decision, contact Luke Dyer at luke@dyerplex.com. Include the relevant account or content details without sharing passwords."
+        ]
+      },
+      {
+        "title": "Role claims and privacy",
+        "paragraphs": [
+          "Fivefold roles appear publicly only after admin approval. Do not claim to speak officially for FMCI or a ministry without authorization. Read the Privacy Policy to understand profile visibility, media links, messaging, and account deletion."
+        ]
+      },
+      {
+        "title": "Support and emergencies",
+        "paragraphs": [
+          "Contact Luke Dyer at luke@dyerplex.com for support and safety concerns. FMCI Network is not an emergency or crisis-response service. Contact emergency services for immediate danger."
+        ]
+      }
     ]
   }
 }

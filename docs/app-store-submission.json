@@ -30,19 +30,19 @@
   "releaseMode": "Manual release after approval",
   "description": "Connect with the FMCI community in one place. Share updates, pray for one another, discover ministries and members, join groups, read articles, explore resources, and take part in events. Stay connected through direct messages and notifications.\n\nFMCI Network is free and invitation only, for adults 18 and older. Ask an existing member for a personal invitation. A profile image is required to finish signup. Fivefold ministry roles are reviewed by an administrator before appearing on profiles. Members can report content, block unwanted contact, and delete their accounts in the app.",
   "keywords": "ministry,church,prayer,fellowship,community,faith,events,christian",
-  "reviewNotes": "FMCI Network is a free invitation-only community for adults 18+. Supply a dedicated, fully onboarded review login in App Store Connect. Existing members confirm adult eligibility before continuing. Signup requires an uploaded image; ministry role selections remain pending until approved in Admin > Verification. Safety & Support is available in the desktop sidebar and mobile More menu and accepts reports about any content or message. Content menus also provide reporting and blocking. Account deletion is available in Profile > Edit Profile and during unfinished signup. There are no paid memberships, content purchases, subscriptions, or in-app purchases. Provide separate registration/deletion test instructions without relying on an invitation that expires during review.",
+  "reviewNotes": "FMCI Network is a free invitation-only community for adults 18+. Supply a dedicated, fully onboarded review login in App Store Connect. Existing members confirm adult eligibility before continuing. Signup requires an uploaded image; ministry role selections remain pending until approved in Admin > Verification. Safety & Support is available in the desktop sidebar and mobile More menu and accepts reports about any content or message. Content menus also provide reporting and blocking. Account deletion is available in Profile > Edit Profile and during unfinished signup. There are no paid memberships, content purchases, subscriptions, or in-app purchases. Provide separate registration/deletion test instructions without relying on an invitation that expires during review. Photo Stories are available above the home-feed composer: photos and optional captions only, 24-hour visibility, no archive, viewer lists and reactions visible only to the author, reporting/blocking, and automatic storage cleanup. Up to 10 photos per rolling 24 hours, at most 500 KB per photo.",
   "requiresBeforeSubmission": [
     "Physical-iPhone recording requested by Apple, starting at launch and showing registration/login/deletion/reporting/blocking",
-    "Dedicated review credentials and registration/deletion access",
     "Current iOS screenshots and final listing fields",
     "Final App Privacy answers including embedded services",
     "Physical-device verification of recovery email and production push",
-    "Verify build processing, select build, and provide completed response to the existing 2.1 rejection"
+    "Verify build 6 processing, select build, and provide completed response to the existing 2.1 rejection",
+    "Separate reviewer signup/deletion instructions and disposable access"
   ],
   "uploadedBuild": {
     "version": "1.0.2",
-    "build": 4,
-    "uploadStatus": "Processed: TestFlight shows build 4 Ready to Submit"
+    "build": 6,
+    "uploadStatus": "Signed final archive verified; upload in progress"
   },
   "appStoreConnectVerified": {
     "appId": "6809304019",
@@ -54,7 +54,8 @@
     "agreement": "User confirmed acceptance; refreshed App Store Connect no longer displays the agreement warning",
     "copyright": "2026 Luke Dyer",
     "reviewContact": "Luke Dyer, 512-565-6867, luke@dyerplex.com",
-    "supportUrl": "https://fmci.network/support/"
+    "supportUrl": "https://fmci.network/support/",
+    "reviewerAccess": "Verified login, adult confirmation, completed onboarding, and HTTP 200 for posts, groups, and conversations. Credentials stored in App Store Connect only."
   },
   "copyright": "2026 Luke Dyer"
 }

@@ -24,9 +24,7 @@ export default function ReportModal({ targetType, targetId, targetAuthorId, targ
       await report.mutateAsync({ targetType, targetId, targetAuthorId, reason, note: note.trim() || undefined })
       setSent(true)
     } catch {
-      // Swallowed intentionally — the confirmation below is shown either way so
-      // a reporter never learns whether their report was recorded.
-      setSent(true)
+      // Keep the form open so the member can retry a failed report.
     }
   }
 
@@ -94,6 +92,7 @@ export default function ReportModal({ targetType, targetId, targetAuthorId, targ
               />
             </div>
 
+            {report.isError && <p role="alert" style={{ padding: '0 24px', color: 'var(--color-red)' }}>Unable to send your report. Please try again.</p>}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '0 24px 20px' }}>
               <button onClick={onClose} style={{
                 padding: '10px 18px', borderRadius: '10px', cursor: 'pointer',

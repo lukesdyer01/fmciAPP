@@ -14,7 +14,7 @@ export const REPORT_REASONS = [
 ] as const
 
 export type ReportReason = (typeof REPORT_REASONS)[number]['value']
-export type ReportTargetType = 'post' | 'comment' | 'user' | 'message' | 'other'
+export type ReportTargetType = 'story' | 'post' | 'comment' | 'user' | 'message' | 'other'
 
 export interface BlockedMember {
   id: string
@@ -33,7 +33,7 @@ export interface ReportedMember {
 // The content a report points at, resolved server-side. Null once the post or
 // comment has been deleted.
 export interface ReportTargetPreview {
-  kind: 'post' | 'comment'
+  kind: 'story' | 'post' | 'comment'
   text: string
   createdAt: string | null
   image?: string | null
@@ -76,6 +76,7 @@ export function useReportContent() {
       note?: string
     }) => api('/reports', { method: 'POST', body: JSON.stringify(report) }),
     onSuccess: (_data, report) => {
+      if (report.targetType === 'story') qc.invalidateQueries({ queryKey: ['stories'] })
       // Reporting something hides it from the reporter for good. The server
       // filters it out of GET /posts from here on; this drops it from the cache
       // straight away so it disappears the moment the modal confirms.
@@ -128,6 +129,7 @@ export function useBlockMember() {
     onSuccess: () => {
       // The feed and message list are filtered server-side, so both have to be
       // refetched for the block to actually take effect on screen.
+      qc.invalidateQueries({ queryKey: ['stories'] })
       qc.invalidateQueries({ queryKey: moderationKeys.all })
       qc.invalidateQueries({ queryKey: feedKeys.all })
       qc.invalidateQueries({ queryKey: messageKeys.all })
@@ -140,6 +142,7 @@ export function useUnblockMember() {
   return useMutation({
     mutationFn: (userId: string) => api(`/blocks/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stories'] })
       qc.invalidateQueries({ queryKey: moderationKeys.all })
       qc.invalidateQueries({ queryKey: feedKeys.all })
       qc.invalidateQueries({ queryKey: messageKeys.all })

@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query'
+import Stories from './Stories'
 import SafetySupportView from './SafetySupportView'
 import { useState, useEffect } from 'react'
 import PostComposer from './PostComposer'
@@ -100,6 +102,7 @@ function FeedToggle({ filter, setFilter, primaryMinistry }: {
 }
 
 function MainFeed() {
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<FeedFilter>('network')
   const { data: allPosts, isLoading, isError, refetch: refetchPosts } = useFeedPosts()
   const [events, setEvents] = useState<EventItem[]>([])
@@ -111,6 +114,7 @@ function MainFeed() {
   const primaryMinistryId = useUIStore(s => s.userProfile.primaryMinistryId)
 
   const refreshAll = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['stories'] })
     await refetchPosts()
     await api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
     await api<BlogPost[]>('/blog-posts').then(setBlogPosts).catch(() => setBlogPosts([]))
@@ -186,6 +190,7 @@ function MainFeed() {
           }}>✕</button>
         </div>
       )}
+      <Stories />
       {filter === 'ministry' && primaryMinistry ? (
         // Same composer the ministry's own Feed tab uses — lets an owner/admin
         // choose to post as themselves or as the ministry, and any member

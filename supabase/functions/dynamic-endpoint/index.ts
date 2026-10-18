@@ -1,3 +1,4 @@
+import { registerStories } from "./stories.ts";
 import { contentSafetyIssue } from "./contentSafety.ts";
 import { Hono, type Context } from "npm:hono";
 import { cors } from "npm:hono/cors";
@@ -28,7 +29,7 @@ const BASE = "/dynamic-endpoint";
 app.use("*", logger(console.log));
 app.use("/*", cors({
   origin: "*",
-  allowHeaders: ["Content-Type", "Authorization"],
+  allowHeaders: ["Content-Type", "Authorization", "X-Story-Caption"],
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   exposeHeaders: ["Content-Length"],
   maxAge: 600,
@@ -68,6 +69,8 @@ async function getCallerUser(authHeader: string | undefined) {
   if (!res.ok) return null;
   return await res.json();
 }
+
+registerStories(app, BASE, kvClient, getCallerUser, kv, callerRole);
 
 function callerRole(user: any): string {
   return user?.app_metadata?.role ?? "member";
@@ -1949,7 +1952,7 @@ app.post(`${BASE}/reports`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const body = await c.req.json();
-  if (!["post", "comment", "user", "message", "other"].includes(body?.targetType)) {
+  if (!["story", "post", "comment", "user", "message", "other"].includes(body?.targetType)) {
     return c.json({ error: "A valid targetType is required" }, 400);
   }
   if (!body?.targetId) return c.json({ error: "targetId is required" }, 400);
@@ -1957,6 +1960,13 @@ app.post(`${BASE}/reports`, async (c) => {
   if (String(body.note ?? "").length > 4000 || String(body.targetId).length > 1000) return c.json({ error: "Report is too long" }, 400);
   if (!REPORT_REASONS.includes(body?.reason)) return c.json({ error: "A valid reason is required" }, 400);
 
+  if (body.targetType === "story") {
+    const { data: story } = await kvClient().from('photo_stories').select('author_id,state,expires_at').eq('id',body.targetId).maybeSingle();
+    if (!story || story.state !== 'published' || Date.parse(story.expires_at) <= Date.now()) return c.json({error:'Story has expired or is unavailable'},404);
+    const blocks = await kv.get('user_blocks') ?? {};
+    if ((blocks[caller.id] ?? []).includes(story.author_id) || (blocks[story.author_id] ?? []).includes(caller.id)) return c.json({error:'Story unavailable'},404);
+    body.targetAuthorId = story.author_id;
+  }
   const reports = await kv.get("content_reports") ?? [];
   // One open report per person per item, so a repeat tap doesn't flood the queue.
   const already = reports.some((r: any) =>
@@ -1998,6 +2008,13 @@ app.post(`${BASE}/reports`, async (c) => {
   return c.json({ ok: true });
 });
 
+async function storyReportPreview(id: string) {
+  const {data: story} = await kvClient().from('photo_stories').select('*').eq('id',id).maybeSingle();
+  if (!story || story.state !== 'published' || Date.parse(story.expires_at) <= Date.now()) return null;
+  const {data} = await kvClient().storage.from('stories').createSignedUrl(story.object_path,Math.max(1,Math.min(60,Math.floor((Date.parse(story.expires_at)-Date.now())/1000))));
+  return {kind:'story',text:story.caption,image:data?.signedUrl ?? null,createdAt:story.published_at};
+}
+
 // Review queue. Apple expects reports to be acted on, not merely collected.
 app.get(`${BASE}/reports`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
@@ -2013,7 +2030,7 @@ app.get(`${BASE}/reports`, async (c) => {
     ...r,
     reporter: await userSummary(r.reporterId),
     targetAuthor: r.targetAuthorId ? await userSummary(r.targetAuthorId) : null,
-    targetPreview: reportTargetPreview(r, posts),
+    targetPreview: r.targetType === "story" ? await storyReportPreview(r.targetId) : reportTargetPreview(r, posts),
   })));
   return c.json(withNames);
 });

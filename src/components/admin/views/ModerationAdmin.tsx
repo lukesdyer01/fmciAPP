@@ -1,3 +1,5 @@
+import { api } from '../../../api-client/server'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import {
   REPORT_REASONS,
@@ -16,6 +18,7 @@ const STATUS_STYLE: Record<ReportStatus, { bg: string; color: string }> = {
 }
 
 const TARGET_LABEL: Record<string, string> = {
+  story: 'a Story photo',
   other: 'a community safety concern',
   post: 'a post',
   comment: 'a comment',
@@ -129,6 +132,9 @@ function ReportDetail({ report, onClose, onSetStatus, busy }: {
   onSetStatus: (id: string, status: ReportStatus) => void
   busy: boolean
 }) {
+  const qc = useQueryClient()
+  const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState('')
   const preview = report.targetPreview
   return (
     <div style={{ backgroundColor: '#161b22', borderRadius: '12px', border: '1px solid rgba(200,155,60,0.2)', padding: '22px', height: 'fit-content', position: 'sticky', top: '80px' }}>
@@ -168,13 +174,22 @@ function ReportDetail({ report, onClose, onSetStatus, busy }: {
           </div>
         ) : (
           <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.6 }}>
-            {report.targetType === 'post' || report.targetType === 'comment'
-              ? 'This content has since been deleted.'
+            {report.targetType === 'story' || report.targetType === 'post' || report.targetType === 'comment'
+              ? 'This content has expired or been deleted.'
               : `A ${report.targetType} was reported; it is not shown here.`}
           </p>
         )}
       </Section>
 
+      {report.targetType === 'story' && preview && <div>
+        <button disabled={removing} onClick={async () => {
+          if (!window.confirm('Remove this Story photo from the community?')) return
+          setRemoving(true); setRemoveError('')
+          try { await api(`/stories/${report.targetId}`, { method: 'DELETE' }); await qc.invalidateQueries({ queryKey: ['moderation'] }); await qc.invalidateQueries({ queryKey: ['stories'] }) }
+          catch (e) { setRemoveError((e as Error).message) } finally { setRemoving(false) }
+        }} style={{ padding: '10px', cursor: 'pointer' }}>Remove Story photo</button>
+        {removeError && <p role="alert">{removeError}</p>}
+      </div>}
       <Section label="Reported member">
         <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.55)' }}>{report.targetAuthor?.name ?? '—'}</p>
       </Section>
