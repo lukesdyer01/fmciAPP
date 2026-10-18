@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../providers/AuthProvider'
 import { api } from '../api-client/server'
 import { publishStory, storyKeys, useStories, type Story, type StoryReaction, type StoryViewer } from '../api-client/stories'
@@ -30,6 +30,31 @@ function useStoryDialog(onClose: () => void) {
   }, [])
   return ref
 }
+function StoryThumbnail({ story }: { story: Story }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [visible, setVisible] = useState(false)
+  const [failedUrl, setFailedUrl] = useState('')
+  const retried = useRef(false)
+  const { data, refetch } = useQuery({
+    queryKey: [...storyKeys.all, 'thumbnail', story.id],
+    queryFn: () => api<{ url: string }>(`/stories/${story.id}/media`),
+    enabled: visible && Date.parse(story.expiresAt) > Date.now(),
+    staleTime: 45_000,
+    retry: false,
+  })
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => setVisible(entries.some(entry => entry.isIntersecting)), { rootMargin: '100px' })
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+  return <span ref={ref} className="story-thumbnail">
+    {data?.url && failedUrl !== data.url ? <img src={data.url} alt="" decoding="async" onError={() => {
+      setFailedUrl(data.url)
+      if (!retried.current) { retried.current = true; void refetch() }
+    }} /> : <span aria-hidden="true">▧</span>}
+  </span>
+}
+
 function StoryComposer({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const [photo, setPhoto] = useState<Blob | null>(null)
@@ -173,7 +198,7 @@ export default function Stories() {
   return <section className="stories-section" aria-label="Photo Stories">
     <div className="stories-row"><button className="story-create-card" onClick={() => setCreate(true)}><span>＋</span>Create Story</button>{authors.map(list => {
       const author = list[0]
-      return <button key={author.authorId} className={`story-author-card ${list.some(s => !s.seen) ? 'story-unseen' : ''}`} onClick={() => setPlaying({ stories: sequence, startId: [...list].reverse().find(s => !s.seen)?.id ?? list.at(-1)!.id })} aria-label={`View ${author.authorId === currentUser?.id ? 'your' : author.authorName + "'s"} Stories${list.some(s => !s.seen) ? ', unseen photos' : ''}`}><span className="story-avatar">{author.authorAvatar ? <img src={author.authorAvatar} alt="" /> : author.authorName.slice(0, 2)}</span><span>{author.authorId === currentUser?.id ? 'Your Story' : author.authorName}</span></button>
+      return <button key={author.authorId} className={`story-author-card ${list.some(s => !s.seen) ? 'story-unseen' : ''}`} onClick={() => setPlaying({ stories: sequence, startId: [...list].reverse().find(s => !s.seen)?.id ?? list.at(-1)!.id })} aria-label={`View ${author.authorId === currentUser?.id ? 'your' : author.authorName + "'s"} Stories${list.some(s => !s.seen) ? ', unseen photos' : ''}`}><StoryThumbnail story={author} /><span>{author.authorId === currentUser?.id ? 'Your Story' : author.authorName}</span></button>
     })}</div>
     {isError && <button className="story-retry" onClick={() => void refetch()}>Unable to load Stories. Retry</button>}
     {create && <StoryComposer onClose={() => setCreate(false)} />}
