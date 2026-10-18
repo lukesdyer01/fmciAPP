@@ -20,6 +20,7 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
   const meta = su.user_metadata ?? {}
   return {
     id: su.id,
+    analyticsOptOut: meta.analytics_opt_out === true,
     username: meta.username ?? su.email?.split('@')[0] ?? su.id,
     displayName: meta.full_name ?? meta.name ?? su.email ?? '',
     email: su.email ?? '',
@@ -49,7 +50,7 @@ const MOCK_MEMBERSHIPS: UserMembership[] = [
   {
     userId: '',
     organizationId: 'org_fmci',
-    orgRole: 'admin',
+    orgRole: 'member',
     groupRoles: [],
     joinedAt: new Date().toISOString(),
     status: 'active',
@@ -66,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(buildUserFromSession(session, role))
   }, [session.user, role])
 
-  const memberships = MOCK_MEMBERSHIPS.map(m => ({ ...m, userId: session.user.id }))
+  const memberships = MOCK_MEMBERSHIPS.map(m => ({ ...m, userId: session.user.id, orgRole: (role === 'admin' || role === 'superadmin' ? 'admin' : 'member') as OrgRole }))
   const currentMembership = memberships.find(m => m.organizationId === activeOrgId) ?? null
 
   const value: AuthContextValue = {

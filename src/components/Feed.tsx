@@ -1,3 +1,4 @@
+import SafetySupportView from './SafetySupportView'
 import { useState, useEffect } from 'react'
 import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
@@ -255,6 +256,7 @@ function MainFeed() {
 }
 
 export default function Feed({ activeView }: { activeView: ActiveView }) {
+  if (activeView === 'safety') return <SafetySupportView />
   if (activeView === 'invite') return <InviteMembersView />
   if (activeView === 'directory') return <DirectoryView />
   if (activeView === 'orgs')      return <OrgView />

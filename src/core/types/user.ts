@@ -4,6 +4,7 @@
 export type PlatformRole = 'superadmin' | 'moderator' | 'support' | 'user'
 
 export interface User {
+  analyticsOptOut?: boolean
   id: string
   username: string
   displayName: string

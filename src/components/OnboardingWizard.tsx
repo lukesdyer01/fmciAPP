@@ -1,3 +1,4 @@
+import AccountExitActions from './AccountExitActions'
 import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useRef } from 'react'
 import type { Session } from '@supabase/supabase-js'
@@ -272,6 +273,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
             >Skip remaining steps</button>
           )}
         </div>
+        <AccountExitActions />
       </div>
     </div>
   )

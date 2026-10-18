@@ -1,3 +1,4 @@
+import { contentSafetyIssue } from "./contentSafety.ts";
 import { Hono, type Context } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
@@ -33,14 +34,25 @@ app.use("/*", cors({
   maxAge: 600,
 }));
 
-// Incomplete accounts may upload through Storage/Auth or delete their account,
-// but cannot bypass onboarding through the Edge API.
+// Private community data requires a real, eligible member. Public policy pages
+// are static; only health and registration settings are public API endpoints.
 app.use(`${BASE}/*`, async (c, next) => {
-  if (c.req.method !== "OPTIONS" && !(c.req.method === "DELETE" && c.req.path === `${BASE}/me`)) {
-    const caller = await getCallerUser(c.req.header("Authorization"));
-    if (caller && caller.user_metadata?.onboarding_complete === false) {
-      return c.json({ error: "Complete signup and upload a profile photo before continuing" }, 403);
-    }
+  if (c.req.method === "OPTIONS") return next();
+  if (["GET", "HEAD"].includes(c.req.method) && [`${BASE}/health`, `${BASE}/settings`].includes(c.req.path)) return next();
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller || caller.is_anonymous) return c.json({ error: "Sign in to access FMCI Network" }, 401);
+  const deletingSelf = c.req.method === "DELETE" && c.req.path === `${BASE}/me`;
+  if (!deletingSelf) {
+    if (caller.user_metadata?.status === "suspended" || (caller.banned_until && new Date(caller.banned_until).getTime() > Date.now())) return c.json({ error: "Account access is restricted. Contact luke@dyerplex.com." }, 403);
+    if (caller.user_metadata?.age18_confirmed !== true) return c.json({ error: "Confirm you are at least 18 before continuing" }, 403);
+    if (caller.user_metadata?.onboarding_complete === false) return c.json({ error: "Complete signup and upload a profile photo before continuing" }, 403);
+  }
+  // Applies to creation AND edits, including nested article blocks and comments.
+  // Reports are excluded so members can quote abusive content to moderators.
+  if (["POST", "PUT", "PATCH"].includes(c.req.method) && /^\/dynamic-endpoint\/(posts|events|resources|blog-posts|groups|orgs|conversations)(?:\/|$)/.test(c.req.path) && c.req.header("Content-Type")?.includes("application/json")) {
+    let body;
+    try { body = await c.req.json(); } catch { return c.json({ error: "Invalid request" }, 400); }
+    if (contentSafetyIssue(body)) return c.json({ error: "This text may violate the community rules. Edit it before posting, or contact luke@dyerplex.com for review." }, 422);
   }
   await next();
 });
@@ -58,7 +70,7 @@ async function getCallerUser(authHeader: string | undefined) {
 }
 
 function callerRole(user: any): string {
-  return user?.app_metadata?.role ?? user?.user_metadata?.role ?? "member";
+  return user?.app_metadata?.role ?? "member";
 }
 
 async function listAuthUsers() {
@@ -78,11 +90,11 @@ async function setUserRole(userId: string, role: string) {
   });
 }
 
-async function updateUserMeta(userId: string, meta: Record<string, any>) {
+async function updateUserMeta(userId: string, meta: Record<string, any>, trustedClaims?: Record<string, unknown>) {
   return await fetch(`${SUPABASE_URL()}/auth/v1/admin/users/${userId}`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${SERVICE_KEY()}`, apikey: SERVICE_KEY(), "Content-Type": "application/json" },
-    body: JSON.stringify({ user_metadata: meta }),
+    body: JSON.stringify({ user_metadata: meta, ...(trustedClaims ? { app_metadata: trustedClaims } : {}) }),
   });
 }
 
@@ -520,7 +532,8 @@ app.post(`${BASE}/verification-requests/:id/approve`, async (c) => {
   });
   if (userRes.ok) {
     const user = await userRes.json();
-    await updateUserMeta(target.userId, { ...user.user_metadata, verified: true });
+    const verification = await updateUserMeta(target.userId, { ...user.user_metadata, verified: true }, { verified: true });
+    if (!verification.ok) return c.json({ error: "Unable to verify this member" }, 500);
   }
   const updated = requests.map((r: any) => r.id === id ? { ...r, status: "approved" } : r);
   await kv.set("verification_requests", updated);
@@ -807,13 +820,12 @@ app.post(`${BASE}/posts/:id/react`, async (c) => {
   return c.json({ ok: true });
 });
 
-app.get(`${BASE}/profile`, async (c) => c.json(await kv.get("profile") ?? DEFAULT_PROFILE));
-
-app.put(`${BASE}/profile`, async (c) => {
-  const body = await c.req.json();
-  await kv.set("profile", body);
-  return c.json(body);
+app.get(`${BASE}/profile`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  return c.json(caller.user_metadata ?? {});
 });
+app.put(`${BASE}/profile`, (c) => c.json({ error: "Use your own account profile editor" }, 410));
 
 // Used by the admin Ministries screen — unauthenticated like the rest of
 // that admin data-fetching (see PUT /orgs below), but still needs member
@@ -1791,11 +1803,19 @@ app.get(`${BASE}/conversations`, async (c) => {
   return c.json(summaries);
 });
 
+async function membersBlocked(a: string, b: string): Promise<boolean> {
+  const [aBlocks, bBlocks] = await Promise.all([getBlockedIds(a), getBlockedIds(b)]);
+  return aBlocks.includes(b) || bBlocks.includes(a);
+}
+
 app.post(`${BASE}/conversations`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const { otherUserId } = await c.req.json();
   if (!otherUserId || otherUserId === caller.id) return c.json({ error: "A valid other user is required" }, 400);
+  if (await membersBlocked(caller.id, otherUserId)) return c.json({ error: "This conversation is unavailable" }, 403);
+  const recipient = await kvClient().auth.admin.getUserById(otherUserId);
+  if (recipient.error || !recipient.data.user) return c.json({ error: "Member not found" }, 404);
   const conversations = await kv.get("conversations") ?? [];
   const id = dmConversationId(caller.id, otherUserId);
   let conv = conversations.find((x: any) => x.id === id);
@@ -1828,6 +1848,9 @@ app.post(`${BASE}/conversations/:id/messages`, async (c) => {
   const conversations = await kv.get("conversations") ?? [];
   const conv = conversations.find((x: any) => x.id === id);
   if (!conv || !conv.participantIds.includes(caller.id)) return c.json({ error: "Conversation not found" }, 404);
+  for (const participant of conv.participantIds) {
+    if (participant !== caller.id && await membersBlocked(caller.id, participant)) return c.json({ error: "This conversation is unavailable" }, 403);
+  }
   const message = { id: `m${Date.now()}`, senderId: caller.id, text: String(text).trim(), createdAt: new Date().toISOString() };
   const messages = [...(Array.isArray(conv.messages) ? conv.messages : []), message];
   // A new message resurfaces the conversation for anyone who deleted it —
@@ -1926,10 +1949,12 @@ app.post(`${BASE}/reports`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const body = await c.req.json();
-  if (!["post", "comment", "user", "message"].includes(body?.targetType)) {
+  if (!["post", "comment", "user", "message", "other"].includes(body?.targetType)) {
     return c.json({ error: "A valid targetType is required" }, 400);
   }
   if (!body?.targetId) return c.json({ error: "targetId is required" }, 400);
+  if (body.targetType === "other" && (typeof body.note !== "string" || body.note.trim().length < 20)) return c.json({ error: "Describe the content and concern in at least 20 characters" }, 400);
+  if (String(body.note ?? "").length > 4000 || String(body.targetId).length > 1000) return c.json({ error: "Report is too long" }, 400);
   if (!REPORT_REASONS.includes(body?.reason)) return c.json({ error: "A valid reason is required" }, 400);
 
   const reports = await kv.get("content_reports") ?? [];
@@ -1947,7 +1972,7 @@ app.post(`${BASE}/reports`, async (c) => {
     targetId: String(body.targetId),
     targetAuthorId: body.targetAuthorId ?? null,
     reason: body.reason,
-    note: typeof body.note === "string" ? body.note.slice(0, 1000) : "",
+    note: typeof body.note === "string" ? body.note.slice(0, 4000) : "",
     reporterId: caller.id,
     status: "open",
     createdAt: new Date().toISOString(),
@@ -2096,7 +2121,27 @@ app.post(`${BASE}/push/unregister-device`, async (c) => {
 // What survives is deliberately narrow: posts and events by *other* people
 // that they had merely commented on or joined stay, minus their own part in
 // them, and analytics keeps its aggregate shape with the user id stripped.
+async function purgeUserUploads(userId: string): Promise<void> {
+  const client = kvClient();
+  const { data, error } = await client.rpc("account_uploads", { p_user: userId });
+  if (error) throw new Error("Unable to list account uploads. Please retry deletion.");
+  const buckets = new Map<string, string[]>();
+  for (const item of data ?? []) {
+    const paths = buckets.get(item.bucket_id) ?? [];
+    paths.push(item.name); buckets.set(item.bucket_id, paths);
+  }
+  for (const [bucket, paths] of buckets) {
+    for (let start = 0; start < paths.length; start += 100) {
+      const { error } = await client.storage.from(bucket).remove(paths.slice(start, start + 100));
+      if (error) throw new Error("Unable to remove account uploads. Please retry deletion.");
+    }
+  }
+  const remaining = await client.rpc("account_uploads", { p_user: userId });
+  if (remaining.error || remaining.data?.length) throw new Error("Upload cleanup is not complete. Please retry deletion.");
+}
+
 async function purgeUserContent(userId: string): Promise<void> {
+  await purgeUserUploads(userId);
   // Posts they wrote, and their comments on posts that remain.
   const posts = await kv.get("posts") ?? SEED_POSTS;
   await kv.set("posts", posts
@@ -2356,7 +2401,10 @@ app.get(`${BASE}/groups/:id/members`, async (c) => {
 });
 
 app.put(`${BASE}/orgs`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!["admin", "superadmin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
   const body = await c.req.json();
+  if (!Array.isArray(body)) return c.json({ error: "Organization list required" }, 400);
   const previous = await kv.get("orgs") ?? SEED_ORGS;
   // This admin route round-trips whatever shape the client fetched from
   // GET /orgs (a serialized, enriched response) straight back into storage —
@@ -2387,7 +2435,7 @@ app.get(`${BASE}/admin/users`, async (c) => {
     id: u.id,
     email: u.email,
     name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "",
-    role: u.app_metadata?.role ?? u.user_metadata?.role ?? "member",
+    role: u.app_metadata?.role ?? "member",
     church: u.user_metadata?.church ?? "",
     location: u.user_metadata?.location ?? "",
     title: u.user_metadata?.title ?? "",
@@ -2427,7 +2475,9 @@ app.post(`${BASE}/admin/update-member`, async (c) => {
   const merged = { ...user.user_metadata, ...patch,
     ...(Array.isArray(patch.ministryRoles) ? { requestedMinistryRoles: patch.ministryRoles } : {}),
   };
-  const res = await updateUserMeta(userId, merged);
+  const trustedClaims: Record<string, unknown> = {};
+  if ("fmciLeadershipRole" in patch) trustedClaims.fmciLeadershipRole = patch.fmciLeadershipRole;
+  const res = await updateUserMeta(userId, merged, trustedClaims);
   if (!res.ok) return c.json({ error: await res.text() }, res.status);
   // An admin explicitly assigning a fivefold role also approves that role.
   if (Array.isArray(patch.ministryRoles)) {
@@ -2612,32 +2662,7 @@ function pruneAnalytics<T>(events: T[], getTs: (e: T) => string): T[] {
 async function isExcludedFromAnalytics(authHeader: string | undefined): Promise<boolean> {
   if (!authHeader) return false;
   const caller = await getCallerUser(authHeader);
-  return !!caller && ["superadmin", "admin"].includes(callerRole(caller));
-}
-
-async function geolocateIp(ip: string | null): Promise<string> {
-  if (!ip) return "Unknown";
-  const cache = await kv.get("analytics_geo_cache") ?? {};
-  const cached = cache[ip];
-  if (cached && Date.now() - new Date(cached.ts).getTime() < 24 * 60 * 60 * 1000) {
-    return cached.country;
-  }
-  try {
-    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country`);
-    const data = await res.json();
-    const country = data.status === "success" && data.country ? data.country : "Unknown";
-    cache[ip] = { country, ts: new Date().toISOString() };
-    await kv.set("analytics_geo_cache", cache);
-    return country;
-  } catch {
-    return "Unknown";
-  }
-}
-
-function clientIp(c: any): string | null {
-  const fwd = c.req.header("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return c.req.header("x-real-ip") ?? null;
+  return !caller || caller.user_metadata?.analytics_opt_out === true || ["superadmin", "admin"].includes(callerRole(caller));
 }
 
 app.post(`${BASE}/analytics/session`, async (c) => {
@@ -2646,7 +2671,7 @@ app.post(`${BASE}/analytics/session`, async (c) => {
   const body = await c.req.json();
   const sessionId = String(body.sessionId ?? "").trim();
   if (!sessionId) return c.json({ error: "sessionId is required" }, 400);
-  const country = await geolocateIp(clientIp(c));
+  const country = "Unknown"; // No IP geolocation or third-party IP sharing.
   const sessions = pruneAnalytics(await kv.get("analytics_sessions") ?? [], (s: any) => s.lastSeenAt);
   const now = new Date().toISOString();
   const existing = sessions.find((s: any) => s.sessionId === sessionId);

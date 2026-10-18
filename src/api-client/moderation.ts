@@ -14,7 +14,7 @@ export const REPORT_REASONS = [
 ] as const
 
 export type ReportReason = (typeof REPORT_REASONS)[number]['value']
-export type ReportTargetType = 'post' | 'comment' | 'user' | 'message'
+export type ReportTargetType = 'post' | 'comment' | 'user' | 'message' | 'other'
 
 export interface BlockedMember {
   id: string

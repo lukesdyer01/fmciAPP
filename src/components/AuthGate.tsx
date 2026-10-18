@@ -1,6 +1,9 @@
+import AdultMembershipGate from './AdultMembershipGate'
+import RecoveryPasswordView from './RecoveryPasswordView'
+import { openExternal } from '../lib/openExternal'
 import { useState, useEffect } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { supabase, initialAuthRecovery } from '../lib/supabase'
 import { SupabaseRoleProvider } from '../contexts/SupabaseRoleContext'
 import { readInvitationLink } from '../lib/invitations'
 import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
@@ -16,6 +19,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
   const [email, setEmail] = useState(invitation?.email ?? '')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [adultConfirmed, setAdultConfirmed] = useState(false)
   const [inviteCode, setInviteCode] = useState(invitation?.token ?? '')
 
   useEffect(() => {
@@ -39,6 +43,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         if (error) throw error
         if (data.session) onSession(data.session)
       } else if (mode === 'signup') {
+        if (!adultConfirmed) throw new Error('You must confirm you are at least 18 to join.')
         const { data, error } = await supabase.auth.signUp({
           email, password,
           // onboarding_complete: false marks this as a brand-new account so
@@ -46,7 +51,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           // existing accounts never have this key at all, which is what
           // keeps the wizard from ever appearing for them (see AuthGate's
           // strict === false gate below).
-          options: { data: { full_name: name, onboarding_complete: false, invitation_token: inviteCode.trim() } },
+          options: { data: { full_name: name, onboarding_complete: false, invitation_token: inviteCode.trim(), age18_confirmed: adultConfirmed, community_rules_version: '2026-10-17' } },
         })
         if (error) throw error
         if (data.session) {
@@ -170,7 +175,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
                 </div>
                 <input
                   type="password" value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••" required minLength={6}
+                  placeholder="••••••••" required minLength={8}
                   style={inputStyle}
                   onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}
                   onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.12)' }}
@@ -178,6 +183,10 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
               </div>
             )}
 
+            {mode === 'signup' && <div style={{ color: '#e6edf3', fontSize: '13px', lineHeight: 1.6 }}>
+              <label style={{ display: 'flex', alignItems: 'start', gap: '10px' }}><input type="checkbox" required checked={adultConfirmed} onChange={e => setAdultConfirmed(e.target.checked)} style={{ marginTop: '5px', width: '18px', height: '18px', flexShrink: 0 }} />I confirm I am at least 18 and will follow the community rules.</label>
+              <button type="button" onClick={() => openExternal('https://fmci.network/terms/')} style={{ color: 'var(--color-gold)', background: 'none', border: 0, padding: '8px 0', cursor: 'pointer' }}>Read community rules</button>
+            </div>}
             {error && (
               <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', fontSize: '13px', color: '#fca5a5' }}>
                 {error}
@@ -225,6 +234,8 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '12px', color: 'rgba(255,255,255,0.2)', lineHeight: 1.6 }}>
           © 2026 Federation of Ministers &amp; Churches International
           {' · '}
+          <a href="mailto:luke@dyerplex.com" style={{ color: 'inherit' }}>Support</a>
+          {' · '}
           <button onClick={() => setShowPrivacy(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', fontSize: '12px', textDecoration: 'underline', fontFamily: 'var(--font-sans)', padding: 0 }}>
             Privacy Policy
           </button>
@@ -270,6 +281,7 @@ interface AuthGateProps {
 
 export default function AuthGate({ children }: AuthGateProps) {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
+  const [recovery, setRecovery] = useState(() => initialAuthRecovery || sessionStorage.getItem('fmci-password-recovery') === 'true')
   // Read once at mount rather than on every render: in-app navigation pushes
   // new paths, so a live read would yank a signed-in member out of the app
   // shell the moment they opened the policy from the nav.
@@ -279,11 +291,10 @@ export default function AuthGate({ children }: AuthGateProps) {
     // onAuthStateChange fires INITIAL_SESSION immediately, which replaces the need for getSession()
     // Using only one path avoids a race where getSession() resolves after onSession() and clears the session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthGate] auth event:', event, 'session:', session ? `valid (${session.user?.email})` : 'null')
+      if (event === 'PASSWORD_RECOVERY') { sessionStorage.setItem('fmci-password-recovery', 'true'); setRecovery(true) }
       setSession(prev => {
         // Only clear a valid session on an explicit SIGNED_OUT — never on a spurious null
         if (prev && !session && event !== 'SIGNED_OUT') {
-          console.log('[AuthGate] ignoring spurious null for event:', event)
           return prev
         }
         return session
@@ -310,12 +321,22 @@ export default function AuthGate({ children }: AuthGateProps) {
     )
   }
 
+  if (recovery) return <RecoveryPasswordView ready={!!session} onDone={() => {
+    supabase.auth.signOut({ scope: 'local' }).finally(() => {
+      window.history.replaceState(null, '', '/')
+      sessionStorage.removeItem('fmci-password-recovery')
+      setRecovery(false); setSession(null)
+    })
+  }} />
+
   if (!session) {
     return <AuthForm onSession={setSession} />
   }
 
   // Strict === false, not just falsy — existing accounts never have this key
   // at all (undefined), so they never see this, only brand-new signups.
+  if (session.user.user_metadata?.age18_confirmed !== true) return <AdultMembershipGate />
+
   if (session.user.user_metadata?.onboarding_complete === false) {
     return <OnboardingWizard session={session} />
   }

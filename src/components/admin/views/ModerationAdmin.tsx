@@ -16,6 +16,7 @@ const STATUS_STYLE: Record<ReportStatus, { bg: string; color: string }> = {
 }
 
 const TARGET_LABEL: Record<string, string> = {
+  other: 'a community safety concern',
   post: 'a post',
   comment: 'a comment',
   user: 'a member',
@@ -95,6 +96,7 @@ export default function ModerationAdmin() {
                       {report.reporter?.name ?? 'A member'} reported {TARGET_LABEL[report.targetType] ?? report.targetType}
                       {report.targetAuthor ? ` by ${report.targetAuthor.name}` : ''}
                     </div>
+                    {report.targetType === 'other' && <div style={{ color: '#adb5c0', fontSize: '12px', overflowWrap: 'anywhere' }}>Location: {report.targetId}</div>}
                     {report.note && (
                       <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', marginBottom: '4px', lineHeight: 1.5 }}>“{report.note}”</div>
                     )}
@@ -145,6 +147,7 @@ function ReportDetail({ report, onClose, onSetStatus, busy }: {
         </p>
       </Section>
 
+      {report.targetType === 'other' && <Section label="Reported location"><p style={{ color: '#adb5c0', overflowWrap: 'anywhere' }}>{report.targetId}</p></Section>}
       <Section label="Reported content">
         {preview ? (
           <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '12px' }}>

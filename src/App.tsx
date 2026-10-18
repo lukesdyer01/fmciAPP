@@ -42,7 +42,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-export type ActiveView = 'feed' | 'directory' | 'groups' | 'blog' | 'prayer' | 'testimonies' | 'events' | 'resources' | 'map' | 'orgs' | 'about' | 'privacy' | 'invite'
+export type ActiveView = 'feed' | 'directory' | 'groups' | 'blog' | 'prayer' | 'testimonies' | 'events' | 'resources' | 'map' | 'orgs' | 'about' | 'privacy' | 'invite' | 'safety'
 
 function AppShell() {
   const activeView = useUIStore(s => s.activeView)
@@ -90,6 +90,7 @@ function AppShell() {
     // profile display — there is no shared/global profile to merge in.
     if (!currentUser) return
     updateUserProfile({
+      analyticsOptOut: currentUser.analyticsOptOut ?? false,
       name: currentUser.displayName ?? '',
       bio: currentUser.bio ?? '',
       avatarUrl: currentUser.avatarUrl ?? '',

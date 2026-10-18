@@ -152,6 +152,7 @@ export default function EditProfileModal() {
           website: draft.website,
           phone: draft.phone,
           requestedMinistryRoles: draft.ministryRoles,
+          analytics_opt_out: draft.analyticsOptOut ?? false,
           additionalRoles: draft.additionalRoles,
           communicationPrefs: draft.communicationPrefs,
           memberSince: draft.memberSince,
@@ -194,7 +195,7 @@ export default function EditProfileModal() {
     setDeleteError('')
     try {
       await api('/me', { method: 'DELETE' })
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
       window.location.href = '/'
     } catch (e: any) {
       setDeleteError(e.message ?? 'Failed to delete account. Please try again.')
@@ -414,6 +415,10 @@ export default function EditProfileModal() {
             </div>
           </div>
 
+          <label style={{ display: 'flex', alignItems: 'start', gap: '10px', padding: '16px 0', color: 'var(--color-text-2)', fontSize: '13px' }}>
+            <input type="checkbox" checked={draft.analyticsOptOut ?? false} onChange={e => set('analyticsOptOut', e.target.checked)} />
+            Disable optional usage analytics. This does not affect your membership or features.
+          </label>
           {/* Blocked members — a block has to be reversible from somewhere, and
               this is the only per-account settings surface in the app. */}
           <BlockedMembersSection />

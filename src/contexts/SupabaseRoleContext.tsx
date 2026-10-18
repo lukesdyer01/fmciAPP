@@ -21,7 +21,7 @@ export function useSupabaseRole(): SupabaseRoleContextValue {
 
 function extractRole(session: Session | null): PlatformRole {
   if (!session) return 'member'
-  const r = session.user.app_metadata?.role ?? session.user.user_metadata?.role
+  const r = session.user.app_metadata?.role
   if (r === 'superadmin' || r === 'admin') return r
   return 'member'
 }

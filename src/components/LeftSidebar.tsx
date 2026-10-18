@@ -73,6 +73,7 @@ export const NAV: { id: ActiveView; icon: string; label: string }[] = [
   { id: 'events',    icon: '📅', label: 'Events' },
   { id: 'resources', icon: '📚', label: 'Resources' },
   { id: 'invite', icon: '✉️', label: 'Invite someone' },
+  { id: 'safety', icon: '🛡', label: 'Safety & Support' },
 ]
 
 export default function LeftSidebar({ activeView, setActiveView }: Props) {
