@@ -2555,14 +2555,14 @@ app.post(`${BASE}/admin/set-role`, async (c) => {
 
 app.post(`${BASE}/admin/clear-posts`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  if (callerRole(caller) !== "superadmin") return c.json({ error: "Forbidden" }, 403);
   await kv.set("posts", []);
   return c.json({ ok: true });
 });
 
 app.post(`${BASE}/admin/remove-orphaned-posts`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+  if (callerRole(caller) !== "superadmin") return c.json({ error: "Forbidden" }, 403);
   const users = await listAuthUsers();
   const validNames = new Set(
     users

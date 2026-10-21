@@ -37,13 +37,16 @@ export default function AdminShell() {
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
   const { currentUser } = useAuth()
+  const isSuperAdmin = currentUser?.platformRole === 'superadmin'
+  const visibleNav = isSuperAdmin ? NAV : NAV.filter(item => item.id !== 'content')
+  const selectedView = activeView === 'content' && !isSuperAdmin ? 'dashboard' : activeView
   // Reports are the one queue that goes stale badly, so the count rides in the
   // nav rather than waiting to be found.
   const { data: reports } = useReports()
   const openReports = reports?.filter(r => r.status === 'open').length ?? 0
 
   const view = (() => {
-    switch (activeView) {
+    switch (selectedView) {
       case 'dashboard':     return <Dashboard />
       case 'members':       return <MembersAdmin />
       case 'organizations': return <OrgsAdmin />
@@ -93,8 +96,8 @@ export default function AdminShell() {
         {/* Nav */}
         <nav style={{ flex: 1, padding: '12px 10px', overflowY: 'auto' }}>
           <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '8px 10px 4px' }}>Management</div>
-          {NAV.map(item => {
-            const active = activeView === item.id
+          {visibleNav.map(item => {
+            const active = selectedView === item.id
             return (
               <button key={item.id} onClick={() => setActiveView(item.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
@@ -182,7 +185,7 @@ export default function AdminShell() {
             }}>←</button>
             <div>
               <div style={{ fontSize: '18px', fontWeight: 800, color: '#e6edf3' }}>
-                {NAV.find(n => n.id === activeView)?.label}
+                {NAV.find(n => n.id === selectedView)?.label}
               </div>
               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '1px' }}>
                 FMCI Network Platform Administration
@@ -206,8 +209,8 @@ export default function AdminShell() {
           overflowX: 'auto', scrollbarWidth: 'none', gap: '6px',
           padding: '10px 12px', backgroundColor: '#0d1117', borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}>
-          {NAV.map(item => {
-            const active = activeView === item.id
+          {visibleNav.map(item => {
+            const active = selectedView === item.id
             return (
               <button key={item.id} onClick={() => setActiveView(item.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
