@@ -12,7 +12,7 @@ interface MyOrg {
   name: string
   type: string
   img?: string
-  members: { userId: string; role: string }[]
+  members: { userId: string; role: string; canPostAsMinistry?: boolean }[]
 }
 
 interface TaggableMember {
@@ -77,8 +77,8 @@ interface Props {
   // caller is an owner/admin of it, the "Posting as" selector still appears
   // scoped to just this one org, letting them choose to post as themselves
   // (default — no orgName, no badge) or as the ministry (orgName set, badge
-  // + org avatar shown). Non-owner/admins never see the selector and always
-  // post as themselves — used on a ministry's own page.
+  // + org avatar shown). Only an owner, admin, or superadmin-designated
+  // ministry leader sees the selector — used on a ministry's own page.
   fixedOrgId?: string
   // When set, the post is tagged to this user's wall (their profile page) —
   // used both when posting on your own page and on someone else's.
@@ -141,14 +141,14 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
     if (wallUserId || hidePostAs) return
     api<MyOrg[]>('/orgs/my')
       .then(orgs => {
-        const isOwnerOrAdmin = (o: MyOrg) =>
-          Array.isArray(o.members) && o.members.some(m => m.userId === currentUser?.id && (m.role === 'owner' || m.role === 'admin'))
+        const canPostAsMinistry = (o: MyOrg) =>
+          Array.isArray(o.members) && o.members.some(m => m.userId === currentUser?.id && (m.role === 'owner' || m.role === 'admin' || m.canPostAsMinistry === true))
         // On a ministry's own page, scope the selector to just that one
         // ministry — showing every other org this person administers would
         // be confusing here. Elsewhere (the main feed), show all of them.
         setMyOrgs(fixedOrgId
-          ? orgs.filter(o => o.id === fixedOrgId && isOwnerOrAdmin(o))
-          : orgs.filter(isOwnerOrAdmin))
+          ? orgs.filter(o => o.id === fixedOrgId && canPostAsMinistry(o))
+          : orgs.filter(canPostAsMinistry))
         // Any role (not just owner/admin) counts as membership for the
         // purposes of being allowed to post privately to this one ministry.
         if (fixedOrgId) {

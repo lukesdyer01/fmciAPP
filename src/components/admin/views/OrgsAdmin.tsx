@@ -9,6 +9,7 @@ interface OrgMember {
   name: string
   avatarUrl: string
   role: 'owner' | 'admin' | 'moderator' | 'member'
+  canPostAsMinistry?: boolean
   addedAt: string
 }
 
@@ -55,6 +56,7 @@ const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   moderator: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
   member:    { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' },
 }
+const LEADER_STYLE = { bg: 'rgba(200,155,60,0.16)', color: 'var(--color-gold)' }
 
 function adminActionBtn(color: string): React.CSSProperties {
   return { flex: 1, padding: '7px 10px', borderRadius: '7px', border: `1px solid ${color}30`, backgroundColor: color + '12', color, fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'center' }
@@ -69,9 +71,9 @@ function labelStyle(): React.CSSProperties {
 }
 
 // ── Edit Panel ────────────────────────────────────────────────────────────────
-interface EditPanelProps { org: Org; allOrgs: Org[]; onSave: (updated: Org) => void; onClose: () => void }
+interface EditPanelProps { org: Org; allOrgs: Org[]; onSave: (updated: Org) => void; onMembersUpdated: (updated: Org) => void; onClose: () => void }
 
-function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
+function EditPanel({ org, allOrgs, onSave, onMembersUpdated, onClose }: EditPanelProps) {
   const { currentUser } = useAuth()
   const [draft, setDraft] = useState<Org>({ ...org })
   const [saved, setSaved] = useState(false)
@@ -82,9 +84,11 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
   const [selectedRole, setSelectedRole] = useState<'admin' | 'moderator'>('moderator')
   const [addingMember, setAddingMember] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [leaderUpdatingId, setLeaderUpdatingId] = useState<string | null>(null)
   const [memberMsg, setMemberMsg] = useState('')
   const [uploadingImg, setUploadingImg] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const isSuperAdmin = currentUser?.platformRole === 'superadmin'
 
   function set<K extends keyof Org>(key: K, value: Org[K]) { setDraft(d => ({ ...d, [key]: value })) }
   function toggleFeature(f: string) { setDraft(d => ({ ...d, features: d.features.includes(f) ? d.features.filter(x => x !== f) : [...d.features, f] })) }
@@ -129,7 +133,8 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
     try {
       await api(`/orgs/${org.id}/members`, { method: 'POST', body: JSON.stringify({ userId: selectedUser.id, role: selectedRole }) })
       const newMember: OrgMember = { userId: selectedUser.id, email: selectedUser.email, name: selectedUser.name, avatarUrl: selectedUser.avatarUrl, role: selectedRole, addedAt: new Date().toISOString() }
-      setDraft(d => ({ ...d, members: [...(d.members ?? []), newMember] }))
+      const updated = { ...draft, members: [...(draft.members ?? []), newMember] }
+      setDraft(updated); onMembersUpdated(updated)
       setSelectedUser(null); setMemberSearch('')
       setMemberMsg(`${selectedUser.name || selectedUser.email} added as ${selectedRole}.`)
     } catch (e: any) {
@@ -144,12 +149,33 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
     setRemovingId(userId); setMemberMsg('')
     try {
       await api(`/orgs/${org.id}/members/${userId}`, { method: 'DELETE' })
-      setDraft(d => ({ ...d, members: (d.members ?? []).filter(m => m.userId !== userId) }))
+      const updated = { ...draft, members: (draft.members ?? []).filter(m => m.userId !== userId) }
+      setDraft(updated); onMembersUpdated(updated)
       setMemberMsg(`${name} removed.`)
     } catch (e: any) {
       setMemberMsg(`Error: ${e.message}`)
     } finally {
       setRemovingId(null)
+    }
+  }
+
+  async function setMinistryLeader(member: OrgMember) {
+    const enabled = !member.canPostAsMinistry
+    setLeaderUpdatingId(member.userId); setMemberMsg('')
+    try {
+      await api(`/admin/orgs/${org.id}/members/${member.userId}/leadership`, {
+        method: 'PUT', body: JSON.stringify({ enabled }),
+      })
+      const updated = {
+        ...draft,
+        members: (draft.members ?? []).map(m => m.userId === member.userId ? { ...m, canPostAsMinistry: enabled } : m),
+      }
+      setDraft(updated); onMembersUpdated(updated)
+      setMemberMsg(`${member.name || member.email} ${enabled ? `can now post as ${org.name}` : `can no longer post as ${org.name}`}.`)
+    } catch (e: any) {
+      setMemberMsg(`Error: ${e.message}`)
+    } finally {
+      setLeaderUpdatingId(null)
     }
   }
 
@@ -288,6 +314,14 @@ function EditPanel({ org, allOrgs, onSave, onClose }: EditPanelProps) {
                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>{m.email}</div>
                       </div>
                       <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '8px', backgroundColor: rs.bg, color: rs.color, textTransform: 'capitalize', flexShrink: 0 }}>{m.role}</span>
+                      {m.canPostAsMinistry && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '8px', backgroundColor: LEADER_STYLE.bg, color: LEADER_STYLE.color, flexShrink: 0 }}>Leader</span>}
+                      {isSuperAdmin && m.role !== 'owner' && m.role !== 'admin' && (
+                        <button
+                          onClick={() => void setMinistryLeader(m)}
+                          disabled={leaderUpdatingId === m.userId || removingId === m.userId}
+                          style={{ background: 'none', border: '1px solid rgba(200,155,60,0.28)', borderRadius: '6px', cursor: 'pointer', color: 'var(--color-gold)', fontSize: '10px', fontWeight: 700, padding: '4px 7px', whiteSpace: 'nowrap', opacity: leaderUpdatingId === m.userId ? 0.5 : 1 }}
+                        >{leaderUpdatingId === m.userId ? 'Saving…' : m.canPostAsMinistry ? 'Remove leader' : 'Make leader'}</button>
+                      )}
                       {m.role !== 'owner' && (
                         <button
                           onClick={() => removeOrgMember(m.userId, m.name || m.email)}
@@ -582,7 +616,7 @@ export default function OrgsAdmin() {
         </div>
       )}
 
-      {editingOrg && <EditPanel org={editingOrg} allOrgs={orgs} onSave={saveOrg} onClose={() => setEditingId(null)} />}
+      {editingOrg && <EditPanel org={editingOrg} allOrgs={orgs} onSave={saveOrg} onMembersUpdated={updated => setOrgs(os => os.map(o => o.id === updated.id ? updated : o))} onClose={() => setEditingId(null)} />}
       {showCreate && <CreateOrgModal onClose={() => setShowCreate(false)} onCreate={handleOrgCreated} />}
     </div>
   )

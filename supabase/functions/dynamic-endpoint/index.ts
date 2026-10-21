@@ -676,16 +676,16 @@ app.post(`${BASE}/posts`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const body = await c.req.json();
-  // orgName is the "posted on behalf of" claim — only that ministry's owner
-  // or admin may make it (mirrors the same check on POST /events). Posting
+  // orgName is the "posted on behalf of" claim — only that ministry's owner,
+  // admin, or superadmin-designated leader may make it. Posting
   // orgId alone (into a ministry's feed as yourself, no badge) stays open
   // to any member, matching existing behavior.
   if (body.orgName) {
     const orgs = await kv.get("orgs") ?? SEED_ORGS;
     const org = body.orgId ? orgs.find((o: any) => o.id === body.orgId) : null;
-    const myRole = org ? orgRole(org, caller.id) : undefined;
-    if (!org || (myRole !== "owner" && myRole !== "admin")) {
-      return c.json({ error: "Only that ministry's owner or admin can post on its behalf" }, 403);
+    const membership = org && Array.isArray(org.members) ? org.members.find((m: any) => m.userId === caller.id) : undefined;
+    if (!org || !membership || (membership.role !== "owner" && membership.role !== "admin" && membership.canPostAsMinistry !== true)) {
+      return c.json({ error: "Only that ministry's owner, admin, or designated leader can post on its behalf" }, 403);
     }
     // Pinning ("sticky for 7 days") is restricted to FMCI's own official
     // announcements — org.type "headquarters" is unique to FMCI itself, not
@@ -925,6 +925,29 @@ async function serializeOrg(o: any, callerId: string, users?: any[]) {
 function orgRole(org: any, userId: string): string | undefined {
   return (Array.isArray(org.members) ? org.members : []).find((m: any) => m.userId === userId)?.role;
 }
+
+app.put(`${BASE}/admin/orgs/:id/members/:userId/leadership`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (callerRole(caller) !== "superadmin") return c.json({ error: "Only superadmins can designate ministry leaders" }, 403);
+  const { id, userId } = c.req.param();
+  const body = await c.req.json();
+  if (typeof body.enabled !== "boolean") return c.json({ error: "Choose whether this member should be a ministry leader" }, 400);
+  const orgs = await kv.get("orgs") ?? SEED_ORGS;
+  const org = orgs.find((o: any) => o.id === id);
+  if (!org) return c.json({ error: "Ministry not found" }, 404);
+  const members = Array.isArray(org.members) ? org.members : [];
+  if (!members.some((m: any) => m.userId === userId)) return c.json({ error: "This person is not a member of the ministry" }, 404);
+  const updated = {
+    ...org,
+    members: members.map((m: any) => {
+      if (m.userId !== userId) return m;
+      const { canPostAsMinistry: _oldDesignation, ...membership } = m;
+      return body.enabled ? { ...membership, canPostAsMinistry: true } : membership;
+    }),
+  };
+  await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
+  return c.json({ ok: true, userId, ministryId: id, canPostAsMinistry: body.enabled });
+});
 
 app.get(`${BASE}/orgs/my`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
