@@ -1,8 +1,25 @@
 import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../api-client/server'
+import { networkSettingsKey, type NetworkSettings } from '../../../api-client/features'
+import { useAuth } from '../../../providers/AuthProvider'
 import { invitationLink } from '../../../lib/invitations'
 
 export default function SettingsAdmin() {
+  const { currentUser } = useAuth()
+  const queryClient = useQueryClient()
+  const isSuperAdmin = currentUser?.platformRole === 'superadmin'
+  const { data: settings, isLoading: settingsLoading, isError: settingsError } = useQuery({
+    queryKey: networkSettingsKey,
+    queryFn: () => api<NetworkSettings>('/settings'),
+  })
+  const storiesMutation = useMutation({
+    mutationFn: (photoStoriesEnabled: boolean) => api<NetworkSettings>('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ photoStoriesEnabled }),
+    }),
+    onSuccess: updated => queryClient.setQueryData(networkSettingsKey, updated),
+  })
   const [email, setEmail] = useState('')
   const [invitation, setInvitation] = useState<{ email: string; token: string; expiresAt: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -19,6 +36,22 @@ export default function SettingsAdmin() {
     } finally { setBusy(false) }
   }
   return <div style={{ maxWidth: '760px', color: '#e6edf3' }}>
+    {isSuperAdmin && <section style={{ background: '#161b22', borderRadius: '12px', padding: '24px', marginBottom: '16px' }}>
+      <h2 style={{ marginTop: 0 }}>Feature controls</h2>
+      <p style={{ color: '#adb5c0', fontSize: '13px' }}>Turn photo Stories on or off for everyone in FMCI Network.</p>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: storiesMutation.isPending ? 'wait' : 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={settings?.photoStoriesEnabled ?? true}
+          disabled={settingsLoading || !settings || storiesMutation.isPending}
+          onChange={event => storiesMutation.mutate(event.target.checked)}
+          aria-label="Enable photo Stories for all members"
+        />
+        <span>{settings?.photoStoriesEnabled === false ? 'Photo Stories are off' : 'Photo Stories are on'}</span>
+      </label>
+      {(settingsError || storiesMutation.isError) && <p role="alert" style={{ color: '#fca5a5' }}>Unable to update this setting. Please try again.</p>}
+      {storiesMutation.isSuccess && <p role="status" style={{ color: '#86efac' }}>Story setting saved.</p>}
+    </section>}
     <section style={{ background: '#161b22', borderRadius: '12px', padding: '24px' }}>
       <h2 style={{ marginTop: 0 }}>Registration &amp; Access</h2>
       <p>FMCI Network is invite only. Existing members can continue to sign in.</p>

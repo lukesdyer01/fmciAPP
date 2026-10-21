@@ -7,8 +7,8 @@ export interface Story {
 }
 export interface StoryViewer { id: string; name: string; reaction: StoryReaction | null }
 export const storyKeys = { all: ['stories'] as const }
-export function useStories(userId: string | undefined) {
-  return useQuery({ queryKey: [...storyKeys.all, userId], queryFn: () => api<Story[]>('/stories'), enabled: !!userId, refetchInterval: 30_000 })
+export function useStories(userId: string | undefined, featureEnabled = true) {
+  return useQuery({ queryKey: [...storyKeys.all, userId], queryFn: () => api<Story[]>('/stories'), enabled: !!userId && featureEnabled, refetchInterval: 30_000 })
 }
 export async function publishStory(id: string, photo: Blob, caption: string) {
   await api('/stories/uploads', { method: 'POST', body: JSON.stringify({ id }) })

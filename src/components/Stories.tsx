@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../providers/AuthProvider'
 import { api } from '../api-client/server'
+import { useNetworkSettings } from '../api-client/features'
 import { publishStory, storyKeys, useStories, type Story, type StoryReaction, type StoryViewer } from '../api-client/stories'
 import { prepareStoryPhoto } from '../lib/storyPhoto'
 import { useBlockMember } from '../api-client/moderation'
@@ -185,7 +186,8 @@ function StoryPlayer({ stories, startId, userId, onClose }: { stories: Story[]; 
 }
 export default function Stories() {
   const { currentUser } = useAuth()
-  const { data = [], isError, refetch } = useStories(currentUser?.id)
+  const { data: settings } = useNetworkSettings(!!currentUser)
+  const { data = [], isError, refetch } = useStories(currentUser?.id, settings?.photoStoriesEnabled !== false)
   const [now, setNow] = useState(Date.now())
   const [create, setCreate] = useState(false)
   const [playing, setPlaying] = useState<{ stories: Story[]; startId: string } | null>(null)
@@ -195,6 +197,7 @@ export default function Stories() {
   const authors = [...groups.values()].sort((a, b) => Number(b[0].authorId === currentUser?.id) - Number(a[0].authorId === currentUser?.id) || Number(a.every(s => s.seen)) - Number(b.every(s => s.seen)) || Date.parse(b[0].createdAt) - Date.parse(a[0].createdAt))
   const sequence = authors.flatMap(list => [...list].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)))
   const close = useCallback(() => setPlaying(null), [])
+  if (settings?.photoStoriesEnabled === false) return null
   return <section className="stories-section" aria-label="Photo Stories">
     <div className="stories-row"><button className="story-create-card" onClick={() => setCreate(true)}><span>＋</span>Create Story</button>{authors.map(list => {
       const author = list[0]

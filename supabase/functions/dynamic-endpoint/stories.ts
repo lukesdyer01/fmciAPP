@@ -3,6 +3,13 @@ import { jpegDimensions, stripJpegMetadata, STORY_MAX_BYTES } from './storyValid
 
 const uuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 export function registerStories(app: any, base: string, db: () => any, getUser: any, kv: any, role: any) {
+  const requireEnabled = async (c: any, next: () => Promise<void>) => {
+    if (await kv.get('photo_stories_enabled') === false) return c.json({error:'Photo Stories are currently disabled'},503);
+    await next();
+  };
+  app.use(`${base}/stories`, requireEnabled);
+  app.use(`${base}/stories/*`, requireEnabled);
+
   async function eligible(authorIds: string[]) {
     if (!authorIds.length) return new Map();
     const {data,error} = await db().rpc('story_member_summaries',{p_ids:[...new Set(authorIds)]});

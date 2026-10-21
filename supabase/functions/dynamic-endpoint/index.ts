@@ -2650,11 +2650,19 @@ app.post(`${BASE}/admin/users`, async (c) => {
 });
 
 // Registration is always invite-only; retired openRegistration values cannot reopen it.
-app.get(`${BASE}/settings`, (c) => c.json({ openRegistration: false, inviteOnly: true }));
+// Feature flags live server-side so the superadmin switch applies to every client.
+app.get(`${BASE}/settings`, async (c) => c.json({
+  openRegistration: false,
+  inviteOnly: true,
+  photoStoriesEnabled: (await kv.get("photo_stories_enabled")) !== false,
+}));
 app.put(`${BASE}/settings`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller || !["admin", "superadmin"].includes(caller.app_metadata?.role)) return c.json({ error: "Forbidden" }, 403);
-  return c.json({ openRegistration: false, inviteOnly: true });
+  if (!caller || caller.app_metadata?.role !== "superadmin") return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  if (typeof body.photoStoriesEnabled !== "boolean") return c.json({ error: "Invalid feature setting" }, 400);
+  await kv.set("photo_stories_enabled", body.photoStoriesEnabled);
+  return c.json({ openRegistration: false, inviteOnly: true, photoStoriesEnabled: body.photoStoriesEnabled });
 });
 
 // ── Analytics ────────────────────────────────────────────────────────────
