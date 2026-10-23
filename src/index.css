@@ -171,6 +171,13 @@ html[data-theme="dark"] #root {
   opacity: 1;
   transition: transform 180ms ease, opacity 180ms ease;
 }
+html[data-theme="dark"] .bottom-tab-bar {
+  --bottom-tab-active-color: #fff;
+  --bottom-tab-inactive-color: rgba(255,255,255,0.78);
+  --color-card: var(--color-navy);
+  background: var(--color-navy);
+  border-color: var(--color-navy);
+}
 .bottom-tab-bar-hidden {
   transform: translateY(calc(100% + 24px + var(--safe-bottom)));
   opacity: 0;

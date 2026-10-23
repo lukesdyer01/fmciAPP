@@ -144,7 +144,7 @@ export default function BottomTabBar() {
               justifyContent: 'center', gap: '2px', minHeight: '52px', padding: '6px 2px',
               border: 'none', background: 'none', cursor: 'pointer',
               fontFamily: 'var(--font-sans)',
-              color: active ? 'var(--color-navy)' : 'var(--color-text-3)',
+              color: active ? 'var(--bottom-tab-active-color, var(--color-navy))' : 'var(--bottom-tab-inactive-color, var(--color-text-3))',
               transition: 'color 0.15s',
             }}
           >
