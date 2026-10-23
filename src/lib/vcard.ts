@@ -31,17 +31,31 @@ async function getEmbeddedPhoto(url: string): Promise<EmbeddedPhoto | null> {
     const source = await response.blob()
     if (!source.type.startsWith('image/') || source.size > 8 * 1024 * 1024) return null
 
+    // Decode through a Blob URL and HTMLImageElement rather than
+    // createImageBitmap: some WKWebView versions display the avatar correctly
+    // but don't implement createImageBitmap, which would omit the embedded photo.
+    const sourceUrl = URL.createObjectURL(source)
+    let image: HTMLImageElement
+    try {
+      image = new Image()
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve()
+        image.onerror = () => reject(new Error('Could not decode the profile photo'))
+        image.src = sourceUrl
+      })
+    } finally {
+      URL.revokeObjectURL(sourceUrl)
+    }
+
     // Resizing keeps the contact file small while retaining enough detail for
     // the thumbnail used by contacts apps.
-    const bitmap = await createImageBitmap(source)
-    const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height))
+    const scale = Math.min(1, 320 / Math.max(image.naturalWidth, image.naturalHeight))
     const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
     const context = canvas.getContext('2d')
-    if (!context) { bitmap.close(); return null }
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    bitmap.close()
+    if (!context) return null
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
 
     const jpeg = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82))
     if (!jpeg) return null
