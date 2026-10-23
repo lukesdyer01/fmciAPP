@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { activeMention, matchesQuery, insertMention, mentionedUsers } from '../lib/mentions'
 import { findYouTubeLink } from '../lib/youtube'
 import { useUIStore } from '../store/ui'
@@ -96,6 +97,7 @@ interface Props {
 
 export default function PostComposer({ type = 'post', placeholder, fixedOrgId, wallUserId, wallUserName, hidePostAs, forcedVisibility }: Props) {
   const { currentUser } = useAuth()
+  const [composerOpen, setComposerOpen] = useState(false)
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [myOrgs, setMyOrgs] = useState<MyOrg[]>([])
@@ -119,6 +121,8 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
   const [mentionIndex, setMentionIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const launchRef = useRef<HTMLButtonElement>(null)
 
   // Facebook-style link detection: paste a YouTube URL anywhere in the post and
   // it becomes a player, with no separate control to find. Derived from the text
@@ -136,6 +140,38 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
     : []
   const userProfile = useUIStore(s => s.userProfile)
   const { mutate: createPost, isPending } = useCreatePost()
+
+  useEffect(() => {
+    if (!composerOpen) return
+    const previous = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const frame = requestAnimationFrame(() => textareaRef.current?.focus())
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault()
+        setComposerOpen(false)
+        setFocused(false)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled), input:not(:disabled):not([type="file"]), [tabindex="0"]') ?? [])]
+      if (!focusable.length) { event.preventDefault(); return }
+      if (event.shiftKey && (document.activeElement === focusable[0] || document.activeElement === dialogRef.current)) {
+        event.preventDefault(); focusable.at(-1)?.focus()
+      } else if (!event.shiftKey && document.activeElement === focusable.at(-1)) {
+        event.preventDefault(); focusable[0].focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      cancelAnimationFrame(frame)
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+      if (launchRef.current) launchRef.current.focus()
+      else previous?.focus()
+    }
+  }, [composerOpen])
 
   useEffect(() => {
     if (wallUserId || hidePostAs) return
@@ -286,21 +322,33 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
         setText(''); setImage(''); setDismissedVideoId(''); setCaret(0)
         setAnonymous(false); setTestimonyCategory(''); setTaggedUsers([])
         setVisibility('public'); setPin(false)
+        setComposerOpen(false); setFocused(false)
       },
     })
   }
 
   const selectedOrg = postAs !== 'self' ? myOrgs.find(o => o.id === postAs) : null
+  const avatar = userProfile.avatarUrl
+    ? <img src={userProfile.avatarUrl} alt="" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+    : <span aria-hidden="true" className="post-composer-avatar-fallback">{(userProfile.name || '?').slice(0, 2).toUpperCase()}</span>
+  const modalTitle = type === 'prayer' ? 'Create prayer request' : type === 'testimony' ? 'Share your testimony' : 'Create post'
 
   return (
-    <div style={{
-      backgroundColor: 'var(--color-card)',
-      borderRadius: 'var(--feed-item-radius)', marginBottom: 'var(--feed-item-gap)',
-      border: 'var(--feed-item-border)',
-      boxShadow: 'var(--feed-item-shadow)',
-      borderBottom: 'var(--feed-item-divider)',
-      overflow: 'hidden',
-    }}>
+    <>
+      <div className="post-composer-launcher">
+        {avatar}
+        <button ref={launchRef} type="button" onClick={() => setComposerOpen(true)}>
+          {text.trim() || image ? 'Continue your draft…' : selectedOrg ? `Share something on behalf of ${selectedOrg.name}…` : placeholder ?? 'Share a post, testimony, teaching, or prayer request with the network…'}
+        </button>
+      </div>
+      {composerOpen && createPortal(
+        <div className="post-composer-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) { setComposerOpen(false); setFocused(false) } }}>
+          <div ref={dialogRef} className="post-composer-modal" role="dialog" aria-modal="true" aria-labelledby="post-composer-title" tabIndex={-1}>
+            <header className="post-composer-modal-header">
+              <h2 id="post-composer-title">{modalTitle}</h2>
+              <button type="button" aria-label="Close post composer" onClick={() => { setComposerOpen(false); setFocused(false) }}>×</button>
+            </header>
+            <div className="post-composer-form">
       <div style={{ padding: '14px 16px' }}>
         {/* Post as selector */}
         {myOrgs.length > 0 && (
@@ -461,7 +509,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost()
               }}
               onPaste={onPaste}
-              rows={focused ? 3 : 1}
+              rows={3}
               style={{
                 // flex + minWidth:0 rather than width:100% — a flex child won't
                 // shrink below its content without it, which pushes the icon out
@@ -476,7 +524,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
             />
             {/* The photo control only appears once the composer is actually
                 open — a collapsed one-line box stays clean. */}
-            {type === 'post' && focused && (
+            {type === 'post' && composerOpen && (
               <>
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
@@ -639,7 +687,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
 
       {/* Post button — only while the composer is open, matching the photo
           control. A collapsed one-line box has no actions to discover. */}
-      {focused && (
+      {composerOpen && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
           <button
             onClick={handlePost}
@@ -655,6 +703,11 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
           >{isPending ? 'Posting…' : 'Post'}</button>
         </div>
       )}
-    </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }
