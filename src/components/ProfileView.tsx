@@ -9,6 +9,7 @@ import EditProfileModal from './EditProfileModal'
 import VerifiedBadge from './VerifiedBadge'
 import { openExternal } from '../lib/openExternal'
 import { useSwipeBack } from '../hooks/useSwipeBack'
+import { downloadVCard } from '../lib/vcard'
 
 export interface MemberProfile {
   id: string
@@ -103,19 +104,27 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
                 : <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '28px' }}>{(member.name || '?').slice(0, 2).toUpperCase()}</div>
               }
             </div>
-            {isOwnProfile ? (
-              <button onClick={() => setEditProfileOpen(true)} style={{
-                marginLeft: 'auto', padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
-                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
-                color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
-              }}>✏ Edit Profile</button>
-            ) : (
-              <button onClick={() => openMessagesWith(member.id)} style={{
-                marginLeft: 'auto', padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
-                border: 'none', backgroundColor: 'var(--color-navy)',
-                color: '#fff', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
-              }}>💬 Message</button>
-            )}
+            <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'stretch' }}>
+              {isOwnProfile ? (
+                <button onClick={() => setEditProfileOpen(true)} style={{
+                  padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
+                  border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text-1)', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                }}>✏ Edit Profile</button>
+              ) : (
+                <button onClick={() => openMessagesWith(member.id)} style={{
+                  padding: '9px 20px', borderRadius: '8px', cursor: 'pointer',
+                  border: 'none', backgroundColor: 'var(--color-navy)',
+                  color: '#fff', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                }}>💬 Message</button>
+              )}
+              <button onClick={() => downloadVCard(member)} style={{
+                padding: '9px 14px', borderRadius: '8px', cursor: 'pointer',
+                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)',
+                color: 'var(--color-text-1)', fontSize: '12px', fontWeight: 700, fontFamily: 'var(--font-sans)',
+                whiteSpace: 'nowrap',
+              }}>Save Contact Card</button>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: 'var(--color-text-1)' }}>{member.name}</h1>

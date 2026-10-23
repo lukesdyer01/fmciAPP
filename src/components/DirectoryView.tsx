@@ -6,6 +6,7 @@ import { api } from '../api-client/server'
 import { useOpenProfile } from './ProfileView'
 import { useUIStore } from '../store/ui'
 import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
+import { downloadVCard, type VCardContact } from '../lib/vcard'
 
 interface Member {
   id: string
@@ -19,67 +20,6 @@ interface Member {
   ministryRoles: string[]
   additionalRoles: string[]
   fmciLeadershipRole: string
-}
-
-interface MemberContact {
-  id: string
-  name: string
-  title: string
-  church: string
-  location: string
-  avatarUrl: string
-  bio: string
-  website: string
-  email: string
-  phone: string
-  ministryRoles: string[]
-  additionalRoles: string[]
-}
-
-function vCardEscape(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
-}
-
-function createVCard(contact: MemberContact): string {
-  const fullName = contact.name.trim()
-  const nameParts = fullName.split(/\s+/).filter(Boolean)
-  const familyName = nameParts.length > 1 ? nameParts.pop()! : ''
-  const givenName = nameParts.join(' ')
-  const lines = [
-    'BEGIN:VCARD',
-    'VERSION:3.0',
-    `N:${vCardEscape(familyName)};${vCardEscape(givenName)};;;`,
-    `FN:${vCardEscape(fullName)}`,
-  ]
-  if (contact.title) lines.push(`TITLE:${vCardEscape(contact.title)}`)
-  if (contact.church) lines.push(`ORG:${vCardEscape(contact.church)}`)
-  if (contact.email) lines.push(`EMAIL;TYPE=INTERNET:${vCardEscape(contact.email)}`)
-  if (contact.phone) lines.push(`TEL;TYPE=CELL,VOICE:${vCardEscape(contact.phone)}`)
-  if (contact.website) lines.push(`URL:${vCardEscape(contact.website)}`)
-  if (contact.location) lines.push(`LABEL;TYPE=WORK:${vCardEscape(contact.location)}`)
-  if (contact.avatarUrl) lines.push(`PHOTO;VALUE=URI:${vCardEscape(contact.avatarUrl)}`)
-  const notes = [
-    contact.bio,
-    contact.ministryRoles.length ? `Fivefold roles: ${contact.ministryRoles.join(', ')}` : '',
-    contact.additionalRoles.length ? `Additional roles: ${contact.additionalRoles.join(', ')}` : '',
-  ].filter(Boolean)
-  if (notes.length) lines.push(`NOTE:${vCardEscape(notes.join('\n\n'))}`)
-  lines.push('END:VCARD')
-  return `${lines.join('\r\n')}\r\n`
-}
-
-function downloadVCard(contact: MemberContact) {
-  const safeName = (contact.name || 'fmci-member')
-    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-|-$/g, '')
-  const blob = new Blob([createVCard(contact)], { type: 'text/vcard;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `${safeName || 'fmci-member'}.vcf`
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 const FMCI_LEADERSHIP_ROLES = ['Apostolic Leadership Team', 'Apostolic Council', 'Apostolic Team Leader']
@@ -116,7 +56,7 @@ export default function DirectoryView() {
     setDownloadingContactId(member.id)
     setContactError('')
     try {
-      const contact = await api<MemberContact>(`/members/${member.id}`)
+      const contact = await api<VCardContact>(`/members/${member.id}`)
       downloadVCard({ ...contact, ministryRoles: contact.ministryRoles ?? [], additionalRoles: contact.additionalRoles ?? [] })
     } catch (error: any) {
       setContactError(error.message ?? `Could not create a contact card for ${member.name}.`)
@@ -333,12 +273,12 @@ function MemberCard({ member, onOpen, onMessage, onSaveContact, savingContact }:
             background: 'none', color: 'var(--color-text-1)',
             fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
           }}>Message</button>
-          <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title="Download contact card" style={{
-            flex: 1, minWidth: 0, padding: '7px 4px', borderRadius: '8px', border: '1px solid var(--color-border)',
-            background: 'none', color: 'var(--color-text-1)', opacity: savingContact ? 0.6 : 1,
-            fontSize: '11px', fontWeight: 600, cursor: savingContact ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
-          }}>{savingContact ? 'Saving…' : 'Save .vcf'}</button>
         </div>
+        <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title="Download contact card" style={{
+          width: '100%', marginTop: '6px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)',
+          background: 'none', color: 'var(--color-text-1)', opacity: savingContact ? 0.6 : 1,
+          fontSize: '12px', fontWeight: 600, cursor: savingContact ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
+        }}>{savingContact ? 'Preparing…' : 'Save Contact Card'}</button>
       </div>
     </div>
   )
@@ -371,25 +311,27 @@ function MemberRow({ member, onOpen, onMessage, onSaveContact, savingContact }: 
           <div style={{ fontSize: '11px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.church}{member.location ? ` · ${member.location}` : ''}</div>
         )}
       </div>
-      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-        <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} title="View Profile" aria-label="View Profile" style={{
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} title="View Profile" aria-label="View Profile" style={{
           width: '40px', height: '40px', borderRadius: '50%', border: 'none',
           backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '16px',
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'var(--font-sans)',
-        }}>👤</button>
-        <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} title="Message" aria-label="Message" style={{
+          }}>👤</button>
+          <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} title="Message" aria-label="Message" style={{
           width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--color-border)',
           background: 'none', color: 'var(--color-text-1)', fontSize: '16px',
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'var(--font-sans)',
-        }}>💬</button>
-        <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title={savingContact ? 'Preparing contact card' : 'Download contact card'} aria-label={savingContact ? 'Preparing contact card' : 'Download contact card'} style={{
-          width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--color-border)',
-          background: 'none', color: 'var(--color-text-1)', fontSize: '16px', opacity: savingContact ? 0.6 : 1,
-          cursor: savingContact ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-sans)',
-        }}>{savingContact ? '…' : '📇'}</button>
+          }}>💬</button>
+        </div>
+        <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title={savingContact ? 'Preparing contact card' : 'Download contact card'} aria-label={savingContact ? 'Preparing contact card' : 'Save Contact Card'} style={{
+          minHeight: '36px', padding: '5px 8px', borderRadius: '8px', border: '1px solid var(--color-border)',
+          background: 'none', color: 'var(--color-text-1)', opacity: savingContact ? 0.6 : 1,
+          fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
+          cursor: savingContact ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
+        }}>{savingContact ? 'Preparing…' : 'Save Contact Card'}</button>
       </div>
     </div>
   )
