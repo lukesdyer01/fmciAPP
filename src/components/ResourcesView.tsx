@@ -42,7 +42,7 @@ const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   Course:  { bg: '#ECFDF5', color: '#047857' },
   Video:   { bg: '#FFF7ED', color: '#C2410C' },
   Article: { bg: '#F0F9FF', color: '#0369A1' },
-  Podcast: { bg: '#F5F3FF', color: '#6D28D9' },
+  Podcast: { bg: 'var(--color-purple-bg)', color: 'var(--color-purple)' },
 }
 
 function Stars({ rating }: { rating: number }) {

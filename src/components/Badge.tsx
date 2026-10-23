@@ -11,14 +11,14 @@ export type BadgeVariant =
 
 const CONFIG: Record<BadgeVariant, { label: string; bg: string; color: string; icon: string }> = {
   verified:    { label: 'Verified Member',         bg: '#EFF6FF', color: '#1D4ED8', icon: '✓' },
-  apostolic:   { label: 'Apostolic Council',       bg: '#F5F3FF', color: '#6D28D9', icon: '✦' },
+  apostolic:   { label: 'Apostolic Council',       bg: 'var(--color-purple-bg)', color: 'var(--color-purple)', icon: '✦' },
   leadership:  { label: 'FMCI Leadership',         bg: '#FBF5E6', color: '#92700A', icon: '★' },
   pastor:      { label: 'Verified Pastor',         bg: '#ECFDF5', color: '#047857', icon: '✝' },
   overseer:    { label: 'Regional Overseer',       bg: '#FFF7ED', color: '#C2410C', icon: '◈' },
   admin:       { label: 'FMCI Admin',              bg: '#FEF2F2', color: '#991B1B', icon: '⬡' },
   pending:     { label: 'Pending Verification',    bg: '#F9FAFB', color: '#6B7280', icon: '○' },
   church:      { label: 'Verified Church',         bg: '#EFF6FF', color: '#1D4ED8', icon: '⛪' },
-  ministry:    { label: 'Verified Ministry',       bg: '#F5F3FF', color: '#6D28D9', icon: '✦' },
+  ministry:    { label: 'Verified Ministry',       bg: 'var(--color-purple-bg)', color: 'var(--color-purple)', icon: '✦' },
 }
 
 interface Props {

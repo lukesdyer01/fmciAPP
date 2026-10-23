@@ -53,7 +53,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   owner:     { bg: 'rgba(200,155,60,0.12)',  color: 'var(--color-gold)' },
   admin:     { bg: 'rgba(96,165,250,0.12)',  color: '#60a5fa' },
-  moderator: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
+  moderator: { bg: 'color-mix(in srgb, var(--color-purple) 12%, transparent)', color: 'var(--color-purple)' },
   member:    { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' },
 }
 const LEADER_STYLE = { bg: 'rgba(200,155,60,0.16)', color: 'var(--color-gold)' }
@@ -507,7 +507,7 @@ export default function OrgsAdmin() {
         {[
           { label: 'Total Orgs',       value: orgs.length,                                   color: 'var(--color-gold)' },
           { label: 'Ministries',       value: orgs.filter(o => o.type !== 'church').length,  color: '#60a5fa' },
-          { label: 'Churches',         value: orgs.filter(o => o.type === 'church').length,   color: '#a78bfa' },
+          { label: 'Churches',         value: orgs.filter(o => o.type === 'church').length,   color: 'var(--color-purple)' },
           { label: 'Pending Approval', value: orgs.filter(o => o.status === 'pending').length, color: '#f59e0b' },
         ].map((s, i) => (
           <div key={i} style={{ backgroundColor: '#161b22', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>

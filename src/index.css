@@ -76,19 +76,20 @@ html, body, #root {
    ThemeProvider sets data-theme="dark" on <html> to activate this layer.
    The brand palette (navy, gold) stays the same in both themes.            */
 [data-theme="dark"] {
-  --color-surface:      #120e1c;
-  --color-card:         #1b1529;
-  --color-border:       #322a49;
-  --color-border-light: #241d38;
-  --color-hover:        #251d3a;
-  --color-text-1:       #f6f3fb;
-  --color-text-2:       #ada6c8;
-  --color-text-3:       #7d7398;
+  --color-surface:      #18191a;
+  --color-card:         #242526;
+  --color-border:       #3e4042;
+  --color-border-light: #303132;
+  --color-hover:        #3a3b3c;
+  --color-text-1:       #e4e6eb;
+  --color-text-2:       #b0b3b8;
+  --color-text-3:       #8a8d91;
   --color-gold-bg:      #181008;
   --color-gold-border:  #3a2a08;
-  --color-blue-bg:      #14163a;
-  --color-green-bg:     #0b1a12;
-  --color-purple-bg:    #241a42;
+  --color-blue-bg:      #263951;
+  --color-green-bg:     #263a30;
+  --color-purple:       #b0b3b8;
+  --color-purple-bg:    #3a3b3c;
 }
 
 html[data-theme="dark"],

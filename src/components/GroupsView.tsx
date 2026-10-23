@@ -48,7 +48,7 @@ const TYPE_STYLE: Record<Group['type'], { color: string; bg: string }> = {
   'Leadership-Only': { color: '#92700A', bg: '#FBF5E6' },
   'Private':         { color: '#1D4ED8', bg: '#EFF6FF' },
   'Public':          { color: '#047857', bg: '#ECFDF5' },
-  'Invite-Only':     { color: '#6D28D9', bg: '#F5F3FF' },
+  'Invite-Only':     { color: 'var(--color-purple)', bg: 'var(--color-purple-bg)' },
 }
 
 function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBack: () => void; onLeft: () => void; onUpdated: () => void }) {

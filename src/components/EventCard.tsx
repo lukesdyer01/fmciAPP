@@ -40,7 +40,7 @@ export interface EventItem {
 
 export const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
   'Conference':         { color: '#1D4ED8', bg: '#EFF6FF' },
-  'Prayer Call':        { color: '#6D28D9', bg: '#F5F3FF' },
+  'Prayer Call':        { color: 'var(--color-purple)', bg: 'var(--color-purple-bg)' },
   'Teaching':           { color: '#92700A', bg: '#FBF5E6' },
   'Leadership Meeting': { color: '#C2410C', bg: '#FFF7ED' },
   'Gathering':          { color: '#047857', bg: '#ECFDF5' },

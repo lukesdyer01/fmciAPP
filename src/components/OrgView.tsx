@@ -58,14 +58,14 @@ export function typeLabel(type: string): string {
 export const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   owner:     { bg: 'rgba(200,155,60,0.1)',   color: 'var(--color-gold)' },
   admin:     { bg: 'rgba(96,165,250,0.1)',   color: '#60a5fa' },
-  moderator: { bg: 'rgba(167,139,250,0.1)', color: '#a78bfa' },
+  moderator: { bg: 'color-mix(in srgb, var(--color-purple) 10%, transparent)', color: 'var(--color-purple)' },
   member:    { bg: 'var(--color-surface)',   color: 'var(--color-text-2)' },
 }
 
 const TYPE_STYLE: Record<string, { bg: string; color: string }> = {
   church:        { bg: '#EEF4FF', color: '#3552D6' },
   network:       { bg: 'var(--color-gold-bg)', color: 'var(--color-gold)' },
-  ministry:      { bg: '#F5F3FF', color: '#6d28d9' },
+  ministry:      { bg: 'var(--color-purple-bg)', color: 'var(--color-purple)' },
   bible_college: { bg: '#ECFDF5', color: '#047857' },
   school:        { bg: '#FFF7ED', color: '#c2410c' },
   nonprofit:     { bg: '#FDF2F8', color: '#be185d' },

@@ -52,7 +52,7 @@ export interface Post {
 const TYPE_STYLE: Record<Post['type'], { label: string; color: string; bg: string }> = {
   post:         { label: 'Post',         color: 'var(--color-text-2)', bg: 'var(--color-surface)' },
   testimony:    { label: 'Testimony',    color: '#047857',             bg: '#ECFDF5' },
-  prayer:       { label: 'Prayer',       color: '#6D28D9',             bg: '#F5F3FF' },
+  prayer:       { label: 'Prayer',       color: 'var(--color-purple)', bg: 'var(--color-purple-bg)' },
   announcement: { label: 'Announcement', color: '#92700A',             bg: '#FBF5E6' },
   resource:     { label: 'Resource',     color: '#1D4ED8',             bg: '#EFF6FF' },
 }
@@ -61,7 +61,7 @@ export const TESTIMONY_CATEGORY_STYLE: Record<string, { label: string; icon: str
   healing:     { label: 'Healing',     icon: '🩹', color: '#B91C1C', bg: '#FEF2F2' },
   provision:   { label: 'Provision',   icon: '🍞', color: '#92700A', bg: '#FBF5E6' },
   salvation:   { label: 'Salvation',   icon: '✝️', color: '#047857', bg: '#ECFDF5' },
-  deliverance: { label: 'Deliverance', icon: '🕊️', color: '#6D28D9', bg: '#F5F3FF' },
+  deliverance: { label: 'Deliverance', icon: '🕊️', color: 'var(--color-purple)', bg: 'var(--color-purple-bg)' },
   other:       { label: 'Other',       icon: '✨', color: '#1D4ED8', bg: '#EFF6FF' },
 }
 

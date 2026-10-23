@@ -226,7 +226,7 @@ export default function EventsAdmin() {
         {[
           { label: 'Total Events',    value: events.length,                                            color: 'var(--color-gold)' },
           { label: 'FMCI Official',   value: events.filter(e => e.official).length,                     color: '#60a5fa' },
-          { label: 'Ministry Events', value: events.filter(e => !!e.orgId).length,                       color: '#a78bfa' },
+          { label: 'Ministry Events', value: events.filter(e => !!e.orgId).length,                       color: 'var(--color-purple)' },
           { label: 'Total RSVPs',     value: events.reduce((sum, e) => sum + (e.attending ?? 0), 0),     color: '#22c55e' },
         ].map((s, i) => (
           <div key={i} style={{ backgroundColor: '#161b22', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>

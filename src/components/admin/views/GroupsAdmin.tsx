@@ -21,7 +21,7 @@ const GROUP_TYPES: Group['type'][] = ['Public', 'Private', 'Invite-Only', 'Leade
 const TYPE_STYLE: Record<Group['type'], { bg: string; color: string }> = {
   'Public':          { bg: 'rgba(34,197,94,0.12)',  color: '#22c55e' },
   'Private':         { bg: 'rgba(96,165,250,0.12)', color: '#60a5fa' },
-  'Invite-Only':     { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
+  'Invite-Only':     { bg: 'color-mix(in srgb, var(--color-purple) 12%, transparent)', color: 'var(--color-purple)' },
   'Leadership-Only': { bg: 'rgba(200,155,60,0.12)', color: 'var(--color-gold)' },
 }
 
@@ -255,7 +255,7 @@ export default function GroupsAdmin() {
           { label: 'Total Groups',      value: groups.length,                                              color: 'var(--color-gold)' },
           { label: 'Public',            value: groups.filter(g => g.type === 'Public').length,              color: '#22c55e' },
           { label: 'Private / Invite',  value: groups.filter(g => g.type === 'Private' || g.type === 'Invite-Only').length, color: '#60a5fa' },
-          { label: 'Leadership-Only',   value: groups.filter(g => g.type === 'Leadership-Only').length,     color: '#a78bfa' },
+          { label: 'Leadership-Only',   value: groups.filter(g => g.type === 'Leadership-Only').length,     color: 'var(--color-purple)' },
         ].map((s, i) => (
           <div key={i} style={{ backgroundColor: '#161b22', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>
             <div style={{ fontSize: '26px', fontWeight: 900, color: s.color, marginBottom: '4px' }}>{s.value}</div>

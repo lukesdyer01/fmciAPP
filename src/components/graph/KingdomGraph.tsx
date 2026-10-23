@@ -21,7 +21,7 @@ const NODE_COLORS: Record<string, string> = {
   scripture:      'var(--color-brand-gold)',
   course:         '#F97316',
   group:          '#06B6D4',
-  podcast:        '#6366F1',
+  podcast:        'var(--color-purple)',
 }
 
 const NODE_ICONS: Record<string, string> = {

@@ -79,7 +79,7 @@ function SummaryPanels({ summary }: { summary: AnalyticsSummary }) {
       <div className="grid-stats-4" style={{ marginBottom: '20px' }}>
         <StatCard label="Sessions" value={summary.totals.sessions} color="var(--color-gold)" />
         <StatCard label="Page Views" value={summary.totals.pageViews} color="#60a5fa" />
-        <StatCard label="Unique Visitors" value={summary.totals.uniqueVisitors} color="#a78bfa" />
+        <StatCard label="Unique Visitors" value={summary.totals.uniqueVisitors} color="var(--color-purple)" />
         <StatCard label="Avg. Time on Site" value={`${summary.totals.avgSessionMinutes}m`} color="#34d399" />
       </div>
 
@@ -101,7 +101,7 @@ function SummaryPanels({ summary }: { summary: AnalyticsSummary }) {
 
       <div className="grid-2-lg" style={{ marginBottom: '20px' }}>
         <BarList title="Device" rows={deviceRows} color="#60a5fa" />
-        <BarList title="Browser" rows={summary.byBrowser} color="#a78bfa" />
+      <BarList title="Browser" rows={summary.byBrowser} color="var(--color-purple)" />
         <BarList title="Operating System" rows={summary.byOS} color="#34d399" />
         <BarList title="Country" rows={summary.byCountry} color="var(--color-gold)" />
       </div>

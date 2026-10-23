@@ -48,7 +48,7 @@ export default function ResourcesAdmin() {
         {[
           { label: 'Total Resources', value: resources.length, color: 'var(--color-gold)' },
           { label: 'Published as FMCI', value: resources.filter(r => !r.createdBy).length, color: '#60a5fa' },
-          { label: 'FMCI Recommended', value: resources.filter(r => r.recommended).length, color: '#a78bfa' },
+          { label: 'FMCI Recommended', value: resources.filter(r => r.recommended).length, color: 'var(--color-purple)' },
           { label: 'Total Reviews', value: resources.reduce((sum, r) => sum + (r.reviews ?? 0), 0), color: '#22c55e' },
         ].map((s, i) => (
           <div key={i} style={{ backgroundColor: '#161b22', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px' }}>
