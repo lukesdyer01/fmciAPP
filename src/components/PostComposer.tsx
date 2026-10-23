@@ -98,6 +98,7 @@ interface Props {
 export default function PostComposer({ type = 'post', placeholder, fixedOrgId, wallUserId, wallUserName, hidePostAs, forcedVisibility }: Props) {
   const { currentUser } = useAuth()
   const [composerOpen, setComposerOpen] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [myOrgs, setMyOrgs] = useState<MyOrg[]>([])
@@ -261,6 +262,21 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
     setCaret(nextCaret)
     setMentionIndex(0)
     if (activeMention(next, nextCaret)) loadTaggableMembers()
+  }
+
+  function insertEmoji(emoji: string) {
+    const textarea = textareaRef.current
+    const start = textarea?.selectionStart ?? text.length
+    const end = textarea?.selectionEnd ?? start
+    const next = `${text.slice(0, start)}${emoji}${text.slice(end)}`
+    const nextCaret = start + emoji.length
+    setText(next)
+    setCaret(nextCaret)
+    setShowEmojiPicker(false)
+    requestAnimationFrame(() => {
+      textarea?.focus()
+      textarea?.setSelectionRange(nextCaret, nextCaret)
+    })
   }
 
   function chooseMention(member: TaggableMember) {
@@ -485,7 +501,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
               ref={textareaRef}
               placeholder={selectedOrg
                 ? `Share something on behalf of ${selectedOrg.name}…`
-                : placeholder ?? 'Share a post, testimony, teaching, or prayer request with the network…'
+                : placeholder ?? (type === 'post' ? `What's on your mind, ${(userProfile.name || 'there').split(' ')[0]}?` : `Share your ${type}…`)
               }
               value={text}
               onChange={e => onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
@@ -517,53 +533,13 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
                 // button line up.
                 flex: 1, minWidth: 0, padding: 0, margin: 0,
                 background: 'none', border: 'none', outline: 'none',
-                fontSize: '15px', fontFamily: 'var(--font-sans)',
+                fontSize: '24px', fontFamily: 'var(--font-sans)',
                 color: text ? 'var(--color-text-1)' : 'var(--color-text-3)',
-                resize: 'none', lineHeight: 1.6,
+                resize: 'none', lineHeight: 1.5,
               }}
             />
-            {/* The photo control only appears once the composer is actually
-                open — a collapsed one-line box stays clean. */}
-            {type === 'post' && composerOpen && (
-              <>
-                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploadingImage}
-                  aria-label={uploadingImage ? 'Uploading photo' : 'Add photo'}
-                  aria-busy={uploadingImage}
-                  title={uploadingImage ? 'Uploading…' : 'Add photo'}
-                  style={{
-                    flexShrink: 0,
-                    // Thumb-sized, then pulled back into the container's own
-                    // padding so a 36px tap target costs no extra height and the
-                    // one-line composer stays exactly as tall as it was.
-                    width: '36px', height: '36px', margin: '-6px -8px -6px 0',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: 0, borderRadius: '50%', border: 'none', background: 'none',
-                    cursor: uploadingImage ? 'default' : 'pointer',
-                    fontSize: '18px', lineHeight: 1,
-                    opacity: uploadingImage ? 0.5 : 1,
-                    transition: 'background 0.15s, opacity 0.15s',
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
-                  onMouseEnter={e => { if (!uploadingImage) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-                >{uploadingImage ? '⏳' : '📷'}</button>
-              </>
-            )}
           </div>
         </div>
-
-        {uploadingImage && !image && (
-          <div style={{
-            marginTop: '12px', borderRadius: '10px', padding: '18px',
-            backgroundColor: 'var(--color-surface)', textAlign: 'center',
-            fontSize: '13px', fontWeight: 600, color: 'var(--color-text-3)',
-          }}>Uploading photo…</div>
-        )}
 
         {/* Image preview */}
         {image && (
@@ -688,8 +664,34 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       {/* Post button — only while the composer is open, matching the photo
           control. A collapsed one-line box has no actions to discover. */}
       {composerOpen && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 12px 12px', flexWrap: 'wrap' }}>
+        <div className="post-composer-footer">
+          {showEmojiPicker && (
+            <div className="post-composer-emoji-picker" role="group" aria-label="Choose an emoji">
+              {['😀', '😂', '🥰', '🙏', '❤️', '👏', '🎉', '✨', '🙌', '👍', '😢', '🔥'].map(emoji => (
+                <button key={emoji} type="button" onClick={() => insertEmoji(emoji)} aria-label={`Insert ${emoji}`}>
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="post-composer-add-row">
+            <strong>Add to your post</strong>
+            {type === 'post' && (
+              <>
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
+                <button type="button" className="post-composer-tool photo" onClick={() => fileRef.current?.click()} disabled={uploadingImage} aria-label="Add photo" title="Add photo">
+                  <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg>
+                </button>
+              </>
+            )}
+            <button type="button" className="post-composer-tool emoji" onClick={() => setShowEmojiPicker(open => !open)} aria-label="Add emoji" aria-expanded={showEmojiPicker} title="Add emoji">
+              <span aria-hidden="true">☺</span>
+            </button>
+            {uploadingImage && <span className="post-composer-uploading">Uploading photo…</span>}
+          </div>
           <button
+            className="post-composer-submit"
             onClick={handlePost}
             disabled={(!text.trim() && !image) || isPending}
             style={{
