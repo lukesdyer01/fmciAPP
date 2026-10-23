@@ -57,7 +57,7 @@ export default function DirectoryView() {
     setContactError('')
     try {
       const contact = await api<VCardContact>(`/members/${member.id}`)
-      downloadVCard({ ...contact, ministryRoles: contact.ministryRoles ?? [], additionalRoles: contact.additionalRoles ?? [] })
+      await downloadVCard({ ...contact, ministryRoles: contact.ministryRoles ?? [], additionalRoles: contact.additionalRoles ?? [] })
     } catch (error: any) {
       setContactError(error.message ?? `Could not create a contact card for ${member.name}.`)
     } finally {

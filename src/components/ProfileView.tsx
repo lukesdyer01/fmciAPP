@@ -118,7 +118,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
                   color: '#fff', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
                 }}>💬 Message</button>
               )}
-              <button onClick={() => downloadVCard(member)} style={{
+              <button onClick={() => { void downloadVCard(member) }} style={{
                 padding: '9px 14px', borderRadius: '8px', cursor: 'pointer',
                 border: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)',
                 color: 'var(--color-text-1)', fontSize: '12px', fontWeight: 700, fontFamily: 'var(--font-sans)',
