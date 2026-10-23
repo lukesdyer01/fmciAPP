@@ -20,6 +20,15 @@ interface UserActivity {
   lastSeenAt: string
 }
 
+interface ActiveSiteUser {
+  userId: string
+  name: string
+  avatarUrl: string
+  title: string
+  church: string
+  lastActiveAt: string
+}
+
 const CARD_STYLE: React.CSSProperties = {
   backgroundColor: '#161b22', borderRadius: '12px',
   border: '1px solid rgba(255,255,255,0.06)', padding: '18px 20px',
@@ -31,6 +40,68 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
       <div style={{ fontSize: '26px', fontWeight: 900, color, marginBottom: '4px' }}>{value}</div>
       <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px' }}>{label}</div>
     </div>
+  )
+}
+
+function ActiveNowPanel() {
+  const [users, setUsers] = useState<ActiveSiteUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let mounted = true
+    const refresh = () => {
+      api<ActiveSiteUser[]>('/analytics/active-users')
+        .then(rows => { if (mounted) { setUsers(rows); setError('') } })
+        .catch(e => { if (mounted) setError(e.message ?? 'Unable to load active users') })
+        .finally(() => { if (mounted) setLoading(false) })
+    }
+    refresh()
+    const timer = window.setInterval(refresh, 30_000)
+    return () => { mounted = false; window.clearInterval(timer) }
+  }, [])
+
+  return (
+    <section aria-labelledby="active-now-title" style={{ ...CARD_STYLE, marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+        <span aria-hidden="true" style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#31c46c', boxShadow: '0 0 0 4px rgba(49,196,108,0.12)' }} />
+        <h2 id="active-now-title" style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#e6edf3' }}>Active now</h2>
+        <span style={{ padding: '2px 8px', borderRadius: '12px', background: 'rgba(49,196,108,0.12)', color: '#55d887', fontSize: '12px', fontWeight: 800 }}>{users.length}</span>
+        <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.35)', fontSize: '11px' }}>Refreshes every 30 seconds</span>
+      </div>
+      <p style={{ margin: '0 0 14px 19px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Members with activity in the last five minutes</p>
+      {error && users.length === 0 && !loading ? (
+        <div role="alert" style={{ color: '#f87171', fontSize: '13px' }}>{error}</div>
+      ) : loading ? (
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>Checking who’s online…</div>
+      ) : users.length === 0 ? (
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>No members are active right now.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '8px' }}>
+          {users.map(user => {
+            const elapsedMinutes = Math.floor((Date.now() - new Date(user.lastActiveAt).getTime()) / 60_000)
+            const activity = elapsedMinutes < 1 ? 'Just now' : `${elapsedMinutes} min ago`
+            return (
+              <div key={user.userId} style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, padding: '9px', borderRadius: '9px', background: 'rgba(255,255,255,0.035)' }}>
+                <span style={{ position: 'relative', flexShrink: 0 }}>
+                  {user.avatarUrl
+                    ? <img src={user.avatarUrl} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
+                    : <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', width: '36px', height: '36px', borderRadius: '50%', background: '#303b4c', color: '#fff', fontSize: '11px', fontWeight: 800 }}>{(user.name || '?').slice(0, 2).toUpperCase()}</span>
+                  }
+                  <span aria-label="Online" style={{ position: 'absolute', right: '-1px', bottom: '-1px', width: '11px', height: '11px', borderRadius: '50%', border: '2px solid #161b22', background: '#31c46c' }} />
+                </span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'block', overflow: 'hidden', color: '#e6edf3', fontSize: '13px', fontWeight: 700, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</span>
+                  <span style={{ display: 'block', overflow: 'hidden', color: 'rgba(255,255,255,0.42)', fontSize: '11px', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[user.title, user.church].filter(Boolean).join(' · ') || activity}</span>
+                </span>
+                <time dateTime={user.lastActiveAt} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>{activity}</time>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {error && users.length > 0 && <div role="status" style={{ marginTop: '8px', color: '#fca5a5', fontSize: '11px' }}>Couldn’t refresh the list; showing the last results.</div>}
+    </section>
   )
 }
 
@@ -209,6 +280,7 @@ export default function AnalyticsAdmin() {
 
   return (
     <div>
+      <ActiveNowPanel />
       <SummaryPanels summary={summary} />
       <div style={{ marginTop: '20px' }}>
         <UserActivityTable users={users} onSelect={setSelectedUser} />

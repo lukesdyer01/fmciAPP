@@ -2769,6 +2769,34 @@ app.post(`${BASE}/analytics/heartbeat`, async (c) => {
   return c.json({ ok: true });
 });
 
+// Admin-only snapshot of signed-in members currently using the site. Presence
+// comes from the app heartbeat and expires after five minutes.
+app.get(`${BASE}/analytics/active-users`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller) return c.json({ error: "Must be signed in" }, 401);
+  if (!["superadmin", "admin"].includes(callerRole(caller))) return c.json({ error: "Forbidden" }, 403);
+
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  const users = await listAuthUsers();
+  const active = users
+    .map((u: any) => ({ u, lastActiveAt: u.user_metadata?.lastActiveAt }))
+    .filter(({ u, lastActiveAt }: any) => {
+      const lastActiveMs = lastActiveAt ? new Date(lastActiveAt).getTime() : 0;
+      return !!u.confirmed_at && u.user_metadata?.status !== "suspended" && lastActiveMs > cutoff;
+    })
+    .sort((a: any, b: any) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime())
+    .map(({ u, lastActiveAt }: any) => ({
+      userId: u.id,
+      name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "Unknown",
+      avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
+      title: u.user_metadata?.title ?? "",
+      church: u.user_metadata?.church ?? "",
+      lastActiveAt,
+    }));
+
+  return c.json(active);
+});
+
 // Shared by GET /analytics/summary (network-wide, or scoped to one user via
 // ?userId=) — factored out so per-user analytics reuses the exact same
 // aggregation instead of a parallel implementation drifting out of sync.
