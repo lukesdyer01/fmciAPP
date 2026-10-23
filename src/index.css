@@ -444,6 +444,7 @@ html[data-theme="dark"] .bottom-tab-bar {
   outline: none;
   width: 100%;
 }
+.directory-contact-icon { display: none; }
 @media (max-width: 768px) {
   .directory-filters {
     grid-template-columns: 1fr 1fr;
@@ -452,6 +453,9 @@ html[data-theme="dark"] .bottom-tab-bar {
     font-size: 12px;
     padding: 6px 10px;
   }
+  .directory-list-contact { width: 36px; min-width: 36px; height: 36px; padding: 0 !important; display: grid; place-items: center; }
+  .directory-contact-label { display: none; }
+  .directory-contact-icon { display: inline; font-size: 17px; line-height: 1; }
 }
 
 /* Photo Stories */

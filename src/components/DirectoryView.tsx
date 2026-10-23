@@ -326,12 +326,12 @@ function MemberRow({ member, onOpen, onMessage, onSaveContact, savingContact }: 
           fontFamily: 'var(--font-sans)',
           }}>💬</button>
         </div>
-        <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title={savingContact ? 'Preparing contact card' : 'Download contact card'} aria-label={savingContact ? 'Preparing contact card' : 'Save Contact Card'} style={{
+        <button className="directory-list-contact" onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title={savingContact ? 'Preparing contact card' : 'Download contact card'} aria-label={savingContact ? 'Preparing contact card' : 'Save Contact Card'} style={{
           minHeight: '36px', padding: '5px 8px', borderRadius: '8px', border: '1px solid var(--color-border)',
           background: 'none', color: 'var(--color-text-1)', opacity: savingContact ? 0.6 : 1,
           fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
           cursor: savingContact ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
-        }}>{savingContact ? 'Preparing…' : 'Save Contact Card'}</button>
+        }}><span className="directory-contact-label">{savingContact ? 'Preparing…' : 'Save Contact Card'}</span><span className="directory-contact-icon" aria-hidden="true">{savingContact ? '…' : '📇'}</span></button>
       </div>
     </div>
   )
