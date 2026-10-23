@@ -21,6 +21,67 @@ interface Member {
   fmciLeadershipRole: string
 }
 
+interface MemberContact {
+  id: string
+  name: string
+  title: string
+  church: string
+  location: string
+  avatarUrl: string
+  bio: string
+  website: string
+  email: string
+  phone: string
+  ministryRoles: string[]
+  additionalRoles: string[]
+}
+
+function vCardEscape(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
+}
+
+function createVCard(contact: MemberContact): string {
+  const fullName = contact.name.trim()
+  const nameParts = fullName.split(/\s+/).filter(Boolean)
+  const familyName = nameParts.length > 1 ? nameParts.pop()! : ''
+  const givenName = nameParts.join(' ')
+  const lines = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `N:${vCardEscape(familyName)};${vCardEscape(givenName)};;;`,
+    `FN:${vCardEscape(fullName)}`,
+  ]
+  if (contact.title) lines.push(`TITLE:${vCardEscape(contact.title)}`)
+  if (contact.church) lines.push(`ORG:${vCardEscape(contact.church)}`)
+  if (contact.email) lines.push(`EMAIL;TYPE=INTERNET:${vCardEscape(contact.email)}`)
+  if (contact.phone) lines.push(`TEL;TYPE=CELL,VOICE:${vCardEscape(contact.phone)}`)
+  if (contact.website) lines.push(`URL:${vCardEscape(contact.website)}`)
+  if (contact.location) lines.push(`LABEL;TYPE=WORK:${vCardEscape(contact.location)}`)
+  if (contact.avatarUrl) lines.push(`PHOTO;VALUE=URI:${vCardEscape(contact.avatarUrl)}`)
+  const notes = [
+    contact.bio,
+    contact.ministryRoles.length ? `Fivefold roles: ${contact.ministryRoles.join(', ')}` : '',
+    contact.additionalRoles.length ? `Additional roles: ${contact.additionalRoles.join(', ')}` : '',
+  ].filter(Boolean)
+  if (notes.length) lines.push(`NOTE:${vCardEscape(notes.join('\n\n'))}`)
+  lines.push('END:VCARD')
+  return `${lines.join('\r\n')}\r\n`
+}
+
+function downloadVCard(contact: MemberContact) {
+  const safeName = (contact.name || 'fmci-member')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-|-$/g, '')
+  const blob = new Blob([createVCard(contact)], { type: 'text/vcard;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `${safeName || 'fmci-member'}.vcf`
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 const FMCI_LEADERSHIP_ROLES = ['Apostolic Leadership Team', 'Apostolic Council', 'Apostolic Team Leader']
 const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', 'Europe', 'Asia', 'Latin America', 'Caribbean']
 
@@ -36,6 +97,8 @@ export default function DirectoryView() {
   const [view, setView] = useState<'grid' | 'list'>(() => (window.innerWidth <= 768 ? 'list' : 'grid'))
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
+  const [downloadingContactId, setDownloadingContactId] = useState('')
+  const [contactError, setContactError] = useState('')
 
   function loadMembers() {
     setLoading(true)
@@ -48,6 +111,19 @@ export default function DirectoryView() {
   useEffect(() => { loadMembers() }, [])
 
   const { refreshing, pulling, distance } = usePullToRefresh(loadMembers)
+
+  async function saveContact(member: Member) {
+    setDownloadingContactId(member.id)
+    setContactError('')
+    try {
+      const contact = await api<MemberContact>(`/members/${member.id}`)
+      downloadVCard({ ...contact, ministryRoles: contact.ministryRoles ?? [], additionalRoles: contact.additionalRoles ?? [] })
+    } catch (error: any) {
+      setContactError(error.message ?? `Could not create a contact card for ${member.name}.`)
+    } finally {
+      setDownloadingContactId('')
+    }
+  }
 
   const filtered = members.filter(m =>
     (search === '' ||
@@ -167,6 +243,7 @@ export default function DirectoryView() {
       <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '12px', paddingLeft: '4px' }}>
         Showing <strong>{filtered.length}</strong> verified members
       </div>
+      {contactError && <div role="alert" style={{ marginBottom: '12px', color: 'var(--color-red)', fontSize: '13px' }}>{contactError}</div>}
 
       {loading && (
         <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>
@@ -197,8 +274,8 @@ export default function DirectoryView() {
         }}>
           {filtered.map((member, i) => (
             view === 'grid'
-              ? <MemberCard key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} />
-              : <MemberRow key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} />
+              ? <MemberCard key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} onSaveContact={saveContact} savingContact={downloadingContactId === member.id} />
+              : <MemberRow key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} onSaveContact={saveContact} savingContact={downloadingContactId === member.id} />
           ))}
         </div>
       )}
@@ -206,7 +283,7 @@ export default function DirectoryView() {
   )
 }
 
-function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void }) {
+function MemberCard({ member, onOpen, onMessage, onSaveContact, savingContact }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void; onSaveContact: (member: Member) => void; savingContact: boolean }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
@@ -249,20 +326,25 @@ function MemberCard({ member, onOpen, onMessage }: { member: Member; onOpen: (id
           <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} style={{
             flex: 1, padding: '7px', borderRadius: '8px', border: 'none',
             backgroundColor: 'var(--color-navy)', color: '#fff',
-            fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-          }}>View Profile</button>
+            fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+          }}>View</button>
           <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} style={{
             flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--color-border)',
             background: 'none', color: 'var(--color-text-1)',
-            fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+            fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
           }}>Message</button>
+          <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title="Download contact card" style={{
+            flex: 1, minWidth: 0, padding: '7px 4px', borderRadius: '8px', border: '1px solid var(--color-border)',
+            background: 'none', color: 'var(--color-text-1)', opacity: savingContact ? 0.6 : 1,
+            fontSize: '11px', fontWeight: 600, cursor: savingContact ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
+          }}>{savingContact ? 'Saving…' : 'Save .vcf'}</button>
         </div>
       </div>
     </div>
   )
 }
 
-function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void }) {
+function MemberRow({ member, onOpen, onMessage, onSaveContact, savingContact }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void; onSaveContact: (member: Member) => void; savingContact: boolean }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '10px',
@@ -302,6 +384,12 @@ function MemberRow({ member, onOpen, onMessage }: { member: Member; onOpen: (id:
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'var(--font-sans)',
         }}>💬</button>
+        <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title={savingContact ? 'Preparing contact card' : 'Download contact card'} aria-label={savingContact ? 'Preparing contact card' : 'Download contact card'} style={{
+          width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--color-border)',
+          background: 'none', color: 'var(--color-text-1)', fontSize: '16px', opacity: savingContact ? 0.6 : 1,
+          cursor: savingContact ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-sans)',
+        }}>{savingContact ? '…' : '📇'}</button>
       </div>
     </div>
   )
