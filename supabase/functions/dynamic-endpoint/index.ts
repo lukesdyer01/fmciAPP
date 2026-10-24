@@ -2645,6 +2645,22 @@ async function createInvitation(c: Context, adminOnly: boolean) {
 app.post(`${BASE}/invitations`, c => createInvitation(c, false));
 app.post(`${BASE}/admin/invitations`, c => createInvitation(c, true));
 
+app.post(`${BASE}/admin/invitations/open`, async (c) => {
+  const caller = await getCallerUser(c.req.header("Authorization"));
+  if (!caller || caller.app_metadata?.role !== "superadmin") return c.json({ error: "Forbidden" }, 403);
+  const token = crypto.randomUUID() + crypto.randomUUID();
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+  const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
+  const { error } = await kvClient().from("network_registration_links").insert({
+    token_hash: tokenHash,
+    expires_at: expiresAt,
+    created_by: caller.id,
+  });
+  if (error) return c.json({ error: "Unable to create registration link" }, 500);
+  return c.json({ token, expiresAt });
+});
+
 // Preserve explicit admin-created accounts without signing the admin out.
 app.post(`${BASE}/admin/users`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));

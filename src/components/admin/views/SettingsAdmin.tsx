@@ -22,6 +22,7 @@ export default function SettingsAdmin() {
   })
   const [email, setEmail] = useState('')
   const [invitation, setInvitation] = useState<{ email: string; token: string; expiresAt: string } | null>(null)
+  const [openInvitation, setOpenInvitation] = useState<{ token: string; expiresAt: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   async function createInvitation(e: React.FormEvent) {
@@ -33,6 +34,16 @@ export default function SettingsAdmin() {
       setInvitation(await api('/admin/invitations', { method: 'POST', body: JSON.stringify({ email }) }))
     } catch {
       setError('Unable to create invitation. Check your admin access and try again.')
+    } finally { setBusy(false) }
+  }
+  async function createOpenInvitation() {
+    setBusy(true)
+    setError('')
+    setOpenInvitation(null)
+    try {
+      setOpenInvitation(await api('/admin/invitations/open', { method: 'POST', body: JSON.stringify({}) }))
+    } catch {
+      setError('Unable to create a registration link. Check your super admin access and try again.')
     } finally { setBusy(false) }
   }
   return <div style={{ maxWidth: '760px', color: '#e6edf3' }}>
@@ -55,7 +66,7 @@ export default function SettingsAdmin() {
     <section style={{ background: '#161b22', borderRadius: '12px', padding: '24px' }}>
       <h2 style={{ marginTop: 0 }}>Registration &amp; Access</h2>
       <p>FMCI Network is invite only. Existing members can continue to sign in.</p>
-      <p style={{ color: '#adb5c0', fontSize: '13px' }}>Members can invite people from Invite someone in the main navigation. Admins can also create or replace an invitation here. Links expire after seven days and can be used once. Creating another code for the same email replaces the previous invitation.</p>
+      <p style={{ color: '#adb5c0', fontSize: '13px' }}>Members can invite people from Invite someone in the main navigation. Admins can also create or replace an invitation here. Email-specific links expire after seven days and can be used once.</p>
       <form onSubmit={createInvitation} style={{ display: 'grid', gap: '12px' }}>
         <label htmlFor="invite-email">New member’s email</label>
         <input id="invite-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="member@church.org" style={{ padding: '12px', borderRadius: '8px', background: '#0d1117', color: '#fff', border: '1px solid #444' }} />
@@ -66,6 +77,16 @@ export default function SettingsAdmin() {
         <p>Invitation for {invitation.email} · Expires {new Date(invitation.expiresAt).toLocaleDateString()}</p>
         <textarea aria-label="Invitation message" readOnly rows={6} value={`You’re invited to FMCI Network! Use ${invitation.email} to join:\n\n${invitationLink(invitation)}`} style={{ width: '100%', padding: '12px', background: '#0d1117', color: '#fff', border: '1px solid #444', borderRadius: '8px', boxSizing: 'border-box' }} />
         <p style={{ fontSize: '12px', color: '#adb5c0' }}>Copy and share this message privately. The code is shown only here.</p>
+      </div>}
+      {isSuperAdmin && <div style={{ borderTop: '1px solid #30363d', marginTop: '24px', paddingTop: '20px' }}>
+        <h3 style={{ marginTop: 0 }}>General registration link</h3>
+        <p style={{ color: '#adb5c0', fontSize: '13px' }}>Create a link that does not require an email match. Anyone with it can register once within seven days.</p>
+        <button type="button" disabled={busy} onClick={createOpenInvitation} style={{ padding: '12px', borderRadius: '8px', background: 'var(--color-gold)', color: '#111', cursor: busy ? 'wait' : 'pointer', border: 0 }}>{busy ? 'Creating…' : 'Generate registration link'}</button>
+        {openInvitation && <div role="status" style={{ marginTop: '16px' }}>
+          <p>Link expires {new Date(openInvitation.expiresAt).toLocaleDateString()} · one registration</p>
+          <textarea aria-label="General registration link" readOnly rows={3} value={invitationLink(openInvitation)} onFocus={event => event.currentTarget.select()} style={{ width: '100%', padding: '12px', background: '#0d1117', color: '#fff', border: '1px solid #444', borderRadius: '8px', boxSizing: 'border-box' }} />
+          <p style={{ fontSize: '12px', color: '#adb5c0' }}>Share privately. The link grants one person access to create an account.</p>
+        </div>}
       </div>}
     </section>
   </div>

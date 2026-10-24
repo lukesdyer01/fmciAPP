@@ -97,7 +97,9 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
 
   const subtitles: Record<AuthMode, string> = {
     login: 'Sign in to access the FMCI Network',
-    signup: 'Membership is by invitation. Use the email address your invitation was issued to.',
+    signup: invitation?.email
+      ? 'Membership is by invitation. Use the email address your invitation was issued to.'
+      : 'Membership is by invitation. Enter the email address you want to use for your account.',
     forgot: "We'll send a reset link to your email",
   }
 
@@ -137,7 +139,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           <p style={{ margin: '0 0 28px', fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{subtitles[mode]}</p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {mode === 'signup' && <div><label htmlFor="invitation-code" style={{ display: 'block', color: '#fff', marginBottom: '6px', fontSize: '12px' }}>Invitation code</label><input id="invitation-code" value={inviteCode} onChange={e => setInviteCode(e.target.value)} required autoComplete="off" placeholder="Enter your invitation code" style={inputStyle} /></div>}
+            {mode === 'signup' && !invitation?.email && <div><label htmlFor="invitation-code" style={{ display: 'block', color: '#fff', marginBottom: '6px', fontSize: '12px' }}>Invitation code</label><input id="invitation-code" value={inviteCode} onChange={e => setInviteCode(e.target.value)} required autoComplete="off" placeholder="Enter your invitation code" style={inputStyle} /></div>}
             {mode === 'signup' && (
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</label>
