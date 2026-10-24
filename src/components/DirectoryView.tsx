@@ -260,7 +260,7 @@ function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) =>
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '10px',
       border: '1px solid var(--color-border)', padding: '10px 12px',
-      display: 'flex', alignItems: 'center', gap: '10px',
+      display: 'flex', alignItems: 'center', gap: '10px', width: '100%', maxWidth: '100%', minWidth: 0,
       cursor: 'pointer', transition: 'background 0.15s',
     }}
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--color-hover)' }}
@@ -282,11 +282,12 @@ function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) =>
           <div style={{ fontSize: '11px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.church}{member.location ? ` · ${member.location}` : ''}</div>
         )}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0, minWidth: 0, maxWidth: '100%' }}>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} title="View User" style={{
-          minHeight: '40px', padding: '0 12px', borderRadius: '8px', border: 'none',
-          backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '12px', fontWeight: 700,
+          minHeight: '40px', padding: '0 clamp(6px, 2vw, 12px)', borderRadius: '8px', border: 'none',
+          backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: 'clamp(10px, 3vw, 12px)', fontWeight: 700,
+          maxWidth: '100%',
           whiteSpace: 'nowrap', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'var(--font-sans)',
           }}>View User</button>
