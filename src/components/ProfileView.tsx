@@ -62,7 +62,6 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
     p.author && p.author.trim() !== '' &&
     ((p.wallUserId ?? p.authorId) === userId || (p.taggedUsers ?? []).some(t => t.id === userId))
   )
-  const firstName = member?.name.trim().split(/\s+/)[0] || ''
   const contactPhone = member?.phone.trim() || ''
   const contactEmail = member?.email.trim() || ''
 
@@ -204,6 +203,20 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
         </div>
       </div>
 
+      {!isOwnProfile && (contactPhone || contactEmail) && (
+        <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '8px', margin: '0 0 14px' }}>
+          {contactPhone && (
+            <>
+              <a href={`sms:${contactPhone}`} style={contactActionStyle}>💬 Text</a>
+              <a href={`tel:${contactPhone}`} style={contactActionStyle}>📞 Call</a>
+            </>
+          )}
+          {contactEmail && (
+            <a href={`mailto:${contactEmail}`} style={contactActionStyle}>✉️ Email</a>
+          )}
+        </div>
+      )}
+
       {/* Wall */}
       <PostComposer
         wallUserId={member.id}
@@ -222,20 +235,6 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
         <PostCard key={post.id} post={post as unknown as Post} />
       ))}
 
-      {!isOwnProfile && (contactPhone || contactEmail) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', margin: '18px 0 24px' }}>
-          {contactPhone && (
-            <>
-              <a href={`sms:${contactPhone}`} style={contactActionStyle}>💬 Text {firstName}</a>
-              <a href={`tel:${contactPhone}`} style={contactActionStyle}>📞 Call {firstName}</a>
-            </>
-          )}
-          {contactEmail && (
-            <a href={`mailto:${contactEmail}`} style={contactActionStyle}>✉️ Email {firstName}</a>
-          )}
-        </div>
-      )}
-
       {editProfileOpen && <EditProfileModal />}
     </div>
   )
@@ -246,12 +245,15 @@ const contactActionStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   gap: '7px',
-  padding: '11px 16px',
+  flex: '1 1 0',
+  minWidth: 0,
+  padding: '10px 8px',
   borderRadius: '10px',
   border: '1px solid var(--color-border)',
   backgroundColor: 'var(--color-card)',
   color: 'var(--color-text-1)',
-  fontSize: '14px',
+  fontSize: '13px',
+  whiteSpace: 'nowrap',
   fontWeight: 700,
   fontFamily: 'var(--font-sans)',
   textDecoration: 'none',
