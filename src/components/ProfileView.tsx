@@ -151,13 +151,24 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
             </div>
           )}
           {(member.ministryRoles.length > 0 || member.additionalRoles.length > 0) && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: member.bio ? '10px' : 0 }}>
-              {member.ministryRoles.map(role => (
-                <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', border: '1px solid var(--color-gold-border)' }}>{role}</span>
-              ))}
-              {member.additionalRoles.map(role => (
-                <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', border: '1px solid var(--color-blue)33' }}>{role}</span>
-              ))}
+            <div style={{ display: 'grid', gap: '10px', marginBottom: member.bio ? '10px' : 0 }}>
+              {member.ministryRoles.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {member.ministryRoles.map(role => (
+                    <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', border: '1px solid var(--color-gold-border)' }}>{role}</span>
+                  ))}
+                </div>
+              )}
+              {member.additionalRoles.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '6px' }}>Gifting</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {member.additionalRoles.map(role => (
+                      <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', border: '1px solid var(--color-blue)33' }}>{role}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {member.bio && (

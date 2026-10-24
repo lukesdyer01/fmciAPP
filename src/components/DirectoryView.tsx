@@ -4,9 +4,7 @@ import Badge, { type BadgeVariant } from './Badge'
 import VerifiedBadge from './VerifiedBadge'
 import { api } from '../api-client/server'
 import { useOpenProfile } from './ProfileView'
-import { useUIStore } from '../store/ui'
 import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
-import { downloadVCard, type VCardContact } from '../lib/vcard'
 
 interface Member {
   id: string
@@ -27,18 +25,15 @@ const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', '
 
 export default function DirectoryView() {
   const openProfile = useOpenProfile()
-  const openMessagesWith = useUIStore(s => s.openMessagesWith)
   const [leadershipFilter, setLeadershipFilter] = useState('All FMCI Leadership Roles')
   const [fiveFoldFilter, setFiveFoldFilter] = useState('All 5-Fold Roles')
   const [additionalFilter, setAdditionalFilter] = useState('All Additional Roles')
   const [region, setRegion] = useState('All Regions')
   const [search, setSearch] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [view, setView] = useState<'grid' | 'list'>(() => (window.innerWidth <= 768 ? 'list' : 'grid'))
+  const [view, setView] = useState<'grid' | 'list'>('list')
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
-  const [downloadingContactId, setDownloadingContactId] = useState('')
-  const [contactError, setContactError] = useState('')
 
   function loadMembers() {
     setLoading(true)
@@ -51,19 +46,6 @@ export default function DirectoryView() {
   useEffect(() => { loadMembers() }, [])
 
   const { refreshing, pulling, distance } = usePullToRefresh(loadMembers)
-
-  async function saveContact(member: Member) {
-    setDownloadingContactId(member.id)
-    setContactError('')
-    try {
-      const contact = await api<VCardContact>(`/members/${member.id}`)
-      await downloadVCard({ ...contact, ministryRoles: contact.ministryRoles ?? [], additionalRoles: contact.additionalRoles ?? [] })
-    } catch (error: any) {
-      setContactError(error.message ?? `Could not create a contact card for ${member.name}.`)
-    } finally {
-      setDownloadingContactId('')
-    }
-  }
 
   const filtered = members.filter(m =>
     (search === '' ||
@@ -183,7 +165,6 @@ export default function DirectoryView() {
       <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '12px', paddingLeft: '4px' }}>
         Showing <strong>{filtered.length}</strong> verified members
       </div>
-      {contactError && <div role="alert" style={{ marginBottom: '12px', color: 'var(--color-red)', fontSize: '13px' }}>{contactError}</div>}
 
       {loading && (
         <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>
@@ -214,8 +195,8 @@ export default function DirectoryView() {
         }}>
           {filtered.map((member, i) => (
             view === 'grid'
-              ? <MemberCard key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} onSaveContact={saveContact} savingContact={downloadingContactId === member.id} />
-              : <MemberRow key={i} member={member} onOpen={openProfile} onMessage={openMessagesWith} onSaveContact={saveContact} savingContact={downloadingContactId === member.id} />
+              ? <MemberCard key={i} member={member} onOpen={openProfile} />
+              : <MemberRow key={i} member={member} onOpen={openProfile} />
           ))}
         </div>
       )}
@@ -223,7 +204,7 @@ export default function DirectoryView() {
   )
 }
 
-function MemberCard({ member, onOpen, onMessage, onSaveContact, savingContact }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void; onSaveContact: (member: Member) => void; savingContact: boolean }) {
+function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
@@ -264,27 +245,17 @@ function MemberCard({ member, onOpen, onMessage, onSaveContact, savingContact }:
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} style={{
-            flex: 1, padding: '7px', borderRadius: '8px', border: 'none',
+            width: '100%', padding: '7px', borderRadius: '8px', border: 'none',
             backgroundColor: 'var(--color-navy)', color: '#fff',
             fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)',
           }}>View</button>
-          <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} style={{
-            flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--color-border)',
-            background: 'none', color: 'var(--color-text-1)',
-            fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-          }}>Message</button>
         </div>
-        <button onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title="Download contact card" style={{
-          width: '100%', marginTop: '6px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)',
-          background: 'none', color: 'var(--color-text-1)', opacity: savingContact ? 0.6 : 1,
-          fontSize: '12px', fontWeight: 600, cursor: savingContact ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
-        }}>{savingContact ? 'Preparing…' : 'Save Contact Card'}</button>
       </div>
     </div>
   )
 }
 
-function MemberRow({ member, onOpen, onMessage, onSaveContact, savingContact }: { member: Member; onOpen: (id: string) => void; onMessage: (id: string) => void; onSaveContact: (member: Member) => void; savingContact: boolean }) {
+function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '10px',
@@ -319,19 +290,7 @@ function MemberRow({ member, onOpen, onMessage, onSaveContact, savingContact }: 
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'var(--font-sans)',
           }}>👤</button>
-          <button onClick={e => { e.stopPropagation(); onMessage(member.id) }} title="Message" aria-label="Message" style={{
-          width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--color-border)',
-          background: 'none', color: 'var(--color-text-1)', fontSize: '16px',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-sans)',
-          }}>💬</button>
         </div>
-        <button className="directory-list-contact" onClick={e => { e.stopPropagation(); onSaveContact(member) }} disabled={savingContact} title={savingContact ? 'Preparing contact card' : 'Download contact card'} aria-label={savingContact ? 'Preparing contact card' : 'Save Contact Card'} style={{
-          minHeight: '36px', padding: '5px 8px', borderRadius: '8px', border: '1px solid var(--color-border)',
-          background: 'none', color: 'var(--color-text-1)', opacity: savingContact ? 0.6 : 1,
-          fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
-          cursor: savingContact ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
-        }}><span className="directory-contact-label">{savingContact ? 'Preparing…' : 'Save Contact Card'}</span><span className="directory-contact-icon" aria-hidden="true">{savingContact ? '…' : '📇'}</span></button>
       </div>
     </div>
   )

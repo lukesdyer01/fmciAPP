@@ -2,9 +2,9 @@
 // desktop sidebars take over). Five destinations, thumb-reachable, one tap.
 // Tapping the active tab scrolls to the top, the standard social-app behavior.
 //
-// Notifications and Messages are panels, not views — the bell opens the
-// full-window Notifications panel, the chat bubble opens the full-screen
-// Messages panel (and carries the unread badge). The header menu opens the
+// Messages are panels, not views — the chat bubble opens the full-screen
+// Messages panel (and carries the unread badge). Notifications are opened
+// from the mobile header. The header menu opens the
 // drawer containing secondary destinations. The bar hides while the keyboard
 // is up and while either
 // panel is full-screen, so it never fights those surfaces.
@@ -17,7 +17,7 @@ import { useConversations } from '../api-client/messages'
 import { useAutoHideNavigation } from '../hooks/useAutoHideNavigation'
 import type { ActiveView } from '../App'
 
-type TabId = ActiveView | 'notifications' | 'messages'
+type TabId = ActiveView | 'messages'
 
 const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[] = [
   {
@@ -30,11 +30,12 @@ const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[]
     ),
   },
   {
-    id: 'notifications', label: 'Notifications',
+    id: 'orgs', label: 'Ministries',
     icon: active => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m3 10 9-7 9 7" />
+        <path d="M5 9v12h14V9M9 21v-7h6v7" />
+        <path d="M12 6v4m-2-2h4" />
       </svg>
     ),
   },
@@ -77,7 +78,6 @@ export default function BottomTabBar() {
   const messagesOpen = useUIStore(s => s.messagesOpen)
   const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
   const notifOpen = useUIStore(s => s.notifOpen)
-  const setNotifOpen = useUIStore(s => s.setNotifOpen)
   const { data: conversations } = useConversations()
   const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
@@ -104,10 +104,6 @@ export default function BottomTabBar() {
 
   function onTab(tab: (typeof TABS)[number]) {
     hapticSelection()
-    if (tab.id === 'notifications') {
-      setNotifOpen(true)
-      return
-    }
     if (tab.id === 'messages') {
       setMessagesOpen(true)
       return
@@ -130,8 +126,7 @@ export default function BottomTabBar() {
       inert={hidden}
     >
       {TABS.map(tab => {
-        const active = tab.id === 'notifications' ? notifOpen
-          : tab.id === 'messages' ? messagesOpen
+        const active = tab.id === 'messages' ? messagesOpen
           : activeView === tab.id
         return (
           <button

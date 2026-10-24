@@ -187,6 +187,7 @@ html[data-theme="dark"] .bottom-tab-bar {
   .bottom-tab-bar { transition: none; }
 }
 .mobile-search-toggle { display: none; }
+.mobile-notifications-toggle { display: none; }
 
 @keyframes fmci-spin {
   from { transform: rotate(0deg); }
@@ -256,6 +257,9 @@ html[data-theme="dark"] .bottom-tab-bar {
     display: flex;
   }
   .mobile-search-toggle {
+    display: flex;
+  }
+  .mobile-notifications-toggle {
     display: flex;
   }
   .app-main {
