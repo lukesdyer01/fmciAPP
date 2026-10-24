@@ -46,7 +46,7 @@ app.use(`${BASE}/*`, async (c, next) => {
   if (!deletingSelf) {
     if (caller.user_metadata?.status === "suspended" || (caller.banned_until && new Date(caller.banned_until).getTime() > Date.now())) return c.json({ error: "Account access is restricted. Contact luke@dyerplex.com." }, 403);
     if (caller.user_metadata?.age18_confirmed !== true) return c.json({ error: "Confirm you are at least 18 before continuing" }, 403);
-    if (caller.user_metadata?.onboarding_complete === false) return c.json({ error: "Complete signup and upload a profile photo before continuing" }, 403);
+    if (caller.user_metadata?.onboarding_complete === false) return c.json({ error: "Complete signup before continuing" }, 403);
   }
   // Applies to creation AND edits, including nested article blocks and comments.
   // Reports are excluded so members can quote abusive content to moderators.
@@ -2652,7 +2652,9 @@ app.post(`${BASE}/admin/invitations/open`, async (c) => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
   const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
-  const { error } = await kvClient().from("network_registration_links").insert({
+  const links = kvClient().from("network_registration_links");
+  await links.delete().lte("expires_at", new Date().toISOString());
+  const { error } = await links.insert({
     token_hash: tokenHash,
     expires_at: expiresAt,
     created_by: caller.id,

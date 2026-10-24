@@ -80,12 +80,12 @@ export default function SettingsAdmin() {
       </div>}
       {isSuperAdmin && <div style={{ borderTop: '1px solid #30363d', marginTop: '24px', paddingTop: '20px' }}>
         <h3 style={{ marginTop: 0 }}>General registration link</h3>
-        <p style={{ color: '#adb5c0', fontSize: '13px' }}>Create a link that does not require an email match. Anyone with it can register once within seven days.</p>
+        <p style={{ color: '#adb5c0', fontSize: '13px' }}>Create a reusable link that does not require an email match. Anyone with it can register within seven days of creation.</p>
         <button type="button" disabled={busy} onClick={createOpenInvitation} style={{ padding: '12px', borderRadius: '8px', background: 'var(--color-gold)', color: '#111', cursor: busy ? 'wait' : 'pointer', border: 0 }}>{busy ? 'Creating…' : 'Generate registration link'}</button>
         {openInvitation && <div role="status" style={{ marginTop: '16px' }}>
-          <p>Link expires {new Date(openInvitation.expiresAt).toLocaleDateString()} · one registration</p>
+          <p>Link expires {new Date(openInvitation.expiresAt).toLocaleDateString()} · reusable until it expires</p>
           <textarea aria-label="General registration link" readOnly rows={3} value={invitationLink(openInvitation)} onFocus={event => event.currentTarget.select()} style={{ width: '100%', padding: '12px', background: '#0d1117', color: '#fff', border: '1px solid #444', borderRadius: '8px', boxSizing: 'border-box' }} />
-          <p style={{ fontSize: '12px', color: '#adb5c0' }}>Share privately. The link grants one person access to create an account.</p>
+          <p style={{ fontSize: '12px', color: '#adb5c0' }}>Share privately. Multiple people can use this link to create accounts before it expires.</p>
         </div>}
       </div>}
     </section>

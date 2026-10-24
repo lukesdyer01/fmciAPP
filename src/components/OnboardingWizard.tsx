@@ -14,7 +14,7 @@ const COMMUNICATION_PREFS = [
 ]
 const CURRENT_YEAR = new Date().getFullYear()
 const MEMBER_SINCE_YEARS = Array.from({ length: CURRENT_YEAR - 1950 + 1 }, (_, i) => String(CURRENT_YEAR - i))
-const TOTAL_STEPS = 3
+const TOTAL_STEPS = 5
 
 export default function OnboardingWizard({ session }: { session: Session }) {
   const [step, setStep] = useState(1)
@@ -59,7 +59,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
   }
 
   async function save() {
-    if (!avatarUrl || uploading) { setError('Upload a profile photo to finish creating your account.'); setStep(1); return }
+    if (uploading) return
     setSaving(true); setError('')
     try {
       // Spread the existing metadata first — full_name (set at signup) and
@@ -85,7 +85,6 @@ export default function OnboardingWizard({ session }: { session: Session }) {
   }
 
   function next() {
-    if (step === 1 && !avatarUrl) { setError('Please upload your profile photo to continue.'); return }
     setError('')
     if (step < TOTAL_STEPS) setStep(s => s + 1)
     else save()
@@ -143,9 +142,9 @@ export default function OnboardingWizard({ session }: { session: Session }) {
         }}>
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Tell us about your ministry</h2>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Set up your profile</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <button type="button" aria-label="Upload required profile photo" disabled={uploading} onClick={() => fileRef.current?.click()} style={{ border: 0, padding: 0,
+                <button type="button" aria-label="Upload profile photo" disabled={uploading} onClick={() => fileRef.current?.click()} style={{ border: 0, padding: 0,
                   width: '64px', height: '64px', borderRadius: '14px', flexShrink: 0, cursor: 'pointer',
                   overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
@@ -155,13 +154,19 @@ export default function OnboardingWizard({ session }: { session: Session }) {
                 <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: 'none' }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
                 <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
-                  {uploading ? 'Uploading…' : <><strong>Profile photo required</strong><br /><button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} style={{ padding: 0, background: 'none', border: 0, color: 'var(--color-gold)', cursor: 'pointer', marginTop: '4px' }}>{avatarUrl ? 'Change photo' : 'Choose photo'}</button><br /><span style={{ fontSize: '11px' }}>JPG, PNG, WebP, or GIF · Up to 5 MB</span></>}
+                  {uploading ? 'Uploading…' : <><strong>Profile photo <span style={{ fontWeight: 400 }}>(optional)</span></strong><br /><button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} style={{ padding: 0, background: 'none', border: 0, color: 'var(--color-gold)', cursor: 'pointer', marginTop: '4px' }}>{avatarUrl ? 'Change photo' : 'Choose photo'}</button><br /><span style={{ fontSize: '11px' }}>JPG, PNG, WebP, or GIF · Up to 5 MB</span></>}
                 </div>
               </div>
               <div>
                 <label style={labelStyle}>Title / Role</label>
                 <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Senior Pastor" style={inputStyle} />
               </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Your ministry details</h2>
               <div>
                 <label style={labelStyle}>Church / Organization</label>
                 <input value={church} onChange={e => setChurch(e.target.value)} style={inputStyle} />
@@ -170,6 +175,19 @@ export default function OnboardingWizard({ session }: { session: Session }) {
                 <label style={labelStyle}>Location</label>
                 <input value={location} onChange={e => setLocation(e.target.value)} placeholder="City, State" style={inputStyle} />
               </div>
+              <div>
+                <label style={labelStyle}>Member Since</label>
+                <select value={memberSince} onChange={e => setMemberSince(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  <option value="">Not set</option>
+                  {MEMBER_SINCE_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Contact preferences</h2>
               <div>
                 <label style={labelStyle}>Phone Number <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
                 <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" style={inputStyle} />
@@ -193,10 +211,10 @@ export default function OnboardingWizard({ session }: { session: Session }) {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 4 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>What's your ministry role?</h2>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)', fontSize: '13px', lineHeight: 1.5 }}>Fivefold roles require admin approval before appearing on your profile. Additional roles can be selected freely.</p>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>What's your five-fold role?</h2>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)', fontSize: '13px', lineHeight: 1.5 }}>Select any that fit. An admin will review these roles before they appear on your profile.</p>
               <div>
                 <label style={labelStyle}>5-fold Role <span style={{ fontWeight: 400, textTransform: 'none' }}>(select all that apply)</span></label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -207,6 +225,13 @@ export default function OnboardingWizard({ session }: { session: Session }) {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>What are your gifts?</h2>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)', fontSize: '13px', lineHeight: 1.5 }}>Choose any additional roles that describe how you serve.</p>
               <div>
                 <label style={labelStyle}>Additional Role <span style={{ fontWeight: 400, textTransform: 'none' }}>(select all that apply)</span></label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -216,20 +241,6 @@ export default function OnboardingWizard({ session }: { session: Session }) {
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>When did you join FMCI?</h2>
-              <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>This can be well before you signed up for the app.</p>
-              <div>
-                <label style={labelStyle}>Member Since</label>
-                <select value={memberSince} onChange={e => setMemberSince(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                  <option value="">Not set</option>
-                  {MEMBER_SINCE_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
               </div>
             </div>
           )}
@@ -252,7 +263,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
             >← Back</button>}
             <button
               onClick={next}
-              disabled={saving || uploading || (step === 1 && !avatarUrl)}
+              disabled={saving || uploading}
               style={{
                 flex: 2, padding: '12px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer',
                 background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)',

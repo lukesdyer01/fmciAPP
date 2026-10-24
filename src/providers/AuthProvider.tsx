@@ -33,6 +33,8 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
     phone: meta.phone ?? null,
     ministryRoles: Array.isArray(meta.ministryRoles) ? meta.ministryRoles : [],
     requestedMinistryRoles: Array.isArray(meta.requestedMinistryRoles) ? meta.requestedMinistryRoles : (Array.isArray(meta.ministryRoles) ? meta.ministryRoles : []),
+    welcomeGuideEligible: meta.welcomeGuideEligible === true,
+    welcomeGuideDismissed: meta.welcomeGuideDismissed === true,
     additionalRoles: Array.isArray(meta.additionalRoles) ? meta.additionalRoles : [],
     communicationPrefs: Array.isArray(meta.communicationPrefs) ? meta.communicationPrefs : [],
     memberSince: meta.memberSince ?? null,

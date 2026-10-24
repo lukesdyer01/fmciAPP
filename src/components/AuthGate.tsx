@@ -15,6 +15,7 @@ type AuthMode = 'login' | 'signup' | 'forgot'
 function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
   const [invitation] = useState(() => readInvitationLink(window.location.hash))
   const [mode, setMode] = useState<AuthMode>(invitation ? 'signup' : 'login')
+  const [signupStep, setSignupStep] = useState<1 | 2>(1)
   const [showPrivacy, setShowPrivacy] = useState(false)
   const [email, setEmail] = useState(invitation?.email ?? '')
   const [password, setPassword] = useState('')
@@ -35,6 +36,10 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
     e.preventDefault()
     setError('')
     setInfo('')
+    if (mode === 'signup' && signupStep === 1) {
+      setSignupStep(2)
+      return
+    }
     setLoading(true)
 
     try {
@@ -51,7 +56,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           // existing accounts never have this key at all, which is what
           // keeps the wizard from ever appearing for them (see AuthGate's
           // strict === false gate below).
-          options: { data: { full_name: name, onboarding_complete: false, invitation_token: inviteCode.trim(), age18_confirmed: adultConfirmed, community_rules_version: '2026-10-17' } },
+          options: { data: { full_name: name, onboarding_complete: false, welcomeGuideEligible: true, invitation_token: inviteCode.trim(), age18_confirmed: adultConfirmed, community_rules_version: '2026-10-17' } },
         })
         if (error) throw error
         if (data.session) {
@@ -59,6 +64,8 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
         } else {
           setInfo('Check your email to confirm your account, then sign in.')
           setMode('login')
+          setSignupStep(1)
+          setPassword('')
         }
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -97,9 +104,9 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
 
   const subtitles: Record<AuthMode, string> = {
     login: 'Sign in to access the FMCI Network',
-    signup: invitation?.email
-      ? 'Membership is by invitation. Use the email address your invitation was issued to.'
-      : 'Membership is by invitation. Enter the email address you want to use for your account.',
+    signup: signupStep === 1
+      ? 'Start with your name and email address.'
+      : 'Set a password and confirm your eligibility to join.',
     forgot: "We'll send a reset link to your email",
   }
 
@@ -138,9 +145,13 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           <h1 style={{ margin: '0 0 6px', fontSize: '22px', fontWeight: 800, color: '#fff' }}>{titles[mode]}</h1>
           <p style={{ margin: '0 0 28px', fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{subtitles[mode]}</p>
 
+          {mode === 'signup' && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '-12px 0 20px' }}>
+            {[1, 2].map(stepNumber => <div key={stepNumber} style={{ height: '4px', flex: 1, borderRadius: '2px', backgroundColor: stepNumber <= signupStep ? 'var(--color-gold)' : 'rgba(255,255,255,0.15)' }} />)}
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', whiteSpace: 'nowrap' }}>Step {signupStep} of 2</span>
+          </div>}
+
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {mode === 'signup' && !invitation?.email && <div><label htmlFor="invitation-code" style={{ display: 'block', color: '#fff', marginBottom: '6px', fontSize: '12px' }}>Invitation code</label><input id="invitation-code" value={inviteCode} onChange={e => setInviteCode(e.target.value)} required autoComplete="off" placeholder="Enter your invitation code" style={inputStyle} /></div>}
-            {mode === 'signup' && (
+            {mode === 'signup' && signupStep === 1 && <>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</label>
                 <input
@@ -151,9 +162,20 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
                   onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.12)' }}
                 />
               </div>
-            )}
+              <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                readOnly={!!invitation?.email}
+                placeholder="you@yourchurch.org" required
+                style={inputStyle}
+                onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}
+                onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.12)' }}
+              />
+              </div>
+            </>}
 
-            <div>
+            {mode !== 'signup' && <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -162,9 +184,9 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
                 onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}
                 onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.12)' }}
               />
-            </div>
+            </div>}
 
-            {mode !== 'forgot' && (
+            {((mode === 'login') || (mode === 'signup' && signupStep === 2)) && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Password</label>
@@ -185,7 +207,12 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
               </div>
             )}
 
-            {mode === 'signup' && <div style={{ color: '#e6edf3', fontSize: '13px', lineHeight: 1.6 }}>
+            {mode === 'signup' && signupStep === 2 && <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.65)', fontSize: '13px' }}>
+              Account email: <strong style={{ color: '#fff' }}>{email}</strong>
+            </div>}
+
+            {mode === 'signup' && signupStep === 2 && !invitation?.email && <div><label htmlFor="invitation-code" style={{ display: 'block', color: '#fff', marginBottom: '6px', fontSize: '12px' }}>Invitation code</label><input id="invitation-code" value={inviteCode} onChange={e => setInviteCode(e.target.value)} required autoComplete="off" placeholder="Enter your invitation code" style={inputStyle} /></div>}
+            {mode === 'signup' && signupStep === 2 && <div style={{ color: '#e6edf3', fontSize: '13px', lineHeight: 1.6 }}>
               <label style={{ display: 'flex', alignItems: 'start', gap: '10px' }}><input type="checkbox" required checked={adultConfirmed} onChange={e => setAdultConfirmed(e.target.checked)} style={{ marginTop: '5px', width: '18px', height: '18px', flexShrink: 0 }} />I confirm I am at least 18 and will follow the community rules.</label>
               <button type="button" onClick={() => openExternal('https://fmci.network/terms/')} style={{ color: 'var(--color-gold)', background: 'none', border: 0, padding: '8px 0', cursor: 'pointer' }}>Read community rules</button>
             </div>}
@@ -201,6 +228,12 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
               </div>
             )}
 
+            {mode === 'signup' && signupStep === 2 && <button type="button" onClick={() => { setSignupStep(1); setError('') }} style={{
+              width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)',
+              background: 'transparent', color: 'rgba(255,255,255,0.7)', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+            }}>← Back to name and email</button>}
+
             <button type="submit" disabled={loading} style={{
               width: '100%', padding: '13px', borderRadius: '10px', border: 'none',
               background: loading ? 'rgba(200,155,60,0.5)' : 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%)',
@@ -209,7 +242,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
               marginTop: '4px', transition: 'opacity 0.15s',
               boxShadow: '0 4px 16px rgba(200,155,60,0.3)',
             }}>
-              {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
+              {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : mode === 'signup' ? signupStep === 1 ? 'Continue' : 'Create Account' : 'Send Reset Link'}
             </button>
           </form>
 
@@ -217,14 +250,14 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>
             {mode === 'login' ? (
               <>Have an invitation?{' '}
-                <button onClick={() => { setMode('signup'); setError(''); setInfo('') }}
+                <button onClick={() => { setMode('signup'); setSignupStep(1); setError(''); setInfo('') }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gold)', fontWeight: 700, fontSize: '14px', fontFamily: 'var(--font-sans)' }}>
                   Accept invitation
                 </button>
               </>
             ) : (
               <>Already have an account?{' '}
-                <button onClick={() => { setMode('login'); setError(''); setInfo('') }}
+                <button onClick={() => { setMode('login'); setSignupStep(1); setError(''); setInfo('') }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gold)', fontWeight: 700, fontSize: '14px', fontFamily: 'var(--font-sans)' }}>
                   Sign in
                 </button>

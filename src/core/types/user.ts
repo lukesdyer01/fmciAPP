@@ -18,6 +18,8 @@ export interface User {
   phone: string | null
   ministryRoles: string[]
   requestedMinistryRoles?: string[]
+  welcomeGuideEligible?: boolean
+  welcomeGuideDismissed?: boolean
   additionalRoles: string[]
   communicationPrefs: string[]
   // Self-reported year the person considers themselves an FMCI member since

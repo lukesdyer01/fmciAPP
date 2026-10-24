@@ -16,6 +16,7 @@ import AboutView from './AboutView'
 import InviteMembersView from './InviteMembersView'
 import PrivacyPolicyView from './PrivacyPolicyView'
 import OrgView from './OrgView'
+import ProfileChecklist from './ProfileChecklist'
 import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
 import type { ActiveView } from '../App'
@@ -173,6 +174,7 @@ function MainFeed() {
 
   return (
     <div className="main-feed">
+      <ProfileChecklist mobileWelcome />
       <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       {primaryMinistry && <FeedToggle filter={filter} setFilter={setFilter} primaryMinistry={primaryMinistry} />}
       {activeHashtag && (

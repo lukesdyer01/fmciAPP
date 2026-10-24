@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { api } from '../api-client/server'
 import { useAuth } from '../providers/AuthProvider'
 import { useUIStore } from '../store/ui'
@@ -62,6 +62,9 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
     p.author && p.author.trim() !== '' &&
     ((p.wallUserId ?? p.authorId) === userId || (p.taggedUsers ?? []).some(t => t.id === userId))
   )
+  const firstName = member?.name.trim().split(/\s+/)[0] || ''
+  const contactPhone = member?.phone.trim() || ''
+  const contactEmail = member?.email.trim() || ''
 
   if (loading) {
     return <div style={{ padding: '48px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading profile…</div>
@@ -219,7 +222,37 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
         <PostCard key={post.id} post={post as unknown as Post} />
       ))}
 
+      {!isOwnProfile && (contactPhone || contactEmail) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', margin: '18px 0 24px' }}>
+          {contactPhone && (
+            <>
+              <a href={`sms:${contactPhone}`} style={contactActionStyle}>💬 Text {firstName}</a>
+              <a href={`tel:${contactPhone}`} style={contactActionStyle}>📞 Call {firstName}</a>
+            </>
+          )}
+          {contactEmail && (
+            <a href={`mailto:${contactEmail}`} style={contactActionStyle}>✉️ Email {firstName}</a>
+          )}
+        </div>
+      )}
+
       {editProfileOpen && <EditProfileModal />}
     </div>
   )
+}
+
+const contactActionStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '7px',
+  padding: '11px 16px',
+  borderRadius: '10px',
+  border: '1px solid var(--color-border)',
+  backgroundColor: 'var(--color-card)',
+  color: 'var(--color-text-1)',
+  fontSize: '14px',
+  fontWeight: 700,
+  fontFamily: 'var(--font-sans)',
+  textDecoration: 'none',
 }

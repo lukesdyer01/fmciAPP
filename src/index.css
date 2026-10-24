@@ -219,8 +219,10 @@ html[data-theme="dark"] .bottom-tab-bar {
 .grid-2-auto        { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .messages-list-pane   { display: flex; width: 280px; flex-shrink: 0; }
 .messages-thread-pane { display: flex; }
+.mobile-welcome-checklist { display: none; }
 
 @media (max-width: 768px) {
+  .mobile-welcome-checklist { display: block; }
   .grid-2, .grid-2-lg,
   .grid-aside-340, .grid-aside-400, .grid-aside-260, .grid-cover-280 {
     grid-template-columns: 1fr;
