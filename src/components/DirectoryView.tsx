@@ -284,12 +284,12 @@ function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) =>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} title="View Profile" aria-label="View Profile" style={{
-          width: '40px', height: '40px', borderRadius: '50%', border: 'none',
-          backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '16px',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          <button onClick={e => { e.stopPropagation(); onOpen(member.id) }} title="View User" style={{
+          minHeight: '40px', padding: '0 12px', borderRadius: '8px', border: 'none',
+          backgroundColor: 'var(--color-navy)', color: '#fff', fontSize: '12px', fontWeight: 700,
+          whiteSpace: 'nowrap', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'var(--font-sans)',
-          }}>👤</button>
+          }}>View User</button>
         </div>
       </div>
     </div>
