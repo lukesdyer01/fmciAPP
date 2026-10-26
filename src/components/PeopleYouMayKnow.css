@@ -1,0 +1,23 @@
+.people-suggestions {
+  min-width: 0;
+  overflow: hidden;
+  margin-bottom: var(--feed-item-gap);
+  border: var(--feed-item-border);
+  border-bottom: var(--feed-item-divider);
+  border-radius: var(--feed-item-radius);
+  background: var(--color-card);
+  box-shadow: var(--feed-item-shadow);
+}
+.people-suggestions-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; }
+.people-suggestions-header h2 { margin: 0; font-size: 16px; font-weight: 750; color: var(--color-text-1); }
+.people-suggestions button { cursor: pointer; font-family: var(--font-sans); }
+.people-suggestions-header button { border: 0; background: transparent; color: var(--color-text-2); font-size: 13px; font-weight: 700; min-height: 36px; white-space: nowrap; }
+.people-suggestions-track { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 0 16px 16px; margin: 0; list-style: none; }
+.people-suggestion-card { position: relative; flex: 0 0 156px; min-width: 0; overflow: hidden; border: 1px solid var(--color-border); border-radius: 10px; scroll-snap-align: center; background: var(--color-card); }
+.people-suggestion-photo { display: block; width: 100%; height: 150px; object-fit: cover; background: var(--color-surface); }
+.people-suggestion-initials { display: flex; align-items: center; justify-content: center; color: var(--color-text-2); font-size: 38px; font-weight: 700; }
+.people-suggestion-dismiss { position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: white; font-size: 24px; line-height: 1; }
+.people-suggestion-details { padding: 10px; }
+.people-suggestion-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-1); font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.people-suggestion-profile { width: 100%; min-height: 38px; border: 0; border-radius: 7px; background: var(--color-navy); color: white; font-size: 12px; font-weight: 700; }
+.people-suggestions button:focus-visible, .people-suggestions-track:focus-visible { outline: 2px solid var(--color-gold); outline-offset: -2px; }

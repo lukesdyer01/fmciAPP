@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import Stories from './Stories'
+import PeopleYouMayKnow from './PeopleYouMayKnow'
 import SafetySupportView from './SafetySupportView'
 import { useState, useEffect } from 'react'
 import PostComposer from './PostComposer'
@@ -105,6 +106,7 @@ function FeedToggle({ filter, setFilter, primaryMinistry }: {
 function MainFeed() {
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState<FeedFilter>('network')
+  const [suggestionsVersion, setSuggestionsVersion] = useState(0)
   const { data: allPosts, isLoading, isError, refetch: refetchPosts } = useFeedPosts()
   const [events, setEvents] = useState<EventItem[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
@@ -115,6 +117,8 @@ function MainFeed() {
   const primaryMinistryId = useUIStore(s => s.userProfile.primaryMinistryId)
 
   const refreshAll = async () => {
+    setSuggestionsVersion(version => version + 1)
+    await queryClient.invalidateQueries({ queryKey: ['people-suggestions'] })
     await queryClient.invalidateQueries({ queryKey: ['stories'] })
     await refetchPosts()
     await api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
@@ -204,6 +208,7 @@ function MainFeed() {
       ) : (
         <PostComposer key="network" hidePostAs />
       )}
+      {filter === 'network' && <PeopleYouMayKnow key={suggestionsVersion} />}
       {editingEvent && (
         <CreateEventModal
           event={editingEvent}
