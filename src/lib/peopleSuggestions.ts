@@ -1,24 +1,28 @@
+import { memberLocationKey } from './memberLocation.ts'
 export interface SuggestedMember {
   id: string
   name: string
   church: string
   location: string
+  city?: string
+  state?: string
+  country?: string
   avatarUrl: string
   ministryRoles: string[]
   additionalRoles: string[]
   createdAt?: string
 }
 
-type SuggestionProfile = Pick<SuggestedMember, 'church' | 'location' | 'ministryRoles' | 'additionalRoles'>
+type SuggestionProfile = Pick<SuggestedMember, 'church' | 'location' | 'city' | 'state' | 'country' | 'ministryRoles' | 'additionalRoles'>
 const normalize = (value: string) => value.trim().toLocaleLowerCase()
 
 export function rankPeopleSuggestions(members: SuggestedMember[], profile: SuggestionProfile, currentUserId?: string) {
   const church = normalize(profile.church)
-  const location = normalize(profile.location)
+  const location = memberLocationKey(profile)
   const roles = new Set([...profile.ministryRoles, ...profile.additionalRoles].map(normalize).filter(Boolean))
   const score = (member: SuggestedMember) => [
     Number(Boolean(church) && normalize(member.church) === church),
-    Number(Boolean(location) && normalize(member.location) === location),
+    Number(Boolean(location) && memberLocationKey(member) === location),
     new Set([...member.ministryRoles, ...member.additionalRoles].map(normalize).filter(role => roles.has(role))).size,
     Date.parse(member.createdAt ?? '') || 0,
   ]

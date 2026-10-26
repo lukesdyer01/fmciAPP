@@ -50,6 +50,9 @@ export interface UserProfile {
   title: string
   church: string
   location: string
+  city?: string
+  state?: string
+  country?: string
   bio: string
   avatarUrl: string
   website: string

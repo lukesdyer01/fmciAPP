@@ -10,6 +10,7 @@ import { api } from './api-client/server'
 import { useHeartbeat } from './api-client/presence'
 import { trackSessionStart, trackPageView } from './lib/analytics'
 import Topbar from './components/Topbar'
+import ActiveUsersBar from './components/ActiveUsersBar'
 import LeftSidebar from './components/LeftSidebar'
 import Feed from './components/Feed'
 import RightSidebar from './components/RightSidebar'
@@ -97,6 +98,9 @@ function AppShell() {
       title: currentUser.title ?? '',
       church: currentUser.church ?? '',
       location: currentUser.location ?? '',
+      city: currentUser.city ?? '',
+      state: currentUser.state ?? '',
+      country: currentUser.country ?? '',
       website: currentUser.website ?? '',
       email: currentUser.email ?? '',
       phone: currentUser.phone ?? '',
@@ -133,8 +137,9 @@ function AppShell() {
   if (adminMode && (role === 'superadmin' || role === 'admin')) return <AdminShell />
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+    <div className={role === 'superadmin' ? 'has-active-users-bar' : undefined} style={{ fontFamily: 'var(--font-sans)', backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
       <Topbar />
+      {role === 'superadmin' && <ActiveUsersBar />}
       <div className="app-grid">
         <LeftSidebar activeView={activeView} setActiveView={setActiveView} />
         <main className="app-main" style={{ padding: '20px 12px', minHeight: 'calc(100vh - 64px)' }}>

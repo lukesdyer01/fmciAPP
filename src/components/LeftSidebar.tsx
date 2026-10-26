@@ -81,7 +81,7 @@ export default function LeftSidebar({ activeView, setActiveView }: Props) {
     // Desktop: sticky sidebar. Hidden below 768px (see .left-sidebar-desktop in
     // index.css) — the mobile equivalent is the hamburger-triggered MobileNavDrawer.
     <aside className="left-sidebar-desktop" style={{
-      position: 'sticky', top: '64px',
+      position: 'sticky', top: 'calc(64px + var(--safe-top) + var(--active-users-bar-height, 0px))',
       height: 'calc(100vh - 64px)', overflowY: 'auto',
       padding: '16px 12px 32px',
       scrollbarWidth: 'thin',

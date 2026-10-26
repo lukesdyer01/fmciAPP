@@ -1,3 +1,5 @@
+import MemberLocationFields from './MemberLocationFields'
+import { readMemberLocation, formatMemberLocation } from '../lib/memberLocation'
 import AccountExitActions from './AccountExitActions'
 import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useRef } from 'react'
@@ -21,7 +23,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
   const [avatarUrl, setAvatarUrl] = useState(session.user.user_metadata?.avatar_url ?? '')
   const [title, setTitle] = useState('')
   const [church, setChurch] = useState('')
-  const [location, setLocation] = useState('')
+  const [memberLocation, setMemberLocation] = useState(() => readMemberLocation(session.user.user_metadata))
   const [phone, setPhone] = useState('')
   const [communicationPrefs, setCommunicationPrefs] = useState<string[]>([])
   const [ministryRoles, setMinistryRoles] = useState<string[]>([])
@@ -69,7 +71,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
         data: {
           ...session.user.user_metadata,
           avatar_url: avatarUrl || session.user.user_metadata?.avatar_url,
-          title, church, location, phone, communicationPrefs,
+          title, church, location: formatMemberLocation(memberLocation), ...memberLocation, phone, communicationPrefs,
           requestedMinistryRoles: ministryRoles, additionalRoles, memberSince,
           onboarding_complete: true,
         },
@@ -171,10 +173,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
                 <label style={labelStyle}>Church / Organization</label>
                 <input value={church} onChange={e => setChurch(e.target.value)} style={inputStyle} />
               </div>
-              <div>
-                <label style={labelStyle}>Location</label>
-                <input value={location} onChange={e => setLocation(e.target.value)} placeholder="City, State" style={inputStyle} />
-              </div>
+              <MemberLocationFields value={memberLocation} onChange={setMemberLocation} dark />
               <div>
                 <label style={labelStyle}>Member Since</label>
                 <select value={memberSince} onChange={e => setMemberSince(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>

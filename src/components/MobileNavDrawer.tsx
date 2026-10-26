@@ -60,7 +60,7 @@ export default function MobileNavDrawer() {
     <div
       onClick={e => { if (e.target === e.currentTarget) close() }}
       style={{
-        position: 'fixed', inset: 'calc(56px + var(--safe-top)) 0 0', zIndex: 300,
+        position: 'fixed', inset: 'calc(56px + var(--safe-top) + var(--active-users-bar-height, 0px)) 0 0', zIndex: 300,
         backgroundColor: 'rgba(0,0,0,0.28)',
         opacity: visible ? 1 : 0, transition: 'opacity 0.18s',
       }}

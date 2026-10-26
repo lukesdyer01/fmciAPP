@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { api } from '../api-client/server'
@@ -30,16 +30,32 @@ interface MinistryLocation {
   lng: number | null
 }
 
+function FitMinistries({ ministries }: { ministries: MinistryLocation[] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!ministries.length) return
+    const bounds = L.latLngBounds(ministries.map(m => [m.lat!, m.lng!] as [number, number]))
+    map.fitBounds(bounds, { padding: [35, 35], maxZoom: 10 })
+  }, [map, ministries])
+  return null
+}
+
 export default function GlobalMapView() {
   const [ministries, setMinistries] = useState<MinistryLocation[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const setActiveView = useUIStore(s => s.setActiveView)
 
   useEffect(() => {
-    api<MinistryLocation[]>('/orgs/locations').then(setMinistries).catch(() => setMinistries([])).finally(() => setLoading(false))
+    api<MinistryLocation[]>('/orgs/locations').then(setMinistries).catch(() => setError(true)).finally(() => setLoading(false))
   }, [])
 
   const pinned = ministries.filter(m => m.lat != null && m.lng != null)
+  const grouped = new Map<string, MinistryLocation[]>()
+  for (const ministry of pinned) {
+    const key = `${ministry.lat},${ministry.lng}`
+    grouped.set(key, [...(grouped.get(key) ?? []), ministry])
+  }
   const unpinned = ministries.filter(m => m.lat == null || m.lng == null)
 
   return (
@@ -53,7 +69,9 @@ export default function GlobalMapView() {
         <div style={{ padding: '48px', textAlign: 'center', color: 'var(--color-text-2)', fontSize: '14px' }}>Loading ministries…</div>
       )}
 
-      {!loading && (
+      {error && <p role="alert" style={{ color: 'var(--color-red-text)' }}>Unable to load ministry locations. Please reload to try again.</p>}
+      {!loading && !error && <p style={{ fontSize: 12, color: 'var(--color-text-2)' }}>{pinned.length} of {ministries.length} active ministries mapped{unpinned.length ? ` · ${unpinned.length} need a location or could not be located` : ''}. Ministries at the same location share a pin.</p>}
+      {!loading && !error && (
         <div style={{
           height: '520px', borderRadius: '14px', overflow: 'hidden',
           border: '1px solid var(--color-border)', marginBottom: '16px',
@@ -63,9 +81,11 @@ export default function GlobalMapView() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {pinned.map(m => (
-              <Marker key={m.id} position={[m.lat as number, m.lng as number]} icon={markerIcon}>
+            <FitMinistries ministries={pinned} />
+            {[...grouped.values()].map(group => (
+              <Marker key={group[0].id} position={[group[0].lat as number, group[0].lng as number]} icon={markerIcon}>
                 <Popup>
+                  {group.map(m => <div key={m.id} style={{ marginBottom: 10, color: '#1c2b4a' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     {m.img
                       ? <img src={m.img} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} />
@@ -82,6 +102,7 @@ export default function GlobalMapView() {
                       border: 'none', backgroundColor: '#1a2a4a', color: '#fff', cursor: 'pointer',
                     }}
                   >View Ministries →</button>
+                  </div>)}
                 </Popup>
               </Marker>
             ))}
@@ -89,7 +110,7 @@ export default function GlobalMapView() {
         </div>
       )}
 
-      {!loading && ministries.length === 0 && (
+      {!loading && !error && ministries.length === 0 && (
         <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontSize: '14px' }}>
           No ministries to show yet.
         </div>

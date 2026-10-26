@@ -14,6 +14,9 @@ export interface User {
   title: string | null
   church: string | null
   location: string | null
+  city?: string
+  state?: string
+  country?: string
   website: string | null
   phone: string | null
   ministryRoles: string[]

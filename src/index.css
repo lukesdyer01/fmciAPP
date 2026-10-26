@@ -146,7 +146,7 @@ html[data-theme="dark"] select {
   grid-template-columns: 300px 1fr 320px;
   max-width: 1440px;
   margin: 0 auto;
-  padding-top: calc(56px + var(--safe-top));
+  padding-top: calc(56px + var(--safe-top) + var(--active-users-bar-height, 0px));
   align-items: start;
 }
 
@@ -610,3 +610,24 @@ html[data-theme="dark"] .post-composer-modal {
 .story-viewers { bottom: calc(var(--safe-bottom) + 64px); left: 12px; right: 12px; max-height: 55dvh; overflow-y: auto; }
 .story-retry { border: 0; background: none; color: var(--color-text-2); cursor: pointer; padding: 8px; }
 @media (max-width: 480px) { .story-composer { height: 100dvh; border-radius: 0; } }
+
+/* Superadmin-only presence strip below the front-end header. */
+.has-active-users-bar { --active-users-bar-height: 22px; }
+.active-users-bar {
+  position: fixed;
+  top: calc(56px + var(--safe-top));
+  left: 0;
+  right: 0;
+  height: var(--active-users-bar-height);
+  z-index: 199;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text-2);
+  font-size: 10px;
+  line-height: 1;
+}
+.active-users-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--color-green-text); }

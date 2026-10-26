@@ -1,3 +1,5 @@
+import MemberLocationFields from './MemberLocationFields'
+import { readMemberLocation, formatMemberLocation } from '../lib/memberLocation'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../api-client/server'
 import { supabase } from '../lib/supabase'
@@ -20,6 +22,9 @@ interface MyOrg {
   type: string
   description: string
   location: string
+  city?: string
+  state?: string
+  country?: string
   address?: string
   website: string
   verified: boolean
@@ -99,7 +104,7 @@ function OrgLogo({ org, size }: { org: Pick<MyOrg, 'name' | 'img'>; size: number
 // ── Create Org Form ──────────────────────────────────────────────────────────
 function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
   const { currentUser } = useAuth()
-  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', address: '', website: '', img: '' })
+  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', city: '', state: '', country: 'US', address: '', website: '', img: '' })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
@@ -175,10 +180,7 @@ function CreateOrgForm({ onCreated }: { onCreated: () => void }) {
             {ORG_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
-        <div>
-          <label style={label()}>Location</label>
-          <input value={form.location} onChange={e => set('location', e.target.value)} style={input()} placeholder="City, Country" />
-        </div>
+        <MemberLocationFields value={readMemberLocation(form)} onChange={value => setForm(previous => ({ ...previous, ...value, location: formatMemberLocation(value) }))} />
         <div>
           <label style={label()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional — pins it precisely on the Global Map)</span></label>
           <input value={form.address} onChange={e => set('address', e.target.value)} style={input()} placeholder="123 Main St, City, State ZIP" />
@@ -210,7 +212,7 @@ function EditOrgModal({ org, onClose, onSaved }: { org: MyOrg; onClose: () => vo
   const { currentUser } = useAuth()
   const [form, setForm] = useState({
     name: org.name, type: org.type, description: org.description,
-    location: org.location, address: org.address ?? '', website: org.website, img: org.img,
+    ...readMemberLocation(org), location: formatMemberLocation(readMemberLocation(org)), address: org.address ?? '', website: org.website, img: org.img,
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -294,10 +296,7 @@ function EditOrgModal({ org, onClose, onSaved }: { org: MyOrg; onClose: () => vo
                 {ORG_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
-            <div>
-              <label style={label()}>Location</label>
-              <input value={form.location} onChange={e => set('location', e.target.value)} style={input()} placeholder="City, Country" />
-            </div>
+            <MemberLocationFields value={readMemberLocation(form)} onChange={value => setForm(previous => ({ ...previous, ...value, location: formatMemberLocation(value) }))} />
             <div>
               <label style={label()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional — pins it precisely on the Global Map)</span></label>
               <input value={form.address} onChange={e => set('address', e.target.value)} style={input()} placeholder="123 Main St, City, State ZIP" />

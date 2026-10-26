@@ -1,3 +1,4 @@
+import { geocodeQueries, geocodeOnCooldown } from "./mapLocations.ts";
 import { registerStories } from "./stories.ts";
 import { contentSafetyIssue } from "./contentSafety.ts";
 import { Hono, type Context } from "npm:hono";
@@ -366,6 +367,9 @@ app.get(`${BASE}/members`, async (c) => {
       title: u.user_metadata?.title ?? "",
       church: u.user_metadata?.church ?? "",
       location: u.user_metadata?.location ?? "",
+      city: u.user_metadata?.city ?? "",
+      state: u.user_metadata?.state ?? "",
+      country: u.user_metadata?.country ?? "",
       avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
       badges: u.user_metadata?.verified ? ["verified"] : [],
       callings: [],
@@ -842,8 +846,8 @@ app.get(`${BASE}/orgs`, async (c) => {
 });
 
 // Geocodes each active org's address (or city/state) once via Nominatim and
-// caches lat/lng permanently on the org record — later calls just read the
-// cache, so this only ever hits the geocoder for a genuinely new location.
+// caches successful coordinates. Failed lookups expire so temporary provider
+// failures and older negative caches cannot hide ministries permanently.
 app.get(`${BASE}/orgs/locations`, async (c) => {
   const orgs = await kv.get("orgs") ?? SEED_ORGS;
   const active = orgs.filter((o: any) => o.status === "active");
@@ -855,33 +859,48 @@ app.get(`${BASE}/orgs/locations`, async (c) => {
       results.push({ ...summary, lat: o.lat, lng: o.lng });
       continue;
     }
-    if (o.geocodeFailed) {
+    if (geocodeOnCooldown(o)) {
       results.push({ ...summary, lat: null, lng: null });
       continue;
     }
-    const query = (o.address ?? "").trim() || (o.location ?? "").trim();
-    if (!query) { results.push({ ...summary, lat: null, lng: null }); continue; }
+    const queries = geocodeQueries(o);
+    if (!queries.length) { results.push({ ...summary, lat: null, lng: null }); continue; }
     try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`, {
-        headers: { "User-Agent": "FMCI-Network-App/1.0" },
-      });
-      const geoData = await geoRes.json();
+      let geoData: any = [];
+      for (let i = 0; i < queries.length; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 1100));
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(queries[i])}`, {
+          headers: { "User-Agent": "FMCI-Network-App/1.0" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!geoRes.ok) throw new Error(`Geocoder returned ${geoRes.status}`);
+        geoData = await geoRes.json();
+        if (!Array.isArray(geoData)) throw new Error("Invalid geocoder response");
+        if (geoData[0]) break;
+      }
       if (Array.isArray(geoData) && geoData[0]) {
         o.lat = parseFloat(geoData[0].lat);
         o.lng = parseFloat(geoData[0].lon);
+        if (!Number.isFinite(o.lat) || !Number.isFinite(o.lng)) { delete o.lat; delete o.lng; throw new Error("Invalid coordinates"); }
+        delete o.geocodeFailed;
+        delete o.geocodeRetryAfter;
         changed = true;
         results.push({ ...summary, lat: o.lat, lng: o.lng });
       } else {
         o.geocodeFailed = true;
+        o.geocodeRetryAfter = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         changed = true;
         results.push({ ...summary, lat: null, lng: null });
       }
     } catch {
-      // Network hiccup — don't cache a failure, just skip it for this request and retry next time.
+      // Retry transient provider failures after a short cooldown, not permanently.
+      o.geocodeFailed = true;
+      o.geocodeRetryAfter = new Date(Date.now() + 60_000).toISOString();
+      changed = true;
       results.push({ ...summary, lat: null, lng: null });
     }
     // Be a good citizen of Nominatim's free tier (~1 req/sec) when geocoding more than one org.
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, 1100));
   }
   if (changed) await kv.set("orgs", orgs);
   return c.json(results);
@@ -994,6 +1013,9 @@ app.post(`${BASE}/orgs`, async (c) => {
     type: body.type ?? "church",
     description: body.description ?? "",
     location: body.location ?? "",
+    city: String(body.city ?? "").trim(),
+    state: String(body.state ?? "").trim(),
+    country: String(body.country ?? "").trim(),
     address: body.address ?? "",
     website: body.website ?? "",
     img: body.img ?? "",
@@ -1027,11 +1049,14 @@ app.patch(`${BASE}/orgs/:id`, async (c) => {
     type: body.type ?? org.type,
     description: body.description ?? "",
     location: body.location ?? "",
+    city: String(body.city ?? (body.location === org.location ? org.city ?? "" : "")).trim(),
+    state: String(body.state ?? (body.location === org.location ? org.state ?? "" : "")).trim(),
+    country: String(body.country ?? (body.location === org.location ? org.country ?? "" : "")).trim(),
     address: body.address ?? "",
     website: body.website ?? "",
     img: body.img ?? "",
   };
-  if (locationChanged) { delete updated.lat; delete updated.lng; delete updated.geocodeFailed; }
+  if (locationChanged) { delete updated.lat; delete updated.lng; delete updated.geocodeFailed; delete updated.geocodeRetryAfter; }
   await kv.set("orgs", orgs.map((o: any) => o.id === id ? updated : o));
   return c.json(await serializeOrg(updated, caller.id));
 });
@@ -2458,7 +2483,7 @@ app.put(`${BASE}/orgs`, async (c) => {
     // If an admin edit changed an org's location/address, its cached geocode
     // is stale — clear it so /orgs/locations re-geocodes on the next request.
     if (prev && (prev.location !== clean.location || prev.address !== clean.address)) {
-      const { lat, lng, geocodeFailed, ...rest } = clean;
+      const { lat, lng, geocodeFailed, geocodeRetryAfter, ...rest } = clean;
       return rest;
     }
     return clean;

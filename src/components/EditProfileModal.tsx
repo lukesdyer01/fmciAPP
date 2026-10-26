@@ -1,3 +1,5 @@
+import MemberLocationFields from './MemberLocationFields'
+import { readMemberLocation, formatMemberLocation } from '../lib/memberLocation'
 import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useRef, useEffect } from 'react'
 import { useUIStore, type UserProfile } from '../store/ui'
@@ -63,7 +65,10 @@ export default function EditProfileModal() {
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const { currentUser, updateCurrentUser } = useAuth()
 
-  const [draft, setDraft] = useState<UserProfile>({ ...userProfile, ministryRoles: currentUser?.requestedMinistryRoles ?? userProfile.ministryRoles })
+  const [draft, setDraft] = useState<UserProfile>(() => {
+    const locationFields = readMemberLocation(userProfile)
+    return { ...userProfile, ...locationFields, location: formatMemberLocation(locationFields), ministryRoles: currentUser?.requestedMinistryRoles ?? userProfile.ministryRoles }
+  })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [uploading, setUploading] = useState<'avatarUrl' | null>(null)
   const [uploadError, setUploadError] = useState('')
@@ -149,6 +154,7 @@ export default function EditProfileModal() {
           title: draft.title,
           church: draft.church,
           location: draft.location,
+          city: draft.city, state: draft.state, country: draft.country,
           website: draft.website,
           phone: draft.phone,
           requestedMinistryRoles: draft.ministryRoles,
@@ -169,6 +175,7 @@ export default function EditProfileModal() {
         title: draft.title,
         church: draft.church,
         location: draft.location,
+        city: draft.city, state: draft.state, country: draft.country,
         website: draft.website,
         email: draft.email,
         phone: draft.phone,
@@ -293,7 +300,7 @@ export default function EditProfileModal() {
             </div>
             <div className="grid-2">
               <Field label="Church / Organization" value={draft.church} onChange={v => set('church', v)} />
-              <Field label="Location" value={draft.location} onChange={v => set('location', v)} placeholder="City, State" />
+              <MemberLocationFields value={readMemberLocation(draft)} onChange={value => setDraft(previous => ({ ...previous, ...value, location: formatMemberLocation(value) }))} />
             </div>
             <Field label="Bio" value={draft.bio} onChange={v => set('bio', v)} multiline placeholder="Tell the network about yourself…" />
             <div className="grid-2">

@@ -1,3 +1,5 @@
+import MemberLocationFields from '../../MemberLocationFields'
+import { readMemberLocation, formatMemberLocation } from '../../../lib/memberLocation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../../../api-client/server'
 import { supabase } from '../../../lib/supabase'
@@ -20,6 +22,9 @@ interface Org {
   parentName: string | null
   members: OrgMember[]
   location: string
+  city?: string
+  state?: string
+  country?: string
   address?: string
   website: string
   description: string
@@ -75,7 +80,7 @@ interface EditPanelProps { org: Org; allOrgs: Org[]; onSave: (updated: Org) => v
 
 function EditPanel({ org, allOrgs, onSave, onMembersUpdated, onClose }: EditPanelProps) {
   const { currentUser } = useAuth()
-  const [draft, setDraft] = useState<Org>({ ...org })
+  const [draft, setDraft] = useState<Org>(() => ({ ...org, ...readMemberLocation(org), location: formatMemberLocation(readMemberLocation(org)) }))
   const [saved, setSaved] = useState(false)
   const [tab, setTab] = useState<'details' | 'members'>('details')
   const [allUsers, setAllUsers] = useState<PlatformUser[]>([])
@@ -247,10 +252,7 @@ function EditPanel({ org, allOrgs, onSave, onMembersUpdated, onClose }: EditPane
                 </select>
               </div>
             </div>
-            <div>
-              <label style={labelStyle()}>Location</label>
-              <input value={draft.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="City, State or Country" />
-            </div>
+            <MemberLocationFields value={readMemberLocation(draft)} onChange={value => setDraft(previous => ({ ...previous, ...value, location: formatMemberLocation(value) }))} dark />
             <div>
               <label style={labelStyle()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(pins it precisely on the Global Map)</span></label>
               <input value={draft.address ?? ''} onChange={e => set('address', e.target.value)} style={inputStyle()} placeholder="123 Main St, City, State ZIP" />
@@ -387,7 +389,7 @@ function EditPanel({ org, allOrgs, onSave, onMembersUpdated, onClose }: EditPane
 
 // ── Create Org Modal ──────────────────────────────────────────────────────────
 function CreateOrgModal({ onClose, onCreate }: { onClose: () => void; onCreate: (org: Org) => void }) {
-  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', address: '', website: '' })
+  const [form, setForm] = useState({ name: '', type: 'church', description: '', location: '', city: '', state: '', country: 'US', address: '', website: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -407,7 +409,7 @@ function CreateOrgModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-      <div style={{ backgroundColor: '#0d1117', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', padding: '28px', width: '480px', maxWidth: '95vw', boxShadow: '0 24px 80px rgba(0,0,0,0.6)' }}>
+      <div style={{ backgroundColor: '#0d1117', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', padding: '28px', width: '480px', maxWidth: '95vw', maxHeight: '90dvh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ fontSize: '16px', fontWeight: 800, color: '#e6edf3' }}>Add Organization</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '20px', padding: '4px' }}>✕</button>
@@ -424,10 +426,7 @@ function CreateOrgModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
                 {ORG_TYPES.map(t => <option key={t} value={t} style={{ backgroundColor: '#161b22' }}>{t === 'bible_college' ? 'Bible College' : t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
               </select>
             </div>
-            <div>
-              <label style={labelStyle()}>Location</label>
-              <input value={form.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="City, Country" />
-            </div>
+            <MemberLocationFields value={readMemberLocation(form)} onChange={value => setForm(previous => ({ ...previous, ...value, location: formatMemberLocation(value) }))} dark />
           </div>
           <div>
             <label style={labelStyle()}>Full Address <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
