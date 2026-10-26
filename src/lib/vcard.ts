@@ -1,3 +1,4 @@
+import { formatPhoneNumber } from './phone'
 export interface VCardContact {
   name: string
   title: string
@@ -103,7 +104,7 @@ function createVCard(contact: VCardContact, photo: EmbeddedPhoto | null): string
   if (contact.title) lines.push(`TITLE:${vCardEscape(contact.title)}`)
   if (contact.church) lines.push(`ORG:${vCardEscape(contact.church)}`)
   if (contact.email) lines.push(`EMAIL;TYPE=INTERNET:${vCardEscape(contact.email)}`)
-  if (contact.phone) lines.push(`TEL;TYPE=CELL,VOICE:${vCardEscape(contact.phone)}`)
+  if (contact.phone) lines.push(`TEL;TYPE=CELL,VOICE:${vCardEscape(formatPhoneNumber(contact.phone))}`)
   if (contact.website) lines.push(`URL:${vCardEscape(contact.website)}`)
   if (contact.location) lines.push(`LABEL;TYPE=WORK:${vCardEscape(contact.location)}`)
   if (photo) lines.push(`PHOTO;ENCODING=b;TYPE=${photo.type}:${photo.base64}`)

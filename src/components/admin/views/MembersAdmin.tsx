@@ -1,3 +1,4 @@
+import { formatPhoneNumber } from '../../../lib/phone'
 import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../../../core/types/ministryRoles'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../../lib/supabase'
@@ -352,7 +353,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
     verified: member.verified,
     bio: member.bio ?? '',
     website: member.website ?? '',
-    phone: member.phone ?? '',
+    phone: formatPhoneNumber(member.phone),
     ministryRoles: member.ministryRoles ?? [],
     additionalRoles: member.additionalRoles ?? [],
     communicationPrefs: member.communicationPrefs ?? [],
@@ -373,7 +374,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
         ...d,
         bio: data.bio ?? '',
         website: data.website ?? '',
-        phone: data.phone ?? '',
+        phone: formatPhoneNumber(data.phone),
         ministryRoles: data.ministryRoles ?? [],
         additionalRoles: data.additionalRoles ?? [],
         communicationPrefs: data.communicationPrefs ?? [],
@@ -465,7 +466,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
           patch: {
             bio: draft.bio.trim(),
             website: draft.website.trim(),
-            phone: draft.phone.trim(),
+            phone: formatPhoneNumber(draft.phone),
             ministryRoles: draft.ministryRoles,
             additionalRoles: draft.additionalRoles,
             communicationPrefs: draft.communicationPrefs,
@@ -628,7 +629,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: Member; onClose
                 </div>
                 <div>
                   <label style={labelStyle}>Phone</label>
-                  <input value={draft.phone} onChange={e => set('phone', e.target.value)} placeholder="(555) 555-5555" style={inputStyle}
+                  <input value={formatPhoneNumber(draft.phone)} onChange={e => set('phone', e.target.value)} placeholder="555-555-5555" style={inputStyle}
                     onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(200,155,60,0.5)' }}
                     onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.1)' }} />
                 </div>

@@ -1,3 +1,4 @@
+import { formatPhoneNumber } from '../lib/phone'
 import MemberLocationFields from './MemberLocationFields'
 import { readMemberLocation, formatMemberLocation } from '../lib/memberLocation'
 import { MINISTRY_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
@@ -156,7 +157,7 @@ export default function EditProfileModal() {
           location: draft.location,
           city: draft.city, state: draft.state, country: draft.country,
           website: draft.website,
-          phone: draft.phone,
+          phone: formatPhoneNumber(draft.phone),
           requestedMinistryRoles: draft.ministryRoles,
           analytics_opt_out: draft.analyticsOptOut ?? false,
           additionalRoles: draft.additionalRoles,
@@ -178,7 +179,7 @@ export default function EditProfileModal() {
         city: draft.city, state: draft.state, country: draft.country,
         website: draft.website,
         email: draft.email,
-        phone: draft.phone,
+        phone: formatPhoneNumber(draft.phone),
         ministryRoles: approvedRoles,
         requestedMinistryRoles: draft.ministryRoles,
         additionalRoles: draft.additionalRoles,
@@ -307,7 +308,7 @@ export default function EditProfileModal() {
               <Field label="Website" value={draft.website} onChange={v => set('website', v)} placeholder="yoursite.org" />
               <Field label="Email" value={draft.email} onChange={v => set('email', v)} />
             </div>
-            <Field label="Phone" value={draft.phone} onChange={v => set('phone', v)} placeholder="(555) 555-5555" />
+            <Field label="Phone" value={formatPhoneNumber(draft.phone)} onChange={v => set('phone', v)} placeholder="555-555-5555" />
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Member Since

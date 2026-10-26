@@ -1,3 +1,4 @@
+import { formatPhoneNumber } from '../lib/phone'
 import MemberLocationFields from './MemberLocationFields'
 import { readMemberLocation, formatMemberLocation } from '../lib/memberLocation'
 import AccountExitActions from './AccountExitActions'
@@ -71,7 +72,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
         data: {
           ...session.user.user_metadata,
           avatar_url: avatarUrl || session.user.user_metadata?.avatar_url,
-          title, church, location: formatMemberLocation(memberLocation), ...memberLocation, phone, communicationPrefs,
+          title, church, location: formatMemberLocation(memberLocation), ...memberLocation, phone: formatPhoneNumber(phone), communicationPrefs,
           requestedMinistryRoles: ministryRoles, additionalRoles, memberSince,
           onboarding_complete: true,
         },
@@ -189,7 +190,7 @@ export default function OnboardingWizard({ session }: { session: Session }) {
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Contact preferences</h2>
               <div>
                 <label style={labelStyle}>Phone Number <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
-                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" style={inputStyle} />
+                <input value={formatPhoneNumber(phone)} onChange={e => setPhone(e.target.value)} placeholder="555-555-5555" style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Preferred Contact Method <span style={{ fontWeight: 400, textTransform: 'none' }}>(select all that apply)</span></label>

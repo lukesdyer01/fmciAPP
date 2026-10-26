@@ -1,3 +1,4 @@
+import { formatPhoneNumber } from '../lib/phone'
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import type { User, UserMembership, OrgRole } from '../core/types/user'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
@@ -33,7 +34,7 @@ function buildUserFromSession(session: ReturnType<typeof useSupabaseRole>['sessi
     state: meta.state ?? '',
     country: meta.country ?? '',
     website: meta.website ?? null,
-    phone: meta.phone ?? null,
+    phone: meta.phone ? formatPhoneNumber(meta.phone) : null,
     ministryRoles: Array.isArray(meta.ministryRoles) ? meta.ministryRoles : [],
     requestedMinistryRoles: Array.isArray(meta.requestedMinistryRoles) ? meta.requestedMinistryRoles : (Array.isArray(meta.ministryRoles) ? meta.ministryRoles : []),
     welcomeGuideEligible: meta.welcomeGuideEligible === true,

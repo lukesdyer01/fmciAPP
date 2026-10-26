@@ -1,3 +1,4 @@
+import { formatPhoneNumber } from '../lib/phone'
 import { useState, useEffect, type CSSProperties } from 'react'
 import { api } from '../api-client/server'
 import { useAuth } from '../providers/AuthProvider'
@@ -186,7 +187,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
                 <a href={`mailto:${member.email}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>✉️ {member.email}</a>
               )}
               {member.phone && (
-                <a href={`tel:${member.phone}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>📞 {member.phone}</a>
+                <a href={`tel:${member.phone}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>📞 {formatPhoneNumber(member.phone)}</a>
               )}
             </div>
           )}
