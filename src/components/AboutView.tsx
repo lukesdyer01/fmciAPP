@@ -1,3 +1,4 @@
+import jimHodgesPhoto from '../imports/jim-hodges.jpg'
 const FOCUS_AREAS = [
   { icon: '🕊', title: 'Apostolic-Prophetic Ministry', text: 'Raising up and developing apostolic-prophetic teams equipped to serve alongside local church leadership.' },
   { icon: '⛪', title: 'Local Church Advancement', text: "Helping local churches progress toward their God-given destiny through relational partnership rather than hierarchy." },
@@ -315,7 +316,7 @@ export default function AboutView() {
       <Section eyebrow="Leadership" title="Founder, President, and Apostolic Team Leader">
         <div style={{ display: 'flex', gap: '18px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <img
-            src="https://www.jimhodgesministries.com/uploads/1/4/6/2/146298067/jimhodgesa_orig.jpg"
+            src={jimHodgesPhoto}
             alt="Jim Hodges"
             style={{ width: '84px', height: '84px', borderRadius: '14px', flexShrink: 0, objectFit: 'cover' }}
           />
