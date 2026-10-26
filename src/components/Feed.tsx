@@ -1,8 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import Stories from './Stories'
 import PeopleYouMayKnow from './PeopleYouMayKnow'
+import RecommendedResources from './RecommendedResources'
+import { feedCarouselPosition } from '../lib/resourceSuggestions'
 import SafetySupportView from './SafetySupportView'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
 import DirectoryView from './DirectoryView'
@@ -119,6 +121,7 @@ function MainFeed() {
   const refreshAll = async () => {
     setSuggestionsVersion(version => version + 1)
     await queryClient.invalidateQueries({ queryKey: ['people-suggestions'] })
+    await queryClient.invalidateQueries({ queryKey: ['resource-suggestions'] })
     await queryClient.invalidateQueries({ queryKey: ['stories'] })
     await refetchPosts()
     await api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
@@ -208,7 +211,6 @@ function MainFeed() {
       ) : (
         <PostComposer key="network" hidePostAs />
       )}
-      {filter === 'network' && <PeopleYouMayKnow key={suggestionsVersion} />}
       {editingEvent && (
         <CreateEventModal
           event={editingEvent}
@@ -254,13 +256,21 @@ function MainFeed() {
           </div>
         </div>
       )}
-      {merged.map(entry => {
-        if (entry.kind === 'post') return <PostCard key={`p-${entry.post.id}`} post={entry.post as unknown as Post} />
-        if (entry.kind === 'blogPost') return <BlogPostFeedCard key={`b-${entry.blogPost.id}`} post={entry.blogPost} />
+      {Array.from({ length: merged.length + 1 }, (_, index) => {
+        const entry = merged[index]
+        const showDiscovery = !isLoading && filter === 'network' && !activeHashtag
         return (
-          <div key={`e-${entry.event.id}`} style={{ marginBottom: 'var(--feed-item-gap)', borderBottom: 'var(--feed-item-divider)' }}>
-            <EventCard event={entry.event} onChanged={loadEvents} onEdit={setEditingEvent} />
-          </div>
+          <Fragment key={entry ? `${entry.kind}-${entry.kind === 'post' ? entry.post.id : entry.kind === 'blogPost' ? entry.blogPost.id : entry.event.id}` : 'feed-end'}>
+            {showDiscovery && index === feedCarouselPosition(merged.length, 3) && <RecommendedResources key={`resources-${suggestionsVersion}`} />}
+            {showDiscovery && index === feedCarouselPosition(merged.length, 6) && <PeopleYouMayKnow key={`people-${suggestionsVersion}`} />}
+            {entry?.kind === 'post' && <PostCard post={entry.post as unknown as Post} />}
+            {entry?.kind === 'blogPost' && <BlogPostFeedCard post={entry.blogPost} />}
+            {entry?.kind === 'event' && (
+              <div style={{ marginBottom: 'var(--feed-item-gap)', borderBottom: 'var(--feed-item-divider)' }}>
+                <EventCard event={entry.event} onChanged={loadEvents} onEdit={setEditingEvent} />
+              </div>
+            )}
+          </Fragment>
         )
       })}
     </div>

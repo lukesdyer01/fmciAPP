@@ -275,6 +275,9 @@ html[data-theme="dark"] .bottom-tab-bar {
     border-radius: 50%;
     background: #fff;
   }
+  html[data-theme="dark"] .topbar-brand-mark {
+    background: transparent;
+  }
   .topbar-brand-mark img {
     display: block;
     width: 34px;
