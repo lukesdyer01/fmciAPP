@@ -36,13 +36,13 @@
     "Current iOS screenshots and final listing fields",
     "Final App Privacy answers including embedded services",
     "Physical-device verification of recovery email and production push",
-    "Verify build 6 processing, select build, and provide completed response to the existing 2.1 rejection",
+    "Verify build 9 processing, select build, and provide completed response to the existing 2.1 rejection",
     "Separate reviewer signup/deletion instructions and disposable access"
   ],
   "uploadedBuild": {
     "version": "1.0.2",
-    "build": 6,
-    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 6 uploaded; Apple processing and final selection still require verification"
+    "build": 9,
+    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 9 uploaded with message notification navigation; Apple processing, TestFlight availability, and physical-device push-tap verification remain pending. Use build 9 rather than superseded build 8."
   },
   "appStoreConnectVerified": {
     "appId": "6809304019",
