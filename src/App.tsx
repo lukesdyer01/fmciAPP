@@ -1,3 +1,4 @@
+import { readMessageNotificationUrl } from './lib/messageNotification'
 import { useEffect, useRef, Component, type ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './api-client/queryClient'
@@ -78,6 +79,22 @@ function AppShell() {
     }
     prevDetailOpen.current = detailOpen
   }, [detailOpen, activeView, scrollPositions])
+
+  useEffect(() => {
+    if (!currentUser) return
+    const openMessageFromUrl = () => {
+      const target = readMessageNotificationUrl(window.location.href, window.location.href)
+      if (!target || target.userId === currentUser.id) return
+      useUIStore.getState().openMessagesWith(target.userId, target.messageId)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('messageFrom')
+      url.searchParams.delete('message')
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+    }
+    openMessageFromUrl()
+    window.addEventListener('popstate', openMessageFromUrl)
+    return () => window.removeEventListener('popstate', openMessageFromUrl)
+  }, [currentUser?.id])
 
   useHeartbeat()
 

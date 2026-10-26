@@ -1917,7 +1917,7 @@ app.post(`${BASE}/conversations/:id/messages`, async (c) => {
     sendPushToUser(uid, {
       title: senderName,
       body: message.text.length > 120 ? message.text.slice(0, 117) + "…" : message.text,
-      url: "/",
+      url: `/?messageFrom=${encodeURIComponent(caller.id)}&message=${encodeURIComponent(message.id)}`,
       tag: `dm-${id}`,
     }).catch(() => {});
   }

@@ -167,10 +167,20 @@ function Thread({ conversation, onBack, onMenu }: {
   const sendMessage = useSendMessage()
   const [text, setText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const targetRef = useRef<HTMLDivElement>(null)
+  const targetMessageId = useUIStore(s => s.messageTargetMessageId)
+  const scrolledTarget = useRef<string | null>(null)
 
   useEffect(() => {
+    if (targetMessageId && targetRef.current) {
+      if (scrolledTarget.current !== targetMessageId) {
+        targetRef.current.scrollIntoView({ block: 'center' })
+        scrolledTarget.current = targetMessageId
+      }
+      return
+    }
     bottomRef.current?.scrollIntoView({ block: 'end' })
-  }, [messages?.length])
+  }, [messages?.length, targetMessageId])
 
   function handleSend() {
     if (!text.trim() || sendMessage.isPending) return
@@ -204,7 +214,7 @@ function Thread({ conversation, onBack, onMenu }: {
         {(messages ?? []).map(m => {
           const mine = m.senderId === currentUser?.id
           return (
-            <div key={m.id} style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+            <div key={m.id} ref={m.id === targetMessageId ? targetRef : undefined} style={{ outline: m.id === targetMessageId ? '2px solid var(--color-gold)' : undefined, outlineOffset: '3px', borderRadius: '14px', display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
               <div style={{
                 maxWidth: '75%', padding: '8px 12px', borderRadius: '14px',
                 backgroundColor: mine ? 'var(--color-navy)' : 'var(--color-surface)',
@@ -252,17 +262,19 @@ export default function MessagesPanel() {
 
   // When opened with a specific target user, find or create that conversation.
   useEffect(() => {
-    if (!messageTargetUserId) return
-    const existing = conversations?.find(c => c.otherUser.id === messageTargetUserId)
+    if (!messageTargetUserId || isLoading || archivedLoading) return
+    const existing = [...(conversations ?? []), ...(archivedConversations ?? [])].find(c => c.otherUser.id === messageTargetUserId)
     if (existing) {
       setActiveConv(existing)
+      useUIStore.setState({ messageTargetUserId: null })
     } else if (!startConversation.isPending) {
       startConversation.mutate(messageTargetUserId, {
-        onSuccess: conv => setActiveConv(conv),
+        onSuccess: conv => { setActiveConv(conv); useUIStore.setState({ messageTargetUserId: null }) },
+        onError: () => useUIStore.setState({ messageTargetUserId: null }),
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messageTargetUserId, conversations])
+  }, [messageTargetUserId, conversations, archivedConversations, isLoading, archivedLoading])
 
   const list = tab === 'inbox' ? conversations ?? [] : archivedConversations ?? []
   const loading = tab === 'inbox' ? isLoading : archivedLoading
@@ -289,6 +301,7 @@ export default function MessagesPanel() {
           <div style={{ flex: 1, fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Messages</div>
           <button onClick={closeMessages} className="messages-close-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
+        {startConversation.isError && <p role="alert" style={{ padding: '0 16px', color: 'var(--color-red-text)', fontSize: 13 }}>Unable to open this conversation. It may no longer be available.</p>}
         <div className="messages-body" data-active={activeConv ? 'true' : 'false'} style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           {/* width/flex-shrink/display all live in CSS (base + mobile override),
               not here — an inline width or display would always beat the
@@ -318,7 +331,7 @@ export default function MessagesPanel() {
           </div>
           <div className="messages-thread-pane" style={{ flex: 1, flexDirection: 'column', minWidth: 0 }}>
             {activeConv
-              ? <Thread conversation={activeConv} onBack={() => setActiveConv(null)} onMenu={(conv, anchor) => setMenu({ conv, archived: tab === 'archived', anchor })} />
+              ? <Thread key={activeConv.id} conversation={activeConv} onBack={() => setActiveConv(null)} onMenu={(conv, anchor) => setMenu({ conv, archived: tab === 'archived', anchor })} />
               : <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>Select a conversation</div>
             }
           </div>

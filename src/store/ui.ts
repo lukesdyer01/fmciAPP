@@ -144,8 +144,9 @@ interface UIState {
 
   messagesOpen: boolean
   messageTargetUserId: string | null
+  messageTargetMessageId: string | null
   setMessagesOpen: (open: boolean) => void
-  openMessagesWith: (userId: string) => void
+  openMessagesWith: (userId: string, messageId?: string | null) => void
   closeMessages: () => void
 
   userProfile: UserProfile
@@ -240,9 +241,10 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   messagesOpen: false,
   messageTargetUserId: null,
+  messageTargetMessageId: null,
   setMessagesOpen: open => set({ messagesOpen: open }),
-  openMessagesWith: userId => set({ messagesOpen: true, messageTargetUserId: userId }),
-  closeMessages: () => set({ messagesOpen: false, messageTargetUserId: null }),
+  openMessagesWith: (userId, messageId = null) => set({ messagesOpen: true, messageTargetUserId: userId, messageTargetMessageId: messageId, adminMode: false, mobileNavOpen: false, notifOpen: false }),
+  closeMessages: () => set({ messagesOpen: false, messageTargetUserId: null, messageTargetMessageId: null }),
 
   userProfile: DEFAULT_PROFILE,
   updateUserProfile: patch => set(s => ({ userProfile: { ...s.userProfile, ...patch } })),

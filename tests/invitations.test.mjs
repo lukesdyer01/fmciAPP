@@ -12,7 +12,12 @@ test('invitation links preserve email addresses and tokens and use the site root
 })
 
 test('incomplete and unrelated authentication fragments do not open invitation signup', () => {
-  for (const hash of ['', '#invite=token', '#email=test@example.org', '#invite=&email=test@example.org', '#access_token=secret&type=recovery']) {
+  for (const hash of ['', '#email=test@example.org', '#invite=&email=test@example.org', '#access_token=secret&type=recovery']) {
     assert.equal(readInvitationLink(hash), null)
   }
+})
+test('token-only invitations round-trip without an email', () => {
+  const invitation = { token: 'generic-token' }
+  const link = new URL(invitationLink(invitation))
+  assert.deepEqual(readInvitationLink(link.hash), invitation)
 })
