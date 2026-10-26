@@ -204,7 +204,7 @@ function BlogPostDetailView({ post: initialPost, onBack, onChanged }: { post: Bl
         {canModify && (
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-1)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>✏ Edit</button>
-            <button onClick={handleDelete} disabled={deleting} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-red)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>{deleting ? 'Deleting…' : '🗑 Delete'}</button>
+            <button onClick={handleDelete} disabled={deleting} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-red-text)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>{deleting ? 'Deleting…' : '🗑 Delete'}</button>
           </div>
         )}
       </div>
@@ -359,7 +359,7 @@ export default function BlogView() {
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Blog</h1>
+          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-serif)' }}>Blog</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Articles, teaching, and reflections from across the network</p>
         </div>
         <button onClick={() => setShowCreate(true)} style={{

@@ -280,7 +280,7 @@ export default function EditProfileModal() {
           </div>
 
           {uploadError && (
-            <div style={{ margin: '0 24px 16px', padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red)' }}>
+            <div style={{ margin: '0 24px 16px', padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red-text)' }}>
               {uploadError}
             </div>
           )}
@@ -425,11 +425,11 @@ export default function EditProfileModal() {
 
           {/* Danger zone */}
           <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-red)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Danger Zone</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-red-text)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Danger Zone</div>
             {!showDeleteConfirm ? (
               <button onClick={() => setShowDeleteConfirm(true)} style={{
                 padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--color-red)',
-                backgroundColor: 'transparent', color: 'var(--color-red)', fontSize: '13px', fontWeight: 700,
+                backgroundColor: 'transparent', color: 'var(--color-red-text)', fontSize: '13px', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'var(--font-sans)',
               }}>Delete Account</button>
             ) : (
@@ -448,7 +448,7 @@ export default function EditProfileModal() {
                   }}
                 />
                 {deleteError && (
-                  <div style={{ fontSize: '12px', color: 'var(--color-red)', marginBottom: '12px' }}>{deleteError}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-red-text)', marginBottom: '12px' }}>{deleteError}</div>
                 )}
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); setDeleteError('') }} style={{

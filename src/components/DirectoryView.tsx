@@ -83,7 +83,7 @@ export default function DirectoryView() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
           <div>
-            <h1 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Member Directory</h1>
+            <h1 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-serif)' }}>Member Directory</h1>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-2)' }}>Verified FMCI members, leaders, and ministry partners worldwide</p>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -237,7 +237,7 @@ function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) =
             <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-gold-bg)', color: 'var(--color-gold)', fontWeight: 700 }}>{r}</span>
           ))}
           {member.additionalRoles.map(r => (
-            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', fontWeight: 700 }}>{r}</span>
+            <span key={r} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue-text)', fontWeight: 700 }}>{r}</span>
           ))}
           {member.callings.map((c, j) => (
             <span key={j} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)', fontWeight: 500 }}>{c}</span>

@@ -167,7 +167,7 @@ export default function MinistryDetailView({ ministry, currentUserId, onBack, on
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '12px 18px', border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0,
               fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-sans)',
-              color: tab === t ? 'var(--color-navy)' : 'var(--color-text-2)',
+              color: tab === t ? 'var(--color-navy-text)' : 'var(--color-text-2)',
               borderBottom: tab === t ? '2px solid var(--color-navy)' : '2px solid transparent',
               transition: 'all 0.15s', textTransform: 'capitalize',
             }}>{t}</button>

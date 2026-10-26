@@ -352,7 +352,7 @@ export default function ResourcesView() {
                     {r.reviews > 0 && <Stars rating={r.rating} />}
                     <button
                       onClick={() => setExpandedId(id => id === r.id ? null : r.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', color: 'var(--color-navy)', fontWeight: 600, fontFamily: 'var(--font-sans)' }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', color: 'var(--color-navy-text)', fontWeight: 600, fontFamily: 'var(--font-sans)' }}
                     >{r.reviews > 0 ? `${r.reviews.toLocaleString()} review${r.reviews === 1 ? '' : 's'}` : 'Write a review'}</button>
                   </div>
 
@@ -411,7 +411,7 @@ export default function ResourcesView() {
 
                   {confirmDeleteId === r.id && (
                     <div style={{ marginTop: '12px', backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '13px', color: 'var(--color-red)', fontWeight: 600, flex: 1 }}>Delete "{r.title}"?</span>
+                      <span style={{ fontSize: '13px', color: 'var(--color-red-text)', fontWeight: 600, flex: 1 }}>Delete "{r.title}"?</span>
                       <button onClick={() => handleDelete(r.id)} style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontSize: '12px', fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Delete</button>
                       <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'transparent', color: 'var(--color-text-2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Cancel</button>
                     </div>

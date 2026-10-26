@@ -3,6 +3,10 @@
 
 @theme {
   --color-navy:        #1a2a4a;
+  --color-navy-text:   #1a2a4a;
+  --color-blue-text:   #1877f2;
+  --color-green-text:  #059669;
+  --color-red-text:    #dc2626;
   --color-navy-dark:   #131f38;
   --color-navy-mid:    #1e3254;
   --color-gold:        #c89b3c;
@@ -74,7 +78,7 @@ html, body, #root {
 /* ── Dark mode semantic token contract ──────────────────────────────────────
    All colors reference these semantic tokens — never raw hex in components.
    ThemeProvider sets data-theme="dark" on <html> to activate this layer.
-   The brand palette (navy, gold) stays the same in both themes.            */
+   Brand backgrounds stay stable; foreground tokens adapt for contrast.            */
 [data-theme="dark"] {
   --color-surface:      #18191a;
   --color-card:         #242526;
@@ -82,8 +86,12 @@ html, body, #root {
   --color-border-light: #303132;
   --color-hover:        #3a3b3c;
   --color-text-1:       #e4e6eb;
-  --color-text-2:       #b0b3b8;
-  --color-text-3:       #8a8d91;
+  --color-text-2:       #c5c8ce;
+  --color-text-3:       #b0b3b8;
+  --color-navy-text:    #e4e6eb;
+  --color-blue-text:    #9bc6ff;
+  --color-green-text:   #7ee2b8;
+  --color-red-text:     #ffb4b4;
   --color-gold-bg:      #181008;
   --color-gold-border:  #3a2a08;
   --color-blue-bg:      #263951;
@@ -97,6 +105,18 @@ html[data-theme="dark"] body,
 html[data-theme="dark"] #root {
   background-color: var(--color-surface);
   color: var(--color-text-1);
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: var(--color-text-3);
+  opacity: 1;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  color-scheme: dark;
 }
 
 /* ── Responsive layout ─────────────────────────────────────────────────────

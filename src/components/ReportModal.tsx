@@ -92,7 +92,7 @@ export default function ReportModal({ targetType, targetId, targetAuthorId, targ
               />
             </div>
 
-            {report.isError && <p role="alert" style={{ padding: '0 24px', color: 'var(--color-red)' }}>Unable to send your report. Please try again.</p>}
+            {report.isError && <p role="alert" style={{ padding: '0 24px', color: 'var(--color-red-text)' }}>Unable to send your report. Please try again.</p>}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '0 24px 20px' }}>
               <button onClick={onClose} style={{
                 padding: '10px 18px', borderRadius: '10px', cursor: 'pointer',

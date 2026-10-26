@@ -166,7 +166,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '6px' }}>Gifting</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {member.additionalRoles.map(role => (
-                      <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)', border: '1px solid var(--color-blue)33' }}>{role}</span>
+                      <span key={role} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue-text)', border: '1px solid var(--color-blue)33' }}>{role}</span>
                     ))}
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px', fontSize: '13px' }}>
               {member.website && (() => {
                 const websiteUrl = member.website.startsWith('http') ? member.website : `https://${member.website}`
-                return <a href={websiteUrl} onClick={e => { e.preventDefault(); openExternal(websiteUrl) }} style={{ color: 'var(--color-navy)', fontWeight: 600 }}>🌐 {member.website}</a>
+                return <a href={websiteUrl} onClick={e => { e.preventDefault(); openExternal(websiteUrl) }} style={{ color: 'var(--color-navy-text)', fontWeight: 600 }}>🌐 {member.website}</a>
               })()}
               {member.email && (
                 <a href={`mailto:${member.email}`} style={{ color: 'var(--color-text-2)', fontWeight: 600, textDecoration: 'none' }}>✉️ {member.email}</a>
@@ -195,7 +195,7 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '6px' }}>Prefers to be contacted by</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {member.communicationPrefs.map(pref => (
-                  <span key={pref} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue)' }}>{pref}</span>
+                  <span key={pref} style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', backgroundColor: 'var(--color-blue-bg)', color: 'var(--color-blue-text)' }}>{pref}</span>
                 ))}
               </div>
             </div>

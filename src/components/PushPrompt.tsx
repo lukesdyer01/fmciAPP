@@ -83,7 +83,7 @@ export default function PushPrompt() {
       }}>🔔</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-1)' }}>Enable Notifications</div>
-        <div style={{ fontSize: '12px', color: error ? 'var(--color-red)' : 'var(--color-text-2)' }}>
+        <div style={{ fontSize: '12px', color: error ? 'var(--color-red-text)' : 'var(--color-text-2)' }}>
           {error || "Get notified when someone sends you a message."}
         </div>
       </div>

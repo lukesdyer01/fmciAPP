@@ -30,8 +30,8 @@ export default function SafetySupportView() {
         <label>Describe the concern<textarea required minLength={20} maxLength={4000} rows={5} value={note} onChange={e => setNote(e.target.value)} placeholder="Explain what happened and identify the content or member. Do not include passwords." style={field} /></label>
         <button disabled={busy} style={{ background: 'var(--color-navy)', color: '#fff', padding: '12px 20px', border: 0, borderRadius: '8px', cursor: 'pointer' }}>{busy ? 'Sending…' : 'Send safety report'}</button>
       </form>
-      {message && <p role="status" style={{ color: 'var(--color-green)' }}>{message}</p>}
-      {error && <p role="alert" style={{ color: 'var(--color-red)' }}>{error}</p>}
+      {message && <p role="status" style={{ color: 'var(--color-green-text)' }}>{message}</p>}
+      {error && <p role="alert" style={{ color: 'var(--color-red-text)' }}>{error}</p>}
     </section>
     <PolicyView kind="terms" />
   </div>

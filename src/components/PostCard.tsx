@@ -321,7 +321,7 @@ export default function PostCard({ post }: { post: Post }) {
                         {canDelete && (
                         <button onClick={handleDelete} disabled={deletePost.isPending} style={{
                           display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
-                          cursor: deletePost.isPending ? 'default' : 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-red)',
+                          cursor: deletePost.isPending ? 'default' : 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-red-text)',
                           textAlign: 'left', fontFamily: 'var(--font-sans)', opacity: deletePost.isPending ? 0.5 : 1,
                         }}>{deletePost.isPending ? 'Deleting…' : '🗑 Delete'}</button>
                         )}
@@ -336,7 +336,7 @@ export default function PostCard({ post }: { post: Post }) {
                           <button onClick={handleBlock} disabled={blockMember.isPending} style={{
                             display: 'block', width: '100%', padding: '9px 14px', border: 'none', background: 'none',
                             cursor: blockMember.isPending ? 'default' : 'pointer', fontSize: '13px', fontWeight: 600,
-                            color: 'var(--color-red)', textAlign: 'left', fontFamily: 'var(--font-sans)',
+                            color: 'var(--color-red-text)', textAlign: 'left', fontFamily: 'var(--font-sans)',
                             opacity: blockMember.isPending ? 0.5 : 1,
                           }}>{blockMember.isPending ? 'Blocking…' : '🚫 Block member'}</button>
                         )}
@@ -379,7 +379,7 @@ export default function PostCard({ post }: { post: Post }) {
               }}
             />
             {editPost.isError && (
-              <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-red)' }}>
+              <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-red-text)' }}>
                 {(editPost.error as any)?.message ?? 'Failed to save changes.'}
               </div>
             )}
@@ -407,7 +407,7 @@ export default function PostCard({ post }: { post: Post }) {
                     return <span key={j} onClick={() => viewHashtag(seg.tag)} style={{ color: 'var(--color-gold)', fontWeight: 700, cursor: 'pointer' }}>{seg.text}</span>
                   }
                   if (seg.kind === 'mention') {
-                    return <span key={j} onClick={() => openProfile(seg.userId)} style={{ color: 'var(--color-navy)', fontWeight: 700, cursor: 'pointer' }}>{seg.text}</span>
+                    return <span key={j} onClick={() => openProfile(seg.userId)} style={{ color: 'var(--color-navy-text)', fontWeight: 700, cursor: 'pointer' }}>{seg.text}</span>
                   }
                   return <span key={j}>{seg.text}</span>
                 })}

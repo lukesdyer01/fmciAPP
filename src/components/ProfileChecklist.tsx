@@ -79,7 +79,7 @@ export default function ProfileChecklist({ mobileWelcome = false }: { mobileWelc
           {mobileWelcome ? '👋 Getting Started' : '🚀 Complete Your Profile'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-navy)' }}>{doneCount}/{items.length}</div>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-navy-text)' }}>{doneCount}/{items.length}</div>
           {mobileWelcome && <button type="button" onClick={dismiss} disabled={dismissing} aria-label="Dismiss getting started checklist" title="Dismiss checklist" style={{
             padding: '2px 5px', border: 0, borderRadius: '6px', background: 'transparent', color: 'var(--color-text-3)',
             fontSize: '18px', lineHeight: 1, cursor: dismissing ? 'wait' : 'pointer',
@@ -119,7 +119,7 @@ export default function ProfileChecklist({ mobileWelcome = false }: { mobileWelc
           </button>
         ))}
       </div>
-      {dismissError && <p role="alert" style={{ margin: '12px 0 0', color: 'var(--color-red)', fontSize: '12px' }}>{dismissError}</p>}
+      {dismissError && <p role="alert" style={{ margin: '12px 0 0', color: 'var(--color-red-text)', fontSize: '12px' }}>{dismissError}</p>}
     </div>
   )
 }

@@ -55,7 +55,7 @@ export default function EventsView() {
       <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-serif)' }}>Events</h1>
+          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-serif)' }}>Events</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Conferences, prayer calls, leadership meetings, and training sessions — including events from ministries across the network</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>

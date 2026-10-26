@@ -116,7 +116,7 @@ export default function MeetingSeriesView({ seriesId, onBack }: { seriesId: stri
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: 'var(--color-text-1)' }}><span>📍</span><span>{series.location}</span></div>
         )}
         {series.zoomLink && (
-          <a href={series.zoomLink} onClick={e => { e.preventDefault(); openExternal(series.zoomLink!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none' }}>💻 Join Zoom Meeting</a>
+          <a href={series.zoomLink} onClick={e => { e.preventDefault(); openExternal(series.zoomLink!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy-text)', textDecoration: 'none' }}>💻 Join Zoom Meeting</a>
         )}
         {series.zoomPassword && (
           <div style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>Passcode: <strong style={{ color: 'var(--color-text-1)' }}>{series.zoomPassword}</strong></div>

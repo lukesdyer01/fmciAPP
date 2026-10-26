@@ -24,7 +24,7 @@ export default function NotificationsPanel() {
               slide-over wants the usual dismiss. */}
           <button onClick={() => setNotifOpen(false)} className="notifications-home-btn" style={{
             background: 'none', border: 'none', cursor: 'pointer', alignItems: 'center', gap: '5px',
-            color: 'var(--color-navy)', fontSize: '14px', fontWeight: 700, padding: '4px 2px',
+            color: 'var(--color-navy-text)', fontSize: '14px', fontWeight: 700, padding: '4px 2px',
             fontFamily: 'var(--font-sans)',
           }}>← Home</button>
           <div style={{ flex: 1, fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Notifications</div>

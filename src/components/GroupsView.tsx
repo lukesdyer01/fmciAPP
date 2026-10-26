@@ -166,7 +166,7 @@ function GroupDetail({ group, onBack, onLeft, onUpdated }: { group: Group; onBac
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '12px 18px', border: 'none', background: 'none', cursor: 'pointer',
               fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-sans)',
-              color: tab === t ? 'var(--color-navy)' : 'var(--color-text-2)',
+              color: tab === t ? 'var(--color-navy-text)' : 'var(--color-text-2)',
               borderBottom: tab === t ? '2px solid var(--color-navy)' : '2px solid transparent',
               transition: 'all 0.15s', textTransform: 'capitalize',
             }}>{t}</button>
@@ -439,7 +439,7 @@ function CreateGroupModal({ group, onClose, onSaved }: { group?: Group; onClose:
             </select>
           </div>
           {err && (
-            <div style={{ padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red)' }}>{err}</div>
+            <div style={{ padding: '10px 14px', backgroundColor: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-red-text)' }}>{err}</div>
           )}
         </div>
         <div style={{ display: 'flex', gap: '10px', padding: '16px 24px', borderTop: '1px solid var(--color-border)' }}>
@@ -499,7 +499,7 @@ export default function GroupsView() {
       <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-sans)' }}>Groups</h1>
+          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-sans)' }}>Groups</h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Ministry circles, leadership channels, and prayer networks</p>
         </div>
         <button onClick={() => setShowCreate(true)} style={{

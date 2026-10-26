@@ -203,7 +203,7 @@ export default function AboutView() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
         {REACH.map((r, i) => (
           <div key={i} style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '18px 20px', textAlign: 'center' }}>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--color-navy)', marginBottom: '4px' }}>{r.n}</div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--color-navy-text)', marginBottom: '4px' }}>{r.n}</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-2)', fontWeight: 600, lineHeight: 1.4 }}>{r.label}</div>
           </div>
         ))}

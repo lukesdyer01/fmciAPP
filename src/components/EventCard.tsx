@@ -194,7 +194,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
             {event.zoomLink && (
               <a href={event.zoomLink} onClick={e => { e.preventDefault(); openExternal(event.zoomLink!) }} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
-                fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none',
+                fontSize: '13px', fontWeight: 700, color: 'var(--color-navy-text)', textDecoration: 'none',
               }}>💻 Join Zoom Meeting</a>
             )}
             {event.zoomPassword && (
@@ -208,7 +208,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
           <div style={{ marginBottom: '16px' }}>
             <a href={event.infoUrl} onClick={e => { e.preventDefault(); openExternal(event.infoUrl!) }} style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
-              fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none',
+              fontSize: '13px', fontWeight: 700, color: 'var(--color-navy-text)', textDecoration: 'none',
             }}>🔗 More Info</a>
           </div>
         )}
@@ -246,7 +246,7 @@ export function EventCard({ event, onChanged, onEdit, showOrg = true }: { event:
               style={{
                 padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--color-border)',
                 background: event.isInterested ? 'var(--color-surface)' : 'none',
-                color: event.isInterested ? 'var(--color-navy)' : 'var(--color-text-2)', fontSize: '13px',
+                color: event.isInterested ? 'var(--color-navy-text)' : 'var(--color-text-2)', fontSize: '13px',
                 fontWeight: 600, cursor: busy ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: busy ? 0.7 : 1,
               }}>{event.isInterested ? '★ Interested' : 'Interested'}</button>
           </div>

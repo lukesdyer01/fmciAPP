@@ -82,7 +82,7 @@ function ConversationMenu({ conv, archived, anchor, onClose, onChanged }: {
           onChanged(conv.id)
           onClose()
         }}>🗑 Delete conversation</button>
-        <button style={{ ...menuItemStyle, color: 'var(--color-red)' }} onClick={() => {
+        <button style={{ ...menuItemStyle, color: 'var(--color-red-text)' }} onClick={() => {
           if (isBlocked) {
             unblockMember.mutate(conv.otherUser.id)
           } else if (window.confirm(`Block ${name}? You will no longer see their posts, comments, or messages.`)) {
@@ -283,7 +283,7 @@ export default function MessagesPanel() {
               slide-over wants the usual dismiss. */}
           <button onClick={closeMessages} className="messages-home-btn" style={{
             background: 'none', border: 'none', cursor: 'pointer', alignItems: 'center', gap: '5px',
-            color: 'var(--color-navy)', fontSize: '14px', fontWeight: 700, padding: '4px 2px',
+            color: 'var(--color-navy-text)', fontSize: '14px', fontWeight: 700, padding: '4px 2px',
             fontFamily: 'var(--font-sans)',
           }}>← Home</button>
           <div style={{ flex: 1, fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Messages</div>

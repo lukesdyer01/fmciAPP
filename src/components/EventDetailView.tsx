@@ -131,7 +131,7 @@ export default function EventDetailView({ eventId, onBack }: { eventId: string; 
         {event.isRemote && (event.zoomLink || event.zoomPassword) && (
           <div style={{ marginTop: '6px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>
             {event.zoomLink && (
-              <a href={event.zoomLink} onClick={e => { e.preventDefault(); openExternal(event.zoomLink!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none' }}>💻 Join Zoom Meeting</a>
+              <a href={event.zoomLink} onClick={e => { e.preventDefault(); openExternal(event.zoomLink!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy-text)', textDecoration: 'none' }}>💻 Join Zoom Meeting</a>
             )}
             {event.zoomPassword && (
               <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginTop: '6px' }}>Passcode: <strong style={{ color: 'var(--color-text-1)' }}>{event.zoomPassword}</strong></div>
@@ -140,7 +140,7 @@ export default function EventDetailView({ eventId, onBack }: { eventId: string; 
         )}
         {event.infoUrl && (
           <div style={{ marginTop: event.isRemote ? 0 : '6px', paddingTop: event.isRemote ? 0 : '12px', borderTop: event.isRemote ? 'none' : '1px solid var(--color-border)' }}>
-            <a href={event.infoUrl} onClick={e => { e.preventDefault(); openExternal(event.infoUrl!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy)', textDecoration: 'none' }}>🔗 More Info</a>
+            <a href={event.infoUrl} onClick={e => { e.preventDefault(); openExternal(event.infoUrl!) }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--color-navy-text)', textDecoration: 'none' }}>🔗 More Info</a>
           </div>
         )}
       </div>
@@ -175,7 +175,7 @@ export default function EventDetailView({ eventId, onBack }: { eventId: string; 
             style={{
               padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--color-border)',
               background: event.isInterested ? 'var(--color-surface)' : 'none',
-              color: event.isInterested ? 'var(--color-navy)' : 'var(--color-text-2)', fontSize: '13px',
+              color: event.isInterested ? 'var(--color-navy-text)' : 'var(--color-text-2)', fontSize: '13px',
               fontWeight: 600, cursor: busy ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', opacity: busy ? 0.7 : 1,
             }}>{event.isInterested ? '★ Interested' : 'Interested'}</button>
         </div>

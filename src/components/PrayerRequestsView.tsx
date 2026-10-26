@@ -22,7 +22,7 @@ export default function PrayerRequestsView() {
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
       <div style={{ marginBottom: '16px' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy)', fontFamily: 'var(--font-sans)' }}>Prayer Requests</h1>
+        <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-sans)' }}>Prayer Requests</h1>
         <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-2)' }}>Share a need, and stand with others in prayer</p>
       </div>
 

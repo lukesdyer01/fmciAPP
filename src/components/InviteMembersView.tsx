@@ -49,9 +49,9 @@ export default function InviteMembersView() {
       <input id="member-invite-email" type="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="friend@church.org" style={fieldStyle} />
       <button disabled={busy} style={{ ...buttonStyle, opacity: busy ? 0.6 : 1 }}>{busy ? 'Creating link…' : 'Create invite link'}</button>
     </form>
-    {error && <p role="alert" style={{ color: 'var(--color-red)', fontSize: '14px' }}>{error}</p>}
+    {error && <p role="alert" style={{ color: 'var(--color-red-text)', fontSize: '14px' }}>{error}</p>}
     {invitation && <div style={{ borderTop: '1px solid var(--color-border)', marginTop: '24px', paddingTop: '20px' }}>
-      <p role="status" style={{ color: 'var(--color-green)', fontWeight: 700 }}>Your invite link is ready</p>
+      <p role="status" style={{ color: 'var(--color-green-text)', fontWeight: 700 }}>Your invite link is ready</p>
       <p style={{ fontSize: '13px', color: 'var(--color-text-2)' }}>For {invitation.email} · Expires {new Date(invitation.expiresAt).toLocaleDateString()}</p>
       <label htmlFor="member-invite-link" style={{ display: 'block', marginBottom: '8px', fontSize: '13px' }}>Invitation link</label>
       <textarea id="member-invite-link" readOnly value={link} rows={4} onFocus={e => e.currentTarget.select()} style={{ ...fieldStyle, resize: 'vertical' }} />

@@ -71,7 +71,7 @@ function ImageBlockFields({ block, onChange }: { block: Extract<BlogBlock, { typ
           cursor: uploading ? 'default' : 'pointer', fontFamily: 'var(--font-sans)', marginBottom: '8px',
         }}>{uploading ? 'Uploading…' : '📷 Upload image'}</button>
       )}
-      {error && <div style={{ fontSize: '12px', color: 'var(--color-red)', marginBottom: '8px' }}>{error}</div>}
+      {error && <div style={{ fontSize: '12px', color: 'var(--color-red-text)', marginBottom: '8px' }}>{error}</div>}
       <input
         value={block.caption ?? ''}
         onChange={e => onChange({ ...block, caption: e.target.value })}
@@ -157,7 +157,7 @@ export default function BlockEditor({ blocks, onChange }: { blocks: BlogBlock[];
 function iconBtnStyle(disabled: boolean, danger = false): React.CSSProperties {
   return {
     width: '24px', height: '24px', borderRadius: '6px', border: 'none',
-    backgroundColor: 'transparent', color: disabled ? 'var(--color-border)' : danger ? 'var(--color-red)' : 'var(--color-text-2)',
+    backgroundColor: 'transparent', color: disabled ? 'var(--color-border)' : danger ? 'var(--color-red-text)' : 'var(--color-text-2)',
     fontSize: '13px', cursor: disabled ? 'default' : 'pointer', fontFamily: 'var(--font-sans)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   }

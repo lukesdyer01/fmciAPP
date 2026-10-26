@@ -639,7 +639,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
         )}
 
         {composerError && (
-          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-red)' }}>{composerError}</div>
+          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-red-text)' }}>{composerError}</div>
         )}
       </div>
 

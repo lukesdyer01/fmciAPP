@@ -136,7 +136,7 @@ export default function MobileNavDrawer() {
               {colorScheme === 'dark' ? '☀ Light Mode' : '🌙 Dark Mode'}
             </button>
             {isAdmin && <button onClick={() => { close(); setAdminMode(true) }} style={accountActionStyle}>⚙ Admin Panel</button>}
-            <button onClick={() => supabase.auth.signOut()} style={{ ...accountActionStyle, color: 'var(--color-red)' }}>↪ Sign Out</button>
+            <button onClick={() => supabase.auth.signOut()} style={{ ...accountActionStyle, color: 'var(--color-red-text)' }}>↪ Sign Out</button>
           </div>
         </div>
       </section>
