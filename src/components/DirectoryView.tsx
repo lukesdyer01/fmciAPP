@@ -32,6 +32,16 @@ export default function DirectoryView() {
   const [search, setSearch] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [view, setView] = useState<'grid' | 'list'>('list')
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches)
+  const effectiveView = isMobile ? 'list' : view
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 768px)')
+    const update = () => setIsMobile(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -86,7 +96,7 @@ export default function DirectoryView() {
             <h1 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-serif)' }}>Member Directory</h1>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-2)' }}>Verified FMCI members, leaders, and ministry partners worldwide</p>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          {!isMobile && <div style={{ display: 'flex', gap: '6px' }}>
             {(['grid', 'list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)} style={{
                 padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-border)',
@@ -96,7 +106,7 @@ export default function DirectoryView() {
                 transition: 'all 0.15s',
               }}>{v === 'grid' ? '⊞ Grid' : '≡ List'}</button>
             ))}
-          </div>
+          </div>}
         </div>
 
         {/* Search & Filters toggle (collapsed by default) */}
@@ -190,11 +200,11 @@ export default function DirectoryView() {
       {filtered.length > 0 && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: view === 'grid' ? 'repeat(auto-fill, minmax(240px, 1fr))' : '1fr',
+          gridTemplateColumns: effectiveView === 'grid' ? 'repeat(auto-fill, minmax(240px, 1fr))' : '1fr',
           gap: '12px',
         }}>
           {filtered.map((member, i) => (
-            view === 'grid'
+            effectiveView === 'grid'
               ? <MemberCard key={i} member={member} onOpen={openProfile} />
               : <MemberRow key={i} member={member} onOpen={openProfile} />
           ))}
