@@ -1,33 +1,38 @@
-// The mobile navigation drawer — secondary destinations only. Home and Events live in the
-// bottom tab bar; Ministries and Groups moved here when Notifications and
-// Messages took their tab slots. The drawer also holds the member's profile
-// header, theme toggle, and admin entry. Opened by the header hamburger button.
+// Facebook-inspired mobile menu panel with searchable destinations and account actions.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NAV } from './LeftSidebar'
 import { useUIStore } from '../store/ui'
 import { useColorScheme } from '../providers/ThemeProvider'
-import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
-import { useOpenProfile } from './ProfileView'
 import { supabase } from '../lib/supabase'
-import VerifiedBadge from './VerifiedBadge'
 
-// The view destinations that live in the bottom tab bar. Notifications and
-// Messages are panels, not views, so they never appear here.
-const TAB_VIEWS = new Set(['feed', 'events', 'directory'])
+const DESCRIPTIONS: Record<string, string> = {
+  feed: 'See updates from people and ministries in your network.',
+  directory: 'Find and connect with members of FMCI.',
+  orgs: 'Explore churches, ministries, and organizations.',
+  groups: 'Connect with people around shared interests.',
+  blog: 'Read articles and ministry updates.',
+  prayer: 'Share prayer needs and support one another.',
+  testimonies: 'Read and share stories of faith.',
+  events: 'Discover upcoming gatherings and ministry events.',
+  resources: 'Browse ministry resources and learning materials.',
+  invite: 'Invite someone to join the network.',
+  safety: 'Get help or report a safety concern.',
+  map: 'Explore ministries and members around the world.',
+  about: 'Learn about FMCI Network.',
+  privacy: 'Review how your information is handled.',
+}
 
 export default function MobileNavDrawer() {
   const activeView = useUIStore(s => s.activeView)
   const setActiveView = useUIStore(s => s.setActiveView)
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
   const setAdminMode = useUIStore(s => s.setAdminMode)
-  const userProfile = useUIStore(s => s.userProfile)
   const { colorScheme, toggleColorScheme } = useColorScheme()
-  const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
-  const openProfile = useOpenProfile()
   const [visible, setVisible] = useState(false)
+  const [query, setQuery] = useState('')
   const isAdmin = role === 'superadmin' || role === 'admin'
 
   useEffect(() => {
@@ -36,202 +41,113 @@ export default function MobileNavDrawer() {
 
   function close() {
     setVisible(false)
-    setTimeout(() => setMobileNavOpen(false), 200)
+    setTimeout(() => setMobileNavOpen(false), 180)
   }
 
   function selectView(id: typeof activeView) {
     setVisible(false)
-    setTimeout(() => setActiveView(id), 200)
+    setTimeout(() => setActiveView(id), 180)
   }
 
-  const secondaryNav = NAV.filter(item => !TAB_VIEWS.has(item.id))
+  const destinations = useMemo(() => [
+    ...NAV.map(item => ({ ...item, description: DESCRIPTIONS[item.id] ?? '' })),
+    { id: 'map' as const, icon: '🗺', label: 'Global Map', description: DESCRIPTIONS.map },
+    { id: 'about' as const, icon: 'ℹ️', label: 'About FMCI', description: DESCRIPTIONS.about },
+    { id: 'privacy' as const, icon: '🔒', label: 'Privacy Policy', description: DESCRIPTIONS.privacy },
+  ].filter(item => `${item.label} ${item.description}`.toLowerCase().includes(query.trim().toLowerCase())), [query])
 
   return (
     <div
       onClick={e => { if (e.target === e.currentTarget) close() }}
       style={{
-        position: 'fixed', inset: 0, zIndex: 300,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        opacity: visible ? 1 : 0, transition: 'opacity 0.2s',
+        position: 'fixed', inset: 'calc(56px + var(--safe-top)) 0 0', zIndex: 300,
+        backgroundColor: 'rgba(0,0,0,0.28)',
+        opacity: visible ? 1 : 0, transition: 'opacity 0.18s',
       }}
     >
-      <div id="mobile-navigation" aria-label="Main menu" style={{
-        position: 'absolute', top: 0, left: 0, bottom: 0, width: '78vw', maxWidth: '300px',
-        backgroundColor: 'var(--color-card)', boxShadow: '4px 0 24px rgba(0,0,0,0.25)',
-        display: 'flex', flexDirection: 'column',
-        paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)',
-        transform: visible ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1)',
+      <section id="mobile-navigation" aria-label="Main menu" style={{
+        position: 'absolute', top: '4px', left: '4px', right: '4px', bottom: '4px',
+        maxWidth: '980px', margin: '0 auto',
+        backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)',
+        borderRadius: '20px', boxShadow: '0 12px 38px rgba(0,0,0,0.35)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        transform: visible ? 'translateY(0)' : 'translateY(-8px)',
+        transition: 'transform 0.18s ease, opacity 0.18s ease',
       }}>
-        <div style={{ position: 'absolute', top: 'calc(var(--safe-top) + 14px)', right: '8px', zIndex: 1 }}>
-          <button aria-label="Close menu" onClick={close} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '44px', height: '44px', background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1,
-          }}>✕</button>
+        <div style={{ padding: '16px 18px 12px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '14px' }}>
+            <h2 style={{ margin: 0, flex: 1, color: 'var(--color-text-1)', fontSize: '26px', lineHeight: 1.2, fontWeight: 800 }}>Menu</h2>
+            <button aria-label="Close menu" onClick={close} style={{
+              width: '38px', height: '38px', border: 0, borderRadius: '50%',
+              backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)',
+              fontSize: '21px', lineHeight: 1, cursor: 'pointer',
+            }}>✕</button>
+          </div>
+          <label style={{
+            height: '44px', display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '0 14px', borderRadius: '24px', backgroundColor: 'var(--color-surface)',
+            color: 'var(--color-text-3)',
+          }}>
+            <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7" /><path d="m16 16 5 5" />
+            </svg>
+            <input
+              aria-label="Search menu"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search menu"
+              style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: 'transparent', color: 'var(--color-text-1)', font: 'inherit', fontSize: '15px' }}
+            />
+          </label>
         </div>
 
-        {/* Profile header — the member's own identity, one tap from their page */}
-        {currentUser && (
-          <button
-            onClick={() => { close(); openProfile(currentUser.id) }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-              padding: '14px 56px 14px 16px', border: 'none', borderBottom: '1px solid var(--color-border-light)',
-              background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-            }}
-          >
-            <div style={{ width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden' }}>
-              {userProfile.avatarUrl
-                ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px' }}>{(userProfile.name || '?').slice(0, 2).toUpperCase()}</div>
-              }
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 800, fontSize: '15px', color: 'var(--color-text-1)' }}>
-                {userProfile.name || 'My Profile'}
-                {currentUser.verified && <VerifiedBadge size={15} />}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {[userProfile.title, userProfile.church, userProfile.location].filter(Boolean).join(' · ') || 'View my profile'}
-              </div>
-            </div>
-            <span style={{ color: 'var(--color-text-3)', fontSize: '16px' }}>›</span>
-          </button>
-        )}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 18px 18px' }}>
+          <h3 style={{ margin: '8px 0 10px', color: 'var(--color-text-1)', fontSize: '18px', fontWeight: 800 }}>Social</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '4px' }}>
+            {destinations.map(item => {
+              const active = activeView === item.id
+              return (
+                <button key={item.id} onClick={() => selectView(item.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+                  padding: '10px 8px', border: 0, borderRadius: '12px', cursor: 'pointer',
+                  textAlign: 'left', fontFamily: 'var(--font-sans)',
+                  backgroundColor: active ? 'var(--color-hover)' : 'transparent',
+                  color: 'var(--color-text-1)',
+                }}>
+                  <span style={{
+                    width: '46px', height: '46px', flex: '0 0 46px', borderRadius: '12px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: 'var(--color-surface)', fontSize: '23px',
+                  }}>{item.icon}</span>
+                  <span style={{ minWidth: 0, display: 'block' }}>
+                    <span style={{ display: 'block', fontSize: '16px', lineHeight: 1.3, fontWeight: 750 }}>{item.label}</span>
+                    <span style={{ display: 'block', marginTop: '2px', color: 'var(--color-text-2)', fontSize: '13px', lineHeight: 1.35 }}>{item.description}</span>
+                  </span>
+                </button>
+              )
+            })}
+            {destinations.length === 0 && <div style={{ padding: '18px 8px', color: 'var(--color-text-2)', fontSize: '14px' }}>No menu items match “{query}”.</div>}
+          </div>
+        </div>
 
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-          {secondaryNav.map(item => {
-            const active = activeView === item.id
-            return (
-              <button key={item.id} onClick={() => selectView(item.id)} style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
-                cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-                backgroundColor: active ? 'var(--color-navy)' : 'transparent',
-                color: active ? '#fff' : 'var(--color-text-1)',
-                fontSize: '15px', fontWeight: active ? 700 : 500,
-                marginBottom: '2px',
-              }}>
-                <span style={{
-                  width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                  backgroundColor: active ? 'rgba(255,255,255,0.12)' : 'var(--color-surface)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-                }}>{item.icon}</span>
-                {item.label}
-              </button>
-            )
-          })}
-
-          <button onClick={() => selectView('map')} style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
-            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-            backgroundColor: activeView === 'map' ? 'var(--color-navy)' : 'transparent',
-            color: activeView === 'map' ? '#fff' : 'var(--color-text-1)',
-            fontSize: '15px', fontWeight: activeView === 'map' ? 700 : 500,
-            marginBottom: '2px',
-          }}>
-            <span style={{
-              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-              backgroundColor: activeView === 'map' ? 'rgba(255,255,255,0.12)' : 'var(--color-surface)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-            }}>🗺</span>
-            Global Map
-          </button>
-
-          <button onClick={() => selectView('about')} style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
-            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-            backgroundColor: activeView === 'about' ? 'var(--color-navy)' : 'transparent',
-            color: activeView === 'about' ? '#fff' : 'var(--color-text-1)',
-            fontSize: '15px', fontWeight: activeView === 'about' ? 700 : 500,
-            marginBottom: '2px',
-          }}>
-            <span style={{
-              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-              backgroundColor: activeView === 'about' ? 'rgba(255,255,255,0.12)' : 'var(--color-surface)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-            }}>ℹ️</span>
-            About FMCI
-          </button>
-
-          <button onClick={() => selectView('privacy')} style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
-            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-            backgroundColor: activeView === 'privacy' ? 'var(--color-navy)' : 'transparent',
-            color: activeView === 'privacy' ? '#fff' : 'var(--color-text-1)',
-            fontSize: '15px', fontWeight: activeView === 'privacy' ? 700 : 500,
-            marginBottom: '2px',
-          }}>
-            <span style={{
-              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-              backgroundColor: activeView === 'privacy' ? 'rgba(255,255,255,0.12)' : 'var(--color-surface)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-            }}>🔒</span>
-            Privacy Policy
-          </button>
-
-          {isAdmin && (
-            <button onClick={() => { close(); setAdminMode(true) }} style={{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
-              cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-              backgroundColor: 'transparent', color: 'var(--color-text-1)',
-              fontSize: '15px', fontWeight: 500, marginBottom: '2px',
-            }}>
-              <span style={{
-                width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                backgroundColor: 'var(--color-surface)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-              }}>⚙</span>
-              Admin Panel
+        <div style={{ borderTop: '1px solid var(--color-border)', padding: '10px 18px calc(10px + var(--safe-bottom))', flexShrink: 0, backgroundColor: 'var(--color-card)' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={toggleColorScheme} style={accountActionStyle}>
+              {colorScheme === 'dark' ? '☀ Light Mode' : '🌙 Dark Mode'}
             </button>
-          )}
-        </nav>
-
-        <div style={{ borderTop: '1px solid var(--color-border)', padding: '10px' }}>
-          <button onClick={toggleColorScheme} style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
-            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-            backgroundColor: 'transparent', color: 'var(--color-text-1)',
-            fontSize: '15px', fontWeight: 500,
-          }}>
-            <span style={{
-              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-              backgroundColor: 'var(--color-surface)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-            }}>{colorScheme === 'dark' ? '☀' : '🌙'}</span>
-            <span style={{ flex: 1 }}>{colorScheme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-            <span style={{
-              width: '36px', height: '20px', borderRadius: '10px', flexShrink: 0, position: 'relative',
-              backgroundColor: colorScheme === 'dark' ? 'var(--color-navy)' : 'var(--color-border)', transition: 'background 0.15s',
-            }}>
-              <span style={{
-                position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '50%',
-                backgroundColor: '#fff', transition: 'left 0.15s', left: colorScheme === 'dark' ? '18px' : '2px',
-              }} />
-            </span>
-          </button>
-          <button onClick={() => supabase.auth.signOut()} style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            width: '100%', padding: '11px 12px', borderRadius: '8px', border: 'none',
-            cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
-            backgroundColor: 'transparent', color: 'var(--color-red)',
-            fontSize: '15px', fontWeight: 600,
-          }}>
-            <span style={{
-              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-              backgroundColor: 'var(--color-surface)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-            }}>↪</span>
-            Sign Out
-          </button>
+            {isAdmin && <button onClick={() => { close(); setAdminMode(true) }} style={accountActionStyle}>⚙ Admin Panel</button>}
+            <button onClick={() => supabase.auth.signOut()} style={{ ...accountActionStyle, color: 'var(--color-red)' }}>↪ Sign Out</button>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   )
+}
+
+const accountActionStyle: React.CSSProperties = {
+  flex: '1 1 110px', minHeight: '40px', padding: '8px 10px',
+  border: '1px solid var(--color-border)', borderRadius: '10px',
+  backgroundColor: 'var(--color-surface)', color: 'var(--color-text-1)',
+  fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
+  cursor: 'pointer', whiteSpace: 'nowrap',
 }

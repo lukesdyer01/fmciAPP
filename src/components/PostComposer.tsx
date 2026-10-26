@@ -32,6 +32,7 @@ const TESTIMONY_CATEGORIES = [
 
 const MAX_IMAGE_MB = 10
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024
+const DEFAULT_POST_PROMPT = 'Share a post, testimony, teaching, or prayer request with the network…'
 
 // No SVG on purpose: served from the public storage bucket it would be a
 // script-execution vector, and a post photo never needs to be vector art.
@@ -354,7 +355,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       <div className="post-composer-launcher">
         {avatar}
         <button ref={launchRef} type="button" onClick={() => setComposerOpen(true)}>
-          {text.trim() || image ? 'Continue your draft…' : selectedOrg ? `Share something on behalf of ${selectedOrg.name}…` : placeholder ?? 'Share a post, testimony, teaching, or prayer request with the network…'}
+          {text.trim() || image ? 'Continue your draft…' : selectedOrg ? `Share something on behalf of ${selectedOrg.name}…` : placeholder ?? DEFAULT_POST_PROMPT}
         </button>
       </div>
       {composerOpen && createPortal(
@@ -464,25 +465,6 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {selectedOrg ? (
-            selectedOrg.img ? (
-              <img src={selectedOrg.img} alt={selectedOrg.name} style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
-            ) : (
-              <div style={{ width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
-                🏛
-              </div>
-            )
-          ) : userProfile.avatarUrl ? (
-            <img
-              src={userProfile.avatarUrl}
-              alt={userProfile.name}
-              style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
-            />
-          ) : (
-            <div style={{ width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px' }}>
-              {(userProfile.name || '?').slice(0, 2).toUpperCase()}
-            </div>
-          )}
           <div
             style={{
               flex: 1, backgroundColor: 'var(--color-surface)', borderRadius: '10px',
@@ -501,7 +483,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
               ref={textareaRef}
               placeholder={selectedOrg
                 ? `Share something on behalf of ${selectedOrg.name}…`
-                : placeholder ?? (type === 'post' ? `What's on your mind, ${(userProfile.name || 'there').split(' ')[0]}?` : `Share your ${type}…`)
+                : placeholder ?? (type === 'post' ? DEFAULT_POST_PROMPT : `Share your ${type}…`)
               }
               value={text}
               onChange={e => onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}

@@ -197,6 +197,8 @@ html[data-theme="dark"] .bottom-tab-bar {
 /* Topbar sections that hide/reflow on mobile */
 .topbar-brand        { display: flex; align-items: center; gap: 8px; min-width: 200px; flex-shrink: 0; }
 .topbar-brand-title  { font-size: 22px; line-height: 56px; }
+.topbar-brand-mark   { display: none; }
+.topbar-actions      { min-width: 0; }
 .topbar-avatar       { display: flex; align-items: center; flex-shrink: 0; }
 .topbar-nav-pills   { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .topbar-secondary-icon { display: flex; }
@@ -255,6 +257,30 @@ html[data-theme="dark"] .bottom-tab-bar {
   .mobile-nav-toggle {
     display: flex;
   }
+  .topbar-actions {
+    gap: 8px !important;
+  }
+  .topbar-brand {
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+  .topbar-brand-mark {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .topbar-brand-mark img {
+    display: block;
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+  }
   .bottom-tab-bar {
     display: flex;
   }
@@ -274,17 +300,13 @@ html[data-theme="dark"] .bottom-tab-bar {
     display: none;
   }
   .topbar-avatar {
-    display: none; /* drawer's profile header covers Edit Profile / theme / Admin / Sign Out */
-  }
-  .topbar-brand {
-    min-width: 0;
-    flex-shrink: 1;
+    display: flex;
   }
   .topbar-brand-title {
-    font-size: 18px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: none;
+  }
+  .topbar-brand + .mobile-search-toggle {
+    margin-left: 0;
   }
   .notifications-panel {
     width: 100%;

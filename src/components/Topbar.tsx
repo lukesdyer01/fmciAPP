@@ -8,6 +8,10 @@ import { useConversations } from '../api-client/messages'
 import { playNotificationSound } from '../lib/notificationSound'
 import { useSearchResults } from '../lib/search'
 import type { ActiveView } from '../App'
+import fmciLogo from '../imports/fmci-copy1280x400_orig.png'
+import { useColorScheme } from '../providers/ThemeProvider'
+
+const DARK_MODE_LOGO = 'https://jbtlmdrmysrgvdpbveyu.supabase.co/storage/v1/object/public/avatars/cbd09a76-4b75-4945-b1f3-721610a22b72/org-1788280855118.png'
 
 function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
   query: string
@@ -129,6 +133,7 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
 }
 
 export default function Topbar() {
+  const { colorScheme } = useColorScheme()
   const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
   const editProfileOpen = useUIStore(s => s.editProfileOpen)
@@ -160,52 +165,51 @@ export default function Topbar() {
   return (
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
-      // Grows into the status-bar area rather than hiding under it: the navy
-      // background paints the full inset while the 56px of controls sit below.
+      // Grows into the status-bar area rather than hiding under it.
       height: 'calc(56px + var(--safe-top))',
-      backgroundColor: 'var(--color-navy)',
+      backgroundColor: 'var(--color-card)',
       display: 'flex', alignItems: 'center',
       padding: '0 16px', gap: '12px',
       // Must follow the `padding` shorthand — a later key wins in a style
       // object, so declaring this above it would be silently overridden.
       paddingTop: 'var(--safe-top)',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+      boxShadow: '0 1px 6px rgba(0,0,0,0.16)',
     }}>
-      <button
-        type="button"
-        className="mobile-nav-toggle"
-        aria-label="Open menu"
-        aria-expanded={mobileNavOpen}
-        aria-controls="mobile-navigation"
-        onClick={() => setMobileNavOpen(true)}
-        style={{
-          width: '44px', height: '44px', flexShrink: 0, padding: 0,
-          alignItems: 'center', justifyContent: 'center',
-          border: 'none', borderRadius: '8px', background: 'transparent',
-          color: '#fff', cursor: 'pointer',
-        }}
-      >
-        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
       {/* Brand */}
       <div className="topbar-brand" onClick={() => setActiveView('feed')} style={{ cursor: 'pointer' }}>
-        <div className="topbar-brand-title" style={{ fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>FMCI NETWORK</div>
+        <span className="topbar-brand-mark" aria-hidden="true"><img src={colorScheme === 'dark' ? DARK_MODE_LOGO : fmciLogo} alt="" /></span>
+        <div className="topbar-brand-title" style={{ fontWeight: 800, color: 'var(--color-text-1)', letterSpacing: '0.5px' }}>FMCI NETWORK</div>
       </div>
 
-      {/* Right side — search and (desktop) avatar. Phones get a search icon
-          that opens the full-screen overlay (the desktop box is hidden below
-          768px). Messages and Notifications now live in the bottom tab bar. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-        <button className="mobile-search-toggle" onClick={() => setSearchOpen(true)} title="Search" style={{
-          width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-          backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)',
-          alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s', flexShrink: 0,
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <button className="mobile-search-toggle" onClick={() => setSearchOpen(true)} title="Search" aria-label="Search" style={{
+        width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+        backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)',
+        alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s', flexShrink: 0,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
+
+      {/* Right side — mobile menu and notifications, plus desktop search and profile controls. */}
+      <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+        <button
+          type="button"
+          className="mobile-nav-toggle"
+          aria-label="Open menu"
+          aria-expanded={mobileNavOpen}
+          aria-controls="mobile-navigation"
+          onClick={() => setMobileNavOpen(true)}
+          style={{
+            width: '44px', height: '44px', flexShrink: 0, padding: 0,
+            alignItems: 'center', justifyContent: 'center',
+            border: 'none', borderRadius: '50%', background: mobileNavOpen ? '#0866ff' : 'var(--color-surface)',
+            color: mobileNavOpen ? '#fff' : 'var(--color-text-1)', cursor: 'pointer',
+          }}
+        >
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            {Array.from({ length: 9 }, (_, i) => <rect key={i} x={3 + (i % 3) * 7} y={3 + Math.floor(i / 3) * 7} width="5" height="5" rx="1" />)}
           </svg>
         </button>
 
@@ -217,7 +221,7 @@ export default function Topbar() {
           aria-expanded={notifOpen}
           style={{
             width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-            backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)',
+            backgroundColor: 'var(--color-surface)', color: 'var(--color-text-1)',
             alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}
         >
@@ -228,21 +232,21 @@ export default function Topbar() {
         </button>
 
         <div className="topbar-search" style={{ position: 'relative', flex: '0 1 420px', minWidth: 0 }}>
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>🔍</span>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'var(--color-text-3)' }}>🔍</span>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search for people, ministries, groups and #hashtags"
             style={{
               width: '100%', padding: '9px 14px 9px 36px',
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
               borderRadius: '20px', fontSize: '13px',
-              fontFamily: 'var(--font-sans)', color: '#fff', outline: 'none',
+              fontFamily: 'var(--font-sans)', color: 'var(--color-text-1)', outline: 'none',
               boxSizing: 'border-box',
             }}
-            onFocus={e => { (e.target as HTMLInputElement).style.background = 'rgba(255,255,255,0.16)' }}
-            onBlur={e => { (e.target as HTMLInputElement).style.background = 'rgba(255,255,255,0.1)' }}
+            onFocus={e => { (e.target as HTMLInputElement).style.background = 'var(--color-hover)' }}
+            onBlur={e => { (e.target as HTMLInputElement).style.background = 'var(--color-surface)' }}
           />
           {search.trim() !== '' && (
             <SearchDropdown
@@ -254,8 +258,7 @@ export default function Topbar() {
           )}
         </div>
 
-        {/* Avatar — hover to see profile preview, Edit Profile, Admin Panel, Sign Out.
-            Phones hide it: the drawer's profile header already carries all of these. */}
+        {/* Avatar — hover to see profile preview, Edit Profile, Admin Panel, Sign Out. */}
         <div className="topbar-avatar"><ProfileHoverCard /></div>
       </div>
       {editProfileOpen && <EditProfileModal />}
