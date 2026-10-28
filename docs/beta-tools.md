@@ -11,3 +11,7 @@ Database migration and `dynamic-endpoint` backend deployed October 28, 2026. Web
 - Group and resource detail URLs work from both search surfaces and support browser history. Search has cached data, loading, partial-failure and retry states. Resource refresh failures retain loaded content. Search focus stays inside its dialog and restores on close.
 
 Verification: tests cover per-user saved-item constraints, admin denials, preference validation, feedback limits/redaction, stable mixed-feed pagination and filters. The migration was also tested against the linked database inside a transaction that rolled back, checking invitation counts, revocation, credential removal and deletion cascade. No production schema changes were retained by that test.
+
+## iPhone build
+
+Version 1.0.2 build 10 archived, signed, and uploaded successfully on October 27, 2026 (Central time). Xcode reported Upload succeeded and EXPORT SUCCEEDED. The signed archive includes the new beta feedback and saved-items assets. Apple reported the uploaded package is processing. TestFlight availability and physical-device testing have not been verified. Archive: `/tmp/fmci-beta-build10.xcarchive`. Upload log: `/tmp/fmci-beta-build10-upload.log`.
