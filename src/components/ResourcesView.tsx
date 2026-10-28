@@ -1,3 +1,4 @@
+import YouTubePreview from './YouTubePreview'
 import { useState, useEffect } from 'react'
 import { extractYouTubeId } from '../lib/youtube'
 import { api } from '../api-client/server'
@@ -277,13 +278,7 @@ export default function ResourcesView() {
               }}>
                 {videoId && (
                   <div style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
-                    <iframe
-                      src={`https://www.youtube.com/embed/${videoId}`}
-                      title={r.title}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                    <YouTubePreview key={videoId} videoId={videoId} title={r.title} />
                   </div>
                 )}
                 <div className="resource-card-row" style={{ padding: '20px 22px' }}>

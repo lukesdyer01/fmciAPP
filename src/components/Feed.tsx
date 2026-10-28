@@ -1,23 +1,24 @@
+import { lazy, Suspense } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import Stories from './Stories'
 import PeopleYouMayKnow from './PeopleYouMayKnow'
 import RecommendedResources from './RecommendedResources'
 import { feedCarouselPosition } from '../lib/resourceSuggestions'
-import SafetySupportView from './SafetySupportView'
+const SafetySupportView = lazy(() => import('./SafetySupportView'))
 import { useState, useEffect, Fragment } from 'react'
 import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
-import DirectoryView from './DirectoryView'
-import GroupsView from './GroupsView'
-import PrayerRequestsView from './PrayerRequestsView'
-import TestimoniesView from './TestimoniesView'
+const DirectoryView = lazy(() => import('./DirectoryView'))
+const GroupsView = lazy(() => import('./GroupsView'))
+const PrayerRequestsView = lazy(() => import('./PrayerRequestsView'))
+const TestimoniesView = lazy(() => import('./TestimoniesView'))
 import EventsView from './EventsView'
-import ResourcesView from './ResourcesView'
+const ResourcesView = lazy(() => import('./ResourcesView'))
 import BlogView, { BlogPostFeedCard, type BlogPost } from './BlogView'
-import GlobalMapView from './GlobalMapView'
-import AboutView from './AboutView'
-import InviteMembersView from './InviteMembersView'
-import PrivacyPolicyView from './PrivacyPolicyView'
+const GlobalMapView = lazy(() => import('./GlobalMapView'))
+const AboutView = lazy(() => import('./AboutView'))
+const InviteMembersView = lazy(() => import('./InviteMembersView'))
+const PrivacyPolicyView = lazy(() => import('./PrivacyPolicyView'))
 import OrgView from './OrgView'
 import ProfileChecklist from './ProfileChecklist'
 import { EventCard, type EventItem } from './EventCard'

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { readMessageNotificationUrl } from './lib/messageNotification'
 import { useEffect, useRef, Component, type ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -15,7 +16,7 @@ import ActiveUsersBar from './components/ActiveUsersBar'
 import LeftSidebar from './components/LeftSidebar'
 import Feed from './components/Feed'
 import RightSidebar from './components/RightSidebar'
-import AdminShell from './components/admin/AdminShell'
+const AdminShell = lazy(() => import('./components/admin/AdminShell'))
 import ProfileView from './components/ProfileView'
 import MessagesPanel from './components/MessagesPanel'
 import NotificationsPanel from './components/NotificationsPanel'
@@ -34,8 +35,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
       return (
         <div style={{ padding: '40px', fontFamily: 'monospace', backgroundColor: '#0d1117', color: '#f87171', minHeight: '100vh' }}>
           <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>App Error</div>
-          <div style={{ fontSize: '13px', color: '#fca5a5', whiteSpace: 'pre-wrap' }}>{(this.state.error as Error).message}</div>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '12px', whiteSpace: 'pre-wrap' }}>{(this.state.error as Error).stack}</div>
+          <div style={{ fontSize: '13px', color: '#fca5a5', whiteSpace: 'pre-wrap' }}>Something went wrong. Please try again.</div>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '12px', whiteSpace: 'pre-wrap' }}></div>
           <button onClick={() => this.setState({ error: null })} style={{ marginTop: '20px', padding: '8px 16px', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', color: '#e6edf3', borderRadius: '6px', cursor: 'pointer' }}>Retry</button>
         </div>
       )
@@ -185,7 +186,7 @@ export default function App() {
           <AuthProvider>
             <OrgThemeProvider orgId="org_fmci">
               <ErrorBoundary>
-                <AppShell />
+                <Suspense fallback={<div role="status">Loading…</div>}><AppShell /></Suspense>
               </ErrorBoundary>
             </OrgThemeProvider>
           </AuthProvider>

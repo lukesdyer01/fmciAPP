@@ -4,6 +4,7 @@ import { api } from '../api-client/server'
 import { useAuth } from '../providers/AuthProvider'
 import { useUIStore } from '../store/ui'
 import { openExternal } from '../lib/openExternal'
+import { extractYouTubeId } from '../lib/youtube'
 import { selectResourceSuggestions, resourcePlaceholder } from '../lib/resourceSuggestions'
 import type { Resource } from './ResourcesView'
 import './PeopleYouMayKnow.css'
@@ -30,7 +31,7 @@ export default function RecommendedResources() {
       <ul className="people-suggestions-track" aria-label="Recommended resources" tabIndex={0}>
         {resources.map(resource => (
           <li className="people-suggestion-card resource-suggestion-card" key={resource.id}>
-            <ResourceCover key={resource.img} resource={resource} />
+            <ResourceCover key={`${resource.img}:${resource.url}`} resource={resource} />
             <button type="button" className="people-suggestion-dismiss" aria-label={`Hide ${resource.title} recommendation`}
               onClick={() => setDismissed(previous => new Set([...previous, resource.id]))}>×</button>
             <div className="people-suggestion-details resource-suggestion-details">
@@ -51,8 +52,11 @@ export default function RecommendedResources() {
 }
 
 function ResourceCover({ resource }: { resource: Resource }) {
-  const [failed, setFailed] = useState(false)
-  return resource.img && !failed
-    ? <img className="people-suggestion-photo resource-suggestion-cover" src={resource.img} alt="" loading="lazy" onError={() => setFailed(true)} />
+  const [imageIndex, setImageIndex] = useState(0)
+  const videoId = extractYouTubeId(resource.url ?? '')
+  const images = [resource.img, videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : ''].filter(Boolean)
+  const image = images[imageIndex]
+  return image
+    ? <img className="people-suggestion-photo resource-suggestion-cover" src={image} alt="" loading="lazy" onError={() => setImageIndex(previous => previous + 1)} />
     : <div className="people-suggestion-photo people-suggestion-initials" aria-hidden="true">{resourcePlaceholder(resource.type)}</div>
 }

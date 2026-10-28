@@ -1,3 +1,4 @@
+import YouTubePreview from './YouTubePreview'
 import { useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import VerifiedBadge from './VerifiedBadge'
@@ -429,13 +430,7 @@ export default function PostCard({ post }: { post: Post }) {
 
       {videoId && (
         <div style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
-          <iframe
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title="YouTube video"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          <YouTubePreview key={videoId} videoId={videoId} />
         </div>
       )}
 

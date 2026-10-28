@@ -39,7 +39,7 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
   }
 
   return (
-    <div style={{
+    <div role="dialog" aria-modal="true" aria-label="Search the network" onKeyDown={e => { if (e.key === 'Escape') onClose() }} style={{
       position: 'fixed', inset: 0, zIndex: 350,
       backgroundColor: 'var(--color-card)',
       display: 'flex', flexDirection: 'column',
@@ -60,6 +60,7 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
           ref={inputRef}
           value={query}
           onChange={e => setQuery(e.target.value)}
+          aria-label="Search the network"
           placeholder="Search people, ministries, groups…"
           style={{
             flex: 1, padding: '11px 16px', borderRadius: '22px',
@@ -102,7 +103,7 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
           <div>
             <div style={sectionLabel}>Ministries</div>
             {results.orgs.map(o => (
-              <button key={o.id} onClick={() => navigate('orgs')} style={row}>
+              <button key={o.id} onClick={() => { useUIStore.getState().viewOrg(o.id); onClose() }} style={row}>
                 {o.img
                   ? <img src={o.img} alt="" style={{ width: '36px', height: '36px', borderRadius: '9px', objectFit: 'cover', flexShrink: 0 }} />
                   : <div style={{ width: '36px', height: '36px', borderRadius: '9px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>🏛</div>}
@@ -134,7 +135,7 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
           <div>
             <div style={sectionLabel}>Events</div>
             {results.events.map(ev => (
-              <button key={ev.id} onClick={() => navigate('events')} style={row}>
+              <button key={ev.id} onClick={() => { useUIStore.getState().viewEvent(ev.id); onClose() }} style={row}>
                 <div style={{ width: '36px', height: '36px', borderRadius: '9px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>📅</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-1)' }}>{ev.title}</div>
