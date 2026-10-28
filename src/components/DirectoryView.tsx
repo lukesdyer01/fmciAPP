@@ -93,7 +93,7 @@ export default function DirectoryView() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
           <div>
-            <h1 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-serif)' }}>Member Directory</h1>
+            <h1 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: 800, color: 'var(--color-navy-text)', fontFamily: 'var(--font-serif)' }}>Member Directory{!loading && <span style={{ marginLeft: '8px', fontSize: '16px', fontWeight: 600, color: 'var(--color-text-2)' }}>({members.length.toLocaleString()})</span>}</h1>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-2)' }}>Verified FMCI members, leaders, and ministry partners worldwide</p>
           </div>
           {!isMobile && <div style={{ display: 'flex', gap: '6px' }}>
