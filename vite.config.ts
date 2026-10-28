@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
 export default defineConfig({
+  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? "development") },
   base: process.env.VITE_BASE_URL ?? '/',
   build: {
     sourcemap: false,

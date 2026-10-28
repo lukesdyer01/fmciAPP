@@ -8,7 +8,7 @@ import type { ActiveView } from '../App'
 // URL <-> view mapping so each page has its own address (deep-linkable,
 // back/forward-navigable) without pulling in a router dependency.
 const VIEW_TO_PATH: Record<ActiveView, string> = {
-  safety: '/safety', invite: '/invite', feed: '/', directory: '/directory', orgs: '/ministries', groups: '/groups', blog: '/blog',
+  feedback: '/feedback', saved: '/saved', safety: '/safety', invite: '/invite', feed: '/', directory: '/directory', orgs: '/ministries', groups: '/groups', blog: '/blog',
   prayer: '/prayer', testimonies: '/testimonies', events: '/events',
   resources: '/resources', map: '/map', about: '/about', privacy: '/privacy',
 }
@@ -21,9 +21,9 @@ function pushUrl(path: string) {
   window.history.pushState(null, '', path)
 }
 
-interface UrlState { activeView: ActiveView; profileId: string | null; viewingOrgId: string | null; viewingBlogPostId: string | null; viewingEventId: string | null; viewingSeriesId: string | null; adminMode: boolean }
+interface UrlState { activeView: ActiveView; profileId: string | null; viewingOrgId: string | null; viewingBlogPostId: string | null; viewingEventId: string | null; viewingSeriesId: string | null; viewingGroupId: string | null; viewingResourceId: string | null; adminMode: boolean }
 
-const EMPTY_URL_STATE = { profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null }
+const EMPTY_URL_STATE = { profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null }
 
 function stateFromUrl(): UrlState {
   if (typeof window === 'undefined') return { activeView: 'feed', ...EMPTY_URL_STATE, adminMode: false }
@@ -36,6 +36,10 @@ function stateFromUrl(): UrlState {
   if (blogMatch) return { activeView: 'blog', ...EMPTY_URL_STATE, viewingBlogPostId: decodeURIComponent(blogMatch[1]), adminMode: false }
   const seriesMatch = path.match(/^\/meeting-series\/([^/]+)\/?$/)
   if (seriesMatch) return { activeView: 'events', ...EMPTY_URL_STATE, viewingSeriesId: decodeURIComponent(seriesMatch[1]), adminMode: false }
+  const groupMatch = path.match(/^\/groups\/([^/]+)\/?$/)
+  if (groupMatch) return { activeView: 'groups', ...EMPTY_URL_STATE, viewingGroupId: decodeURIComponent(groupMatch[1]), adminMode: false }
+  const resourceMatch = path.match(/^\/resources\/([^/]+)\/?$/)
+  if (resourceMatch) return { activeView: 'resources', ...EMPTY_URL_STATE, viewingResourceId: decodeURIComponent(resourceMatch[1]), adminMode: false }
   const eventMatch = path.match(/^\/events\/([^/]+)\/?$/)
   if (eventMatch) return { activeView: 'events', ...EMPTY_URL_STATE, viewingEventId: decodeURIComponent(eventMatch[1]), adminMode: false }
   if (path === '/admin' || path.startsWith('/admin/')) return { activeView: 'feed', ...EMPTY_URL_STATE, adminMode: true }
@@ -142,6 +146,13 @@ interface UIState {
   viewMeetingSeries: (id: string) => void
   closeMeetingSeriesView: () => void
 
+  viewingGroupId: string | null
+  viewGroup: (id: string) => void
+  closeGroupView: () => void
+  viewingResourceId: string | null
+  viewResource: (id: string) => void
+  closeResourceView: () => void
+
   messagesOpen: boolean
   messageTargetUserId: string | null
   messageTargetMessageId: string | null
@@ -174,7 +185,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     // switching back restores their place.
     get().saveScroll(get().activeView, window.scrollY)
     pushUrl(VIEW_TO_PATH[view] ?? '/')
-    set({ activeView: view, profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+    set({ activeView: view, profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
   },
 
   notifOpen: false,
@@ -203,7 +214,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   openProfile: id => {
     get().saveScroll(get().activeView, window.scrollY)
     pushUrl(`/profile/${id}`)
-    set({ profileId: id, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null })
+    set({ profileId: id, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null })
   },
   closeProfile: () => { pushUrl(VIEW_TO_PATH[get().activeView] ?? '/'); set({ profileId: null }) },
 
@@ -211,7 +222,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   viewOrg: id => {
     get().saveScroll(get().activeView, window.scrollY)
     pushUrl(`/ministries/${id}`)
-    set({ viewingOrgId: id, activeView: 'orgs', profileId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+    set({ viewingOrgId: id, activeView: 'orgs', profileId: null, viewingBlogPostId: null, viewingEventId: null, viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
   },
   closeOrgView: () => { pushUrl(VIEW_TO_PATH.orgs); set({ viewingOrgId: null }) },
 
@@ -219,7 +230,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   viewBlogPost: id => {
     get().saveScroll(get().activeView, window.scrollY)
     pushUrl(`/blog/${id}`)
-    set({ viewingBlogPostId: id, activeView: 'blog', profileId: null, viewingOrgId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+    set({ viewingBlogPostId: id, activeView: 'blog', profileId: null, viewingOrgId: null, viewingEventId: null, viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
   },
   closeBlogPostView: () => { pushUrl(VIEW_TO_PATH.blog); set({ viewingBlogPostId: null }) },
 
@@ -227,7 +238,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   viewEvent: id => {
     get().saveScroll(get().activeView, window.scrollY)
     pushUrl(`/events/${id}`)
-    set({ viewingEventId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
+    set({ viewingEventId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false })
   },
   closeEventView: () => { pushUrl(VIEW_TO_PATH.events); set({ viewingEventId: null }) },
 
@@ -237,8 +248,14 @@ export const useUIStore = create<UIState>((set, get) => ({
     pushUrl(`/meeting-series/${id}`)
     set({ viewingSeriesId: id, activeView: 'events', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, notifOpen: false, mobileNavOpen: false })
   },
-  closeMeetingSeriesView: () => { pushUrl(VIEW_TO_PATH.events); set({ viewingSeriesId: null }) },
+  closeMeetingSeriesView: () => { pushUrl(VIEW_TO_PATH.events); set({ viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null }) },
 
+  viewingGroupId: INITIAL_URL_STATE.viewingGroupId,
+  viewGroup: id => { get().saveScroll(get().activeView, window.scrollY); pushUrl(`/groups/${encodeURIComponent(id)}`); set({ ...EMPTY_URL_STATE, viewingGroupId: id, activeView: 'groups', mobileNavOpen: false, notifOpen: false }) },
+  closeGroupView: () => { pushUrl('/groups'); set({ viewingGroupId: null }) },
+  viewingResourceId: INITIAL_URL_STATE.viewingResourceId,
+  viewResource: id => { get().saveScroll(get().activeView, window.scrollY); pushUrl(`/resources/${encodeURIComponent(id)}`); set({ ...EMPTY_URL_STATE, viewingResourceId: id, activeView: 'resources', mobileNavOpen: false, notifOpen: false }) },
+  closeResourceView: () => { pushUrl('/resources'); set({ viewingResourceId: null }) },
   messagesOpen: false,
   messageTargetUserId: null,
   messageTargetMessageId: null,
@@ -252,11 +269,11 @@ export const useUIStore = create<UIState>((set, get) => ({
   setEditProfileOpen: open => set({ editProfileOpen: open }),
 
   activeHashtag: null,
-  viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false }) },
+  viewHashtag: tag => { pushUrl('/'); set({ activeHashtag: tag, activeView: 'feed', profileId: null, viewingOrgId: null, viewingBlogPostId: null, viewingEventId: null, viewingGroupId: null, viewingResourceId: null, viewingSeriesId: null, notifOpen: false, mobileNavOpen: false }) },
   clearHashtag: () => set({ activeHashtag: null }),
 
   syncFromUrl: () => {
     const s = stateFromUrl()
-    set({ activeView: s.activeView, profileId: s.profileId, viewingOrgId: s.viewingOrgId, viewingBlogPostId: s.viewingBlogPostId, viewingEventId: s.viewingEventId, viewingSeriesId: s.viewingSeriesId, adminMode: s.adminMode })
+    set({ activeView: s.activeView, profileId: s.profileId, viewingOrgId: s.viewingOrgId, viewingBlogPostId: s.viewingBlogPostId, viewingEventId: s.viewingEventId, viewingGroupId: s.viewingGroupId, viewingResourceId: s.viewingResourceId, viewingSeriesId: s.viewingSeriesId, adminMode: s.adminMode })
   },
 }))

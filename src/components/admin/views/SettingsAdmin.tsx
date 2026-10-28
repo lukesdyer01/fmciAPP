@@ -1,3 +1,4 @@
+import GroupInvitationsAdmin from './GroupInvitationsAdmin'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../api-client/server'
@@ -20,6 +21,7 @@ export default function SettingsAdmin() {
     }),
     onSuccess: updated => queryClient.setQueryData(networkSettingsKey, updated),
   })
+  const [groupCode, setGroupCode] = useState('')
   const [email, setEmail] = useState('')
   const [invitation, setInvitation] = useState<{ email: string; token: string; expiresAt: string } | null>(null)
   const [openInvitation, setOpenInvitation] = useState<{ token: string; expiresAt: string } | null>(null)
@@ -41,7 +43,8 @@ export default function SettingsAdmin() {
     setError('')
     setOpenInvitation(null)
     try {
-      setOpenInvitation(await api('/admin/invitations/open', { method: 'POST', body: JSON.stringify({}) }))
+      setOpenInvitation(await api('/admin/invitations/open', { method: 'POST', body: JSON.stringify({ code: groupCode }) }))
+      queryClient.invalidateQueries({ queryKey: ['group-invitations'] })
     } catch {
       setError('Unable to create a registration link. Check your super admin access and try again.')
     } finally { setBusy(false) }
@@ -79,7 +82,7 @@ export default function SettingsAdmin() {
         <p style={{ fontSize: '12px', color: '#adb5c0' }}>Copy and share this message privately. The code is shown only here.</p>
       </div>}
       {isSuperAdmin && <div style={{ borderTop: '1px solid #30363d', marginTop: '24px', paddingTop: '20px' }}>
-        <h3 style={{ marginTop: 0 }}>General registration link</h3>
+        <h3 style={{ marginTop: 0 }}>General registration link</h3><label>Shared code (optional)<input value={groupCode} onChange={e => setGroupCode(e.target.value)} placeholder="e.g. fmci26" minLength={6} maxLength={64} style={{ display: "block", padding: 12, margin: "10px 0", fontSize: 16 }} /></label><p>Use 6–64 letters, numbers, underscores or hyphens. Leave blank for a random link. Codes are case-sensitive.</p>
         <p style={{ color: '#adb5c0', fontSize: '13px' }}>Create a reusable link that does not require an email match. Anyone with it can register within seven days of creation.</p>
         <button type="button" disabled={busy} onClick={createOpenInvitation} style={{ padding: '12px', borderRadius: '8px', background: 'var(--color-gold)', color: '#111', cursor: busy ? 'wait' : 'pointer', border: 0 }}>{busy ? 'Creating…' : 'Generate registration link'}</button>
         {openInvitation && <div role="status" style={{ marginTop: '16px' }}>
@@ -89,5 +92,6 @@ export default function SettingsAdmin() {
         </div>}
       </div>}
     </section>
+    {isSuperAdmin && <GroupInvitationsAdmin />}
   </div>
 }

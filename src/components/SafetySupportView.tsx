@@ -1,3 +1,5 @@
+import BetaFeedback from './BetaFeedback'
+import NotificationPreferences from './NotificationPreferences'
 import { useState } from 'react'
 import { api } from '../api-client/server'
 import { REPORT_REASONS } from '../api-client/moderation'
@@ -33,6 +35,8 @@ export default function SafetySupportView() {
       {message && <p role="status" style={{ color: 'var(--color-green-text)' }}>{message}</p>}
       {error && <p role="alert" style={{ color: 'var(--color-red-text)' }}>{error}</p>}
     </section>
+    <BetaFeedback />
+    <NotificationPreferences />
     <PolicyView kind="terms" />
   </div>
 }

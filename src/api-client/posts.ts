@@ -42,7 +42,7 @@ export interface FeedPost {
   visibility?: 'public' | 'private'
 }
 
-function adaptPost(raw: any, index: number): FeedPost {
+export function adaptPost(raw: any, index: number): FeedPost {
   if (!raw || typeof raw !== 'object') {
     return {
       id: String(index), author: 'Unknown', title: '', church: '', location: '', avatar: '',
@@ -136,6 +136,7 @@ export function useCreatePost() {
       api<FeedPost>('/posts', { method: 'POST', body: JSON.stringify(post) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
+      qc.invalidateQueries({ queryKey: ['timeline'] })
     },
   })
 }
@@ -147,6 +148,7 @@ export function useEditPost() {
       api<FeedPost>(`/posts/${postId}`, { method: 'PUT', body: JSON.stringify({ content }) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
+      qc.invalidateQueries({ queryKey: ['timeline'] })
     },
   })
 }
@@ -158,6 +160,7 @@ export function useSetPrayerStatus() {
       api<FeedPost>(`/posts/${postId}`, { method: 'PUT', body: JSON.stringify({ prayerStatus: status }) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
+      qc.invalidateQueries({ queryKey: ['timeline'] })
     },
   })
 }
@@ -177,6 +180,7 @@ export function useDeletePost() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: feedKeys.all })
+      qc.invalidateQueries({ queryKey: ['timeline'] })
     },
   })
 }
@@ -187,6 +191,7 @@ export function useAddComment() {
     mutationFn: ({ postId, text }: { postId: string; text: string }) =>
       api<any>(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) }),
     onSuccess: (updated, { postId }) => {
+      qc.invalidateQueries({ queryKey: ['timeline'] })
       qc.setQueryData<FeedPost[]>(feedKeys.posts(), old =>
         old?.map(p => p.id === postId ? adaptPost(updated, 0) : p) ?? []
       )
@@ -200,6 +205,7 @@ export function useDeleteComment() {
     mutationFn: ({ postId, commentId }: { postId: string; commentId: string }) =>
       api<any>(`/posts/${postId}/comments/${commentId}`, { method: 'DELETE' }),
     onSuccess: (updated, { postId }) => {
+      qc.invalidateQueries({ queryKey: ['timeline'] })
       qc.setQueryData<FeedPost[]>(feedKeys.posts(), old =>
         old?.map(p => p.id === postId ? adaptPost(updated, 0) : p) ?? []
       )
@@ -222,6 +228,7 @@ export function useReactToPost() {
       )
       return { prev }
     },
+    onSettled: () => { qc.invalidateQueries({ queryKey: ['timeline'] }) },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(feedKeys.posts(), ctx.prev)
     },

@@ -45,7 +45,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-export type ActiveView = 'feed' | 'directory' | 'groups' | 'blog' | 'prayer' | 'testimonies' | 'events' | 'resources' | 'map' | 'orgs' | 'about' | 'privacy' | 'invite' | 'safety'
+export type ActiveView = 'feedback' | 'saved' | 'feed' | 'directory' | 'groups' | 'blog' | 'prayer' | 'testimonies' | 'events' | 'resources' | 'map' | 'orgs' | 'about' | 'privacy' | 'invite' | 'safety'
 
 function AppShell() {
   const activeView = useUIStore(s => s.activeView)
@@ -63,6 +63,8 @@ function AppShell() {
   const viewingOrgId = useUIStore(s => s.viewingOrgId)
   const viewingBlogPostId = useUIStore(s => s.viewingBlogPostId)
   const viewingEventId = useUIStore(s => s.viewingEventId)
+  const viewingGroupId = useUIStore(s => s.viewingGroupId)
+  const viewingResourceId = useUIStore(s => s.viewingResourceId)
   const viewingSeriesId = useUIStore(s => s.viewingSeriesId)
   const scrollPositions = useUIStore(s => s.scrollPositions)
   const { role } = useSupabaseRole()
@@ -71,7 +73,7 @@ function AppShell() {
   // Scroll preservation: opening a detail view (profile, ministry, event,
   // article, series) saves the list's position; closing it restores the
   // reader exactly where they were instead of dumping them at the top.
-  const detailOpen = !!(profileId || viewingOrgId || viewingBlogPostId || viewingEventId || viewingSeriesId)
+  const detailOpen = !!(profileId || viewingGroupId || viewingResourceId || viewingOrgId || viewingBlogPostId || viewingEventId || viewingSeriesId)
   const prevDetailOpen = useRef(detailOpen)
   useEffect(() => {
     if (prevDetailOpen.current && !detailOpen) {

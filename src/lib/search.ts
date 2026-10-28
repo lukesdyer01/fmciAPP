@@ -2,7 +2,8 @@
 // full-screen overlay. Fetches the searchable collections once and filters
 // client-side — the same behavior the dropdown always had, now in one place.
 
-import { useEffect, useState } from 'react'
+import { useQueries } from '@tanstack/react-query'
+import { useAuth } from '../providers/AuthProvider'
 import { api } from '../api-client/server'
 
 export interface SearchMember { id: string; name: string; title: string; church: string; avatarUrl: string }
@@ -17,23 +18,23 @@ export interface SearchResults {
   orgs: SearchOrg[]
   groups: SearchGroup[]
   resources: SearchResource[]
+  loading: boolean
+  error: boolean
+  retry: () => void
   total: number
 }
 
 export function useSearchResults(query: string): SearchResults {
-  const [members, setMembers] = useState<SearchMember[]>([])
-  const [events, setEvents] = useState<SearchEvent[]>([])
-  const [orgs, setOrgs] = useState<SearchOrg[]>([])
-  const [groups, setGroups] = useState<SearchGroup[]>([])
-  const [resources, setResources] = useState<SearchResource[]>([])
-
-  useEffect(() => {
-    api<SearchMember[]>('/members').then(setMembers).catch(() => {})
-    api<SearchEvent[]>('/events').then(setEvents).catch(() => {})
-    api<SearchOrg[]>('/orgs').then(setOrgs).catch(() => {})
-    api<SearchGroup[]>('/groups').then(setGroups).catch(() => {})
-    api<SearchResource[]>('/resources').then(setResources).catch(() => {})
-  }, [])
+  const { currentUser } = useAuth()
+  const queries = useQueries({ queries: ['members','events','orgs','groups','resources'].map(collection => ({ queryKey: ['search', currentUser?.id, collection], queryFn: () => api<unknown[]>(`/${collection}`), enabled: !!currentUser })) })
+  const members = (queries[0].data ?? []) as SearchMember[]
+  const events = (queries[1].data ?? []) as SearchEvent[]
+  const orgs = (queries[2].data ?? []) as SearchOrg[]
+  const groups = (queries[3].data ?? []) as SearchGroup[]
+  const resources = (queries[4].data ?? []) as SearchResource[]
+  const loading = queries.some(q => q.isPending)
+  const error = queries.some(q => q.isError)
+  const retry = () => { queries.filter(q => q.isError).forEach(q => { void q.refetch() }) }
 
   const q = query.trim().toLowerCase()
   const matchMembers = members.filter(m => m.name?.toLowerCase().includes(q) || m.church?.toLowerCase().includes(q)).slice(0, 5)
@@ -43,5 +44,5 @@ export function useSearchResults(query: string): SearchResults {
   const matchResources = resources.filter(r => r.title?.toLowerCase().includes(q) || r.author?.toLowerCase().includes(q)).slice(0, 5)
   const total = matchMembers.length + matchEvents.length + matchOrgs.length + matchGroups.length + matchResources.length
 
-  return { members: matchMembers, events: matchEvents, orgs: matchOrgs, groups: matchGroups, resources: matchResources, total }
+  return { members: matchMembers, events: matchEvents, orgs: matchOrgs, groups: matchGroups, resources: matchResources, total, loading, error, retry }
 }

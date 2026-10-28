@@ -1,3 +1,4 @@
+import BetaFeedbackAdmin from './views/BetaFeedbackAdmin'
 import { useState } from 'react'
 import { useUIStore } from '../../store/ui'
 import { useAuth } from '../../providers/AuthProvider'
@@ -15,7 +16,7 @@ import VerificationAdmin from './views/VerificationAdmin'
 import SettingsAdmin from './views/SettingsAdmin'
 import { useReports } from '../../api-client/moderation'
 
-export type AdminView = 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'moderation' | 'events' | 'resources' | 'verification' | 'analytics' | 'settings'
+export type AdminView = 'feedback' | 'dashboard' | 'members' | 'organizations' | 'groups' | 'content' | 'moderation' | 'events' | 'resources' | 'verification' | 'analytics' | 'settings'
 
 const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'dashboard',     icon: '◈',  label: 'Dashboard' },
@@ -28,6 +29,7 @@ const NAV: { id: AdminView; icon: string; label: string }[] = [
   { id: 'resources',     icon: '📚', label: 'Resources' },
   { id: 'verification',  icon: '✓',  label: 'Verification' },
   { id: 'analytics',     icon: '📊', label: 'Analytics' },
+  { id: 'feedback', icon: '💬', label: 'Beta feedback' },
   { id: 'settings',      icon: '⚙', label: 'Settings' },
 ]
 
@@ -57,6 +59,7 @@ export default function AdminShell() {
       case 'resources':     return <ResourcesAdmin />
       case 'verification':  return <VerificationAdmin />
       case 'analytics':     return <AnalyticsAdmin />
+      case 'feedback': return <BetaFeedbackAdmin />
       case 'settings':      return <SettingsAdmin />
     }
   })()

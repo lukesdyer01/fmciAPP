@@ -39,9 +39,11 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
         backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)',
         boxShadow: '0 12px 40px rgba(0,0,0,0.2)', maxHeight: '70vh', overflowY: 'auto',
       }}>
-        {totalMatches === 0 && (
+        {!results.loading && !results.error && totalMatches === 0 && (
           <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '13px' }}>No results for "{query}"</div>
         )}
+        {results.loading && <p role="status" style={{ padding: 16 }}>Searching…</p>}
+        {results.error && <p role="alert" style={{ padding: 16 }}>Some search results could not load. <button onClick={results.retry}>Retry</button></p>}
         {results.members.length > 0 && (
           <div>
             <div style={sectionLabel}>People</div>
@@ -63,7 +65,7 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
           <div>
             <div style={sectionLabel}>Ministries</div>
             {results.orgs.map(o => (
-              <button key={o.id} onClick={() => { onNavigate('orgs'); onClose() }} style={row}
+              <button key={o.id} onClick={() => { useUIStore.getState().viewOrg(o.id); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
               >
@@ -80,7 +82,7 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
           <div>
             <div style={sectionLabel}>Groups</div>
             {results.groups.map(g => (
-              <button key={g.id} onClick={() => { onNavigate('groups'); onClose() }} style={row}
+              <button key={g.id} onClick={() => { useUIStore.getState().viewGroup(g.id); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
               >
@@ -97,7 +99,7 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
           <div>
             <div style={sectionLabel}>Events</div>
             {results.events.map(ev => (
-              <button key={ev.id} onClick={() => { onNavigate('events'); onClose() }} style={row}
+              <button key={ev.id} onClick={() => { useUIStore.getState().viewEvent(ev.id); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
               >
@@ -114,7 +116,7 @@ function SearchDropdown({ query, onNavigate, onOpenProfile, onClose }: {
           <div>
             <div style={sectionLabel}>Resources</div>
             {results.resources.map(r => (
-              <button key={r.id} onClick={() => { onNavigate('resources'); onClose() }} style={row}
+              <button key={r.id} onClick={() => { useUIStore.getState().viewResource(r.id); onClose() }} style={row}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
               >

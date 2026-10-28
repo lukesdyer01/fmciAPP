@@ -20,13 +20,24 @@ const row: React.CSSProperties = {
 
 export default function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('')
+  const dialogRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const setActiveView = useUIStore(s => s.setActiveView)
   const openProfile = useOpenProfile()
   const results = useSearchResults(query)
 
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const changed: {element: HTMLElement; inert: boolean}[] = []
+    let node: HTMLElement | null = dialogRef.current
+    while (node?.parentElement && node !== document.body) {
+      for (const sibling of Array.from(node.parentElement.children)) if (sibling !== node && sibling instanceof HTMLElement) { changed.push({element:sibling,inert:sibling.inert}); sibling.inert=true }
+      node=node.parentElement
+    }
+    const overflow=document.body.style.overflow
+    document.body.style.overflow='hidden'
     inputRef.current?.focus()
+    return () => { changed.forEach(({element,inert})=>{element.inert=inert}); document.body.style.overflow=overflow; if(previous?.isConnected)previous.focus() }
   }, [])
 
   function navigate(view: ActiveView) {
@@ -39,7 +50,7 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Search the network" onKeyDown={e => { if (e.key === 'Escape') onClose() }} style={{
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Search the network" onKeyDown={e => { if (e.key === 'Escape') onClose(); if(e.key==='Tab') { const nodes=Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input,a[href],select,textarea')??[]).filter(n=>n.getClientRects().length); const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()} } }} style={{
       position: 'fixed', inset: 0, zIndex: 350,
       backgroundColor: 'var(--color-card)',
       display: 'flex', flexDirection: 'column',
@@ -78,11 +89,13 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
             🔍<br /><br />Search for people, ministries, groups, events, and resources across the network.
           </div>
         )}
-        {query.trim() !== '' && results.total === 0 && (
+        {query.trim() !== '' && !results.loading && !results.error && results.total === 0 && (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>
             No results for "{query}"
           </div>
         )}
+        {results.loading && <p role="status" style={{ padding: 16 }}>Searching…</p>}
+        {results.error && <p role="alert" style={{ padding: 16 }}>Some search results could not load. <button onClick={results.retry}>Retry</button></p>}
         {results.members.length > 0 && (
           <div>
             <div style={sectionLabel}>People</div>
@@ -119,7 +132,7 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
           <div>
             <div style={sectionLabel}>Groups</div>
             {results.groups.map(g => (
-              <button key={g.id} onClick={() => navigate('groups')} style={row}>
+              <button key={g.id} onClick={() => { useUIStore.getState().viewGroup(g.id); onClose() }} style={row}>
                 {g.img
                   ? <img src={g.img} alt="" style={{ width: '36px', height: '36px', borderRadius: '9px', objectFit: 'cover', flexShrink: 0 }} />
                   : <div style={{ width: '36px', height: '36px', borderRadius: '9px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>👥</div>}
@@ -149,7 +162,7 @@ export default function MobileSearchOverlay({ onClose }: { onClose: () => void }
           <div>
             <div style={sectionLabel}>Resources</div>
             {results.resources.map(r => (
-              <button key={r.id} onClick={() => navigate('resources')} style={row}>
+              <button key={r.id} onClick={() => { useUIStore.getState().viewResource(r.id); onClose() }} style={row}>
                 <div style={{ width: '36px', height: '36px', borderRadius: '9px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>📚</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-1)' }}>{r.title}</div>

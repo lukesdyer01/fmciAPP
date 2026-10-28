@@ -1,3 +1,4 @@
+import SaveItemButton from './SaveItemButton'
 import YouTubePreview from './YouTubePreview'
 import { useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
@@ -297,6 +298,7 @@ export default function PostCard({ post }: { post: Post }) {
                   }}>{post.prayerStatus === 'answered' ? '✓ Answered' : '○ Unanswered'}</span>
                 )
               )}
+              <SaveItemButton kind="post" id={post.id} />
               {(canEdit || canDelete || canReport) && (
                 <div style={{ position: 'relative' }}>
                   <button onClick={() => setMenuOpen(o => !o)} style={{

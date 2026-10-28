@@ -1,5 +1,7 @@
+const BetaFeedback = lazy(() => import('./BetaFeedback'))
+const SavedItemsView = lazy(() => import('./SavedItemsView'))
 import { lazy, Suspense } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import Stories from './Stories'
 import PeopleYouMayKnow from './PeopleYouMayKnow'
 import RecommendedResources from './RecommendedResources'
@@ -24,7 +26,7 @@ import ProfileChecklist from './ProfileChecklist'
 import { EventCard, type EventItem } from './EventCard'
 import CreateEventModal from './CreateEventModal'
 import type { ActiveView } from '../App'
-import { useFeedPosts, type FeedPost } from '../api-client/posts'
+import { adaptPost, type FeedPost } from '../api-client/posts'
 import { api } from '../api-client/server'
 import { useUIStore } from '../store/ui'
 import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
@@ -110,42 +112,38 @@ function MainFeed() {
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState<FeedFilter>('network')
   const [suggestionsVersion, setSuggestionsVersion] = useState(0)
-  const { data: allPosts, isLoading, isError, refetch: refetchPosts } = useFeedPosts()
-  const [events, setEvents] = useState<EventItem[]>([])
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
   const [primaryMinistry, setPrimaryMinistry] = useState<{ id: string; name: string } | null>(null)
   const activeHashtag = useUIStore(s => s.activeHashtag)
   const clearHashtag = useUIStore(s => s.clearHashtag)
   const primaryMinistryId = useUIStore(s => s.userProfile.primaryMinistryId)
 
+  type Page = { items: { kind: 'post' | 'event' | 'blogPost'; id: string; createdAt: string; value: unknown }[]; nextCursor: string | null }
+  const timeline = useInfiniteQuery({
+    queryKey: ['timeline', filter === 'ministry' ? primaryMinistry?.id : null, activeHashtag],
+    initialPageParam: '',
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: '20' })
+      if (pageParam) params.set('cursor', pageParam)
+      if (filter === 'ministry' && primaryMinistry) params.set('orgId', primaryMinistry.id)
+      if (activeHashtag) params.set('hashtag', activeHashtag)
+      return api<Page>(`/feed?${params}`)
+    },
+    getNextPageParam: page => page.nextCursor ?? undefined,
+  })
+  const isLoading = timeline.isPending, isError = timeline.isError
   const refreshAll = async () => {
     setSuggestionsVersion(version => version + 1)
-    await queryClient.invalidateQueries({ queryKey: ['people-suggestions'] })
-    await queryClient.invalidateQueries({ queryKey: ['resource-suggestions'] })
-    await queryClient.invalidateQueries({ queryKey: ['stories'] })
-    await refetchPosts()
-    await api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
-    await api<BlogPost[]>('/blog-posts').then(setBlogPosts).catch(() => setBlogPosts([]))
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['people-suggestions'] }),
+      queryClient.invalidateQueries({ queryKey: ['resource-suggestions'] }),
+      queryClient.invalidateQueries({ queryKey: ['stories'] }),
+      queryClient.resetQueries({ queryKey: ['timeline'] }),
+    ])
   }
   const { refreshing, pulling, distance } = usePullToRefresh(refreshAll)
-
-  // Filter out truly orphaned posts (completely missing author). Members-only
-  // ministry posts/events are NOT filtered out here — the backend already
-  // only ever sends a caller private items from ministries they actually
-  // belong to (GET /posts, GET /events), so if one shows up here it's
-  // legitimately visible to this member. PostCard/EventCard render a
-  // "🔒 Members Only" badge so it's still clear which items are private.
-  const posts = allPosts?.filter(p => p.author && p.author.trim() !== '')
-
-  function loadEvents() {
-    api<EventItem[]>('/events').then(setEvents).catch(() => setEvents([]))
-  }
-  useEffect(() => { loadEvents() }, [])
-
-  useEffect(() => {
-    api<BlogPost[]>('/blog-posts').then(setBlogPosts).catch(() => setBlogPosts([]))
-  }, [])
+  function loadEvents() { void queryClient.invalidateQueries({ queryKey: ['timeline'] }) }
 
   // Resolved live from /orgs/my rather than cached in user_metadata, so a
   // ministry rename (or the member losing membership) shows up immediately
@@ -157,28 +155,17 @@ function MainFeed() {
       .catch(() => setPrimaryMinistry(null))
   }, [primaryMinistryId])
 
-  // Posts, events, and blog posts interleaved by when they were posted/created
-  // — a plain chronological feed rather than separate sections per type.
-  const now = Date.now()
-  let merged: FeedEntry[] = [
-    ...(posts ?? []).map((post): FeedEntry => ({ kind: 'post', ts: now - post.recencyHours * 3_600_000, post })),
-    ...events.map((event): FeedEntry => ({ kind: 'event', ts: event.createdAt ? new Date(event.createdAt).getTime() : 0, event })),
-    ...blogPosts.map((blogPost): FeedEntry => ({ kind: 'blogPost', ts: blogPost.createdAt ? new Date(blogPost.createdAt).getTime() : 0, blogPost })),
-  ].sort((a, b) => b.ts - a.ts)
-
-  // Blog posts have no org affiliation, so they never appear in the
-  // ministry-scoped view — only posts/events actually tied to that org do.
-  if (filter === 'ministry' && primaryMinistry) {
-    merged = merged.filter(entry =>
-      (entry.kind === 'post' && entry.post.orgId === primaryMinistry.id) ||
-      (entry.kind === 'event' && entry.event.orgId === primaryMinistry.id)
-    )
-  }
-
-  if (activeHashtag) {
-    const needle = new RegExp(`#${activeHashtag}\\b`, 'i')
-    merged = merged.filter(entry => entry.kind === 'post' && needle.test(entry.post.content ?? ''))
-  }
+  const seen = new Set<string>()
+  const merged: FeedEntry[] = (timeline.data?.pages.flatMap(page => page.items) ?? []).filter(item => {
+    const key = `${item.kind}:${item.id}`
+    if (seen.has(key)) return false
+    seen.add(key); return true
+  }).map(item => {
+    const ts = Date.parse(item.createdAt) || 0
+    if (item.kind === 'post') return { kind: 'post', ts, post: adaptPost(item.value, 0) }
+    if (item.kind === 'event') return { kind: 'event', ts, event: item.value as EventItem }
+    return { kind: 'blogPost', ts, blogPost: item.value as BlogPost }
+  })
 
   return (
     <div className="main-feed">
@@ -224,10 +211,10 @@ function MainFeed() {
       {isLoading && [1, 2, 3].map(i => <PostSkeleton key={i} />)}
       {isError && (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '14px' }}>
-          Unable to load feed. Please try again.
+          Unable to load feed. <button onClick={() => timeline.refetch()}>Retry</button>
         </div>
       )}
-      {!isLoading && filter === 'ministry' && primaryMinistry && merged.length === 0 && (
+      {!isLoading && !isError && filter === 'ministry' && primaryMinistry && merged.length === 0 && (
         <div style={{
           backgroundColor: 'var(--color-card)', borderRadius: 'var(--feed-item-radius)',
           border: 'var(--feed-item-border)', borderBottom: 'var(--feed-item-divider)',
@@ -242,7 +229,7 @@ function MainFeed() {
           </div>
         </div>
       )}
-      {!isLoading && filter === 'network' && merged.length === 0 && (
+      {!isLoading && !isError && filter === 'network' && merged.length === 0 && (
         <div style={{
           backgroundColor: 'var(--color-card)', borderRadius: 'var(--feed-item-radius)',
           border: 'var(--feed-item-border)', borderBottom: 'var(--feed-item-divider)',
@@ -259,7 +246,7 @@ function MainFeed() {
       )}
       {Array.from({ length: merged.length + 1 }, (_, index) => {
         const entry = merged[index]
-        const showDiscovery = !isLoading && filter === 'network' && !activeHashtag
+        const showDiscovery = !isLoading && !isError && filter === 'network' && !activeHashtag
         return (
           <Fragment key={entry ? `${entry.kind}-${entry.kind === 'post' ? entry.post.id : entry.kind === 'blogPost' ? entry.blogPost.id : entry.event.id}` : 'feed-end'}>
             {showDiscovery && index === feedCarouselPosition(merged.length, 3) && <RecommendedResources key={`resources-${suggestionsVersion}`} />}
@@ -274,11 +261,15 @@ function MainFeed() {
           </Fragment>
         )
       })}
+      {timeline.hasNextPage && <button disabled={timeline.isFetchingNextPage} onClick={() => timeline.fetchNextPage()} style={{ padding: 14, margin: '16px 0', width: '100%', borderRadius: 8, border: '1px solid var(--color-border)', color: 'var(--color-text-1)', background: 'var(--color-card)' }}>{timeline.isFetchingNextPage ? 'Loading…' : 'Load more'}</button>}
+
     </div>
   )
 }
 
 export default function Feed({ activeView }: { activeView: ActiveView }) {
+  if (activeView === 'feedback') return <BetaFeedback />
+  if (activeView === 'saved') return <SavedItemsView />
   if (activeView === 'safety') return <SafetySupportView />
   if (activeView === 'invite') return <InviteMembersView />
   if (activeView === 'directory') return <DirectoryView />

@@ -22,6 +22,7 @@ export interface User {
   ministryRoles: string[]
   requestedMinistryRoles?: string[]
   welcomeGuideEligible?: boolean
+  welcomeDirectoryVisited?: boolean
   welcomeGuideDismissed?: boolean
   additionalRoles: string[]
   communicationPrefs: string[]

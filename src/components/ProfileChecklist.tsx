@@ -1,3 +1,4 @@
+import { useConversations } from '../api-client/messages'
 import { useEffect, useState } from 'react'
 import { api } from '../api-client/server'
 import { useFeedPosts } from '../api-client/posts'
@@ -15,6 +16,7 @@ export default function ProfileChecklist({ mobileWelcome = false }: { mobileWelc
   const setActiveView = useUIStore(s => s.setActiveView)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const { data: posts } = useFeedPosts()
+  const { data: conversations } = useConversations()
   const [orgs, setOrgs] = useState<MyOrgSummary[] | null>(null)
   const [dismissing, setDismissing] = useState(false)
   const [dismissError, setDismissError] = useState('')
@@ -28,7 +30,7 @@ export default function ProfileChecklist({ mobileWelcome = false }: { mobileWelc
     return () => { active = false }
   }, [mobileWelcome, currentUser?.id, currentUser?.welcomeGuideEligible, currentUser?.welcomeGuideDismissed])
 
-  if (!currentUser || orgs === null) return null
+  if (!currentUser || orgs === null || currentUser.welcomeGuideDismissed) return null
   if (mobileWelcome && (!currentUser.welcomeGuideEligible || currentUser.welcomeGuideDismissed)) return null
 
   const hasPosted = (posts ?? []).some(p => p.authorId === currentUser.id)
@@ -38,6 +40,11 @@ export default function ProfileChecklist({ mobileWelcome = false }: { mobileWelc
     { done: !!currentUser.avatarUrl, label: 'Add a profile photo', action: () => setEditProfileOpen(true) },
     { done: !!currentUser.bio?.trim(), label: 'Write a short bio', action: () => setEditProfileOpen(true) },
     { done: !!(currentUser.title && currentUser.church && currentUser.location), label: 'Add your title, church & location', action: () => setEditProfileOpen(true) },
+    { done: !!currentUser.welcomeDirectoryVisited, label: 'Find someone in the directory', action: () => {
+      void supabase.auth.updateUser({ data: { welcomeDirectoryVisited: true } }).then(({ error }) => { if (!error) updateCurrentUser({ welcomeDirectoryVisited: true }) })
+      setActiveView('directory')
+    } },
+    { done: !!conversations?.some(c => c.lastMessage), label: 'Start a conversation', action: () => useUIStore.getState().setMessagesOpen(true) },
     { done: hasPosted, label: 'Make your first post', action: () => {
       setActiveView('feed')
       window.setTimeout(() => document.querySelector('.post-composer-launcher')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
@@ -80,7 +87,7 @@ export default function ProfileChecklist({ mobileWelcome = false }: { mobileWelc
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-navy-text)' }}>{doneCount}/{items.length}</div>
-          {mobileWelcome && <button type="button" onClick={dismiss} disabled={dismissing} aria-label="Dismiss getting started checklist" title="Dismiss checklist" style={{
+          {<button type="button" onClick={dismiss} disabled={dismissing} aria-label="Dismiss getting started checklist" title="Dismiss checklist" style={{
             padding: '2px 5px', border: 0, borderRadius: '6px', background: 'transparent', color: 'var(--color-text-3)',
             fontSize: '18px', lineHeight: 1, cursor: dismissing ? 'wait' : 'pointer',
           }}>{dismissing ? '…' : '×'}</button>}

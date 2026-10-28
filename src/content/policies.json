@@ -1,7 +1,7 @@
 {
   "privacy": {
     "title": "FMCI Network Privacy Policy",
-    "updated": "October 17, 2026",
+    "updated": "October 28, 2026",
     "sections": [
       {
         "title": "Who we are",
@@ -14,7 +14,8 @@
         "paragraphs": [
           "We collect your name, email address, authentication information, confirmation that you are at least 18, and a required profile image. Optional profile details include your biography, ministry affiliation, ministry-role requests, additional roles, phone number, website, and location. Ministry affiliations and roles may reveal religious beliefs.",
           "We store the posts, comments, prayer requests, testimonies, articles, resources, event activity, messages, reactions, reports, and memberships you submit. We also process invitation recipient email addresses and invitation records.",
-          "We collect account-linked session and screen-usage information, a random session identifier, device/browser categories, and activity timestamps for first-party analytics. You may disable these analytics in your profile settings. We do not use advertising identifiers or sell personal information. Hosting and authentication providers may process IP addresses and operational logs to deliver and protect the service."
+          "We collect account-linked session and screen-usage information, a random session identifier, device/browser categories, and activity timestamps for first-party analytics. You may disable these analytics in your profile settings. We do not use advertising identifiers or sell personal information. Hosting and authentication providers may process IP addresses and operational logs to deliver and protect the service.",
+          "We store your saved post and resource references and notification preferences with your account. If you send beta feedback, we collect the message, feedback type, app version, device/browser details, and page path without its query string. Administrators review feedback to improve the app. These records are removed when your account is deleted."
         ]
       },
       {

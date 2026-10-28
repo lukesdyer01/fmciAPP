@@ -1,3 +1,4 @@
+import SaveItemButton from './SaveItemButton'
 import YouTubePreview from './YouTubePreview'
 import { useState, useEffect } from 'react'
 import { extractYouTubeId } from '../lib/youtube'
@@ -162,9 +163,11 @@ function ReviewsSection({ resource, onChanged }: { resource: Resource; onChanged
 export default function ResourcesView() {
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
+  const selectedId = useUIStore(s => s.viewingResourceId)
+  const closeResource = useUIStore(s => s.closeResourceView)
+  const [loadError, setLoadError] = useState(false)
   const [category, setCategory] = useState('All')
   const [type, setType] = useState('All')
-  const [saved, setSaved] = useState<Set<string>>(new Set())
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -174,7 +177,8 @@ export default function ResourcesView() {
 
   function load() {
     setLoading(true)
-    api<Resource[]>('/resources').then(setResources).catch(() => setResources([])).finally(() => setLoading(false))
+    setLoadError(false)
+    api<Resource[]>('/resources').then(setResources).catch(() => setLoadError(true)).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
 
@@ -188,6 +192,7 @@ export default function ResourcesView() {
   }
 
   const filtered = resources.filter(r => {
+    if (selectedId) return r.id === selectedId
     const matchType = type === 'All' || r.type === type || (type === 'Books' && r.type === 'Book') || (type === 'Videos' && r.type === 'Video') || (type === 'Podcasts' && r.type === 'Podcast')
     const matchCat = category === 'All' || r.category === category
     return matchType && matchCat
@@ -195,6 +200,9 @@ export default function ResourcesView() {
 
   return (
     <div style={{ maxWidth: '880px', margin: '0 auto' }}>
+      {selectedId && <button onClick={closeResource}>Back to resources</button>}
+      {loadError && <p role="alert">Unable to load resources. <button onClick={load}>Retry</button></p>}
+      {selectedId && !loading && !loadError && !filtered.length && <p>This resource is no longer available.</p>}
       {/* Header */}
       <div className="resource-header" style={{
         background: 'linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-mid) 100%)',
@@ -265,7 +273,6 @@ export default function ResourcesView() {
       {!loading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {filtered.map(r => {
-            const isSaved = saved.has(r.id)
             const canModify = currentUser?.id === r.createdBy || role === 'admin' || role === 'superadmin'
             const typeStyle = TYPE_COLORS[r.type] ?? { bg: 'var(--color-surface)', color: 'var(--color-text-2)' }
             const videoId = r.type === 'Video' && r.url ? extractYouTubeId(r.url) : null
@@ -382,21 +389,7 @@ export default function ResourcesView() {
                           }}
                         >More Info ↗</a>
                       )}
-                      <button
-                        onClick={() => setSaved(prev => {
-                          const next = new Set(prev)
-                          if (isSaved) next.delete(r.id); else next.add(r.id)
-                          return next
-                        })}
-                        style={{
-                          padding: '7px 16px', borderRadius: '9px', cursor: 'pointer', flexShrink: 0,
-                          border: `1px solid ${isSaved ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
-                          backgroundColor: isSaved ? 'var(--color-gold-bg)' : 'var(--color-surface)',
-                          color: isSaved ? 'var(--color-gold)' : 'var(--color-text-1)',
-                          fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)',
-                          transition: 'all 0.15s',
-                        }}
-                      >{isSaved ? '🔖 Saved' : '+ Save'}</button>
+                      <SaveItemButton kind="resource" id={r.id} />
                     </div>
                   </div>
 
@@ -417,7 +410,7 @@ export default function ResourcesView() {
             )
           })}
 
-          {filtered.length === 0 && (
+          {!loadError && !selectedId && filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: '64px 24px', backgroundColor: 'var(--color-card)', borderRadius: '14px', border: '1px solid var(--color-border)' }}>
               <div style={{ fontSize: '40px', marginBottom: '14px' }}>📚</div>
               <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-text-1)', marginBottom: '8px' }}>

@@ -1,3 +1,5 @@
+import { paginateFeed, type TimelineItem } from "./feedPage.ts";
+import { registerMemberTools } from "./memberTools.ts";
 import { geocodeQueries, geocodeOnCooldown } from "./mapLocations.ts";
 import { registerStories } from "./stories.ts";
 import { contentSafetyIssue } from "./contentSafety.ts";
@@ -70,6 +72,8 @@ async function getCallerUser(authHeader: string | undefined) {
   if (!res.ok) return null;
   return await res.json();
 }
+
+registerMemberTools(app, BASE, kvClient, getCallerUser);
 
 registerStories(app, BASE, kvClient, getCallerUser, kv, callerRole);
 
@@ -294,6 +298,9 @@ async function sendApnsNotification(deviceToken: string, payload: { title: strin
 }
 
 async function sendPushToUser(userId: string, payload: { title: string; body: string; url?: string; tag?: string }) {
+  const category = payload.tag?.startsWith('dm-') ? 'messages' : payload.tag?.startsWith('event-') ? 'ministry_events' : 'moderation';
+  const { data: preferences, error: preferencesError } = await kvClient().from('network_member_preferences').select('messages,ministry_events,moderation').eq('user_id', userId).maybeSingle();
+  if (preferencesError || preferences?.[category] === false) return;
   const subs = await getUserSubscriptions(userId);
   if (subs.length > 0) {
     const survivors: any[] = [];
@@ -2673,17 +2680,21 @@ app.post(`${BASE}/admin/invitations`, c => createInvitation(c, true));
 app.post(`${BASE}/admin/invitations/open`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller || caller.app_metadata?.role !== "superadmin") return c.json({ error: "Forbidden" }, 403);
-  const token = crypto.randomUUID() + crypto.randomUUID();
+  const body = await c.req.json().catch(() => ({}));
+  const customCode = typeof body.code === 'string' ? body.code.trim() : '';
+  if (customCode && !/^[a-zA-Z0-9_-]{6,64}$/.test(customCode)) return c.json({ error: 'Use 6–64 letters, numbers, underscores or hyphens' }, 400);
+  const token = customCode || crypto.randomUUID() + crypto.randomUUID();
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
   const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
   const links = kvClient().from("network_registration_links");
-  await links.delete().lte("expires_at", new Date().toISOString());
   const { error } = await links.insert({
     token_hash: tokenHash,
+    label: customCode || "Group invitation",
     expires_at: expiresAt,
     created_by: caller.id,
   });
+  if (error?.code === "23505") return c.json({ error: "This code already exists. Choose a different code." }, 409);
   if (error) return c.json({ error: "Unable to create registration link" }, 500);
   return c.json({ token, expiresAt });
 });
@@ -2953,6 +2964,17 @@ app.get(`${BASE}/analytics/users`, async (c) => {
   }).sort((a, b) => b.pageViews - a.pageViews);
 
   return c.json(rows);
+});
+
+// Reuse each collection's visibility and blocking rules before pagination.
+app.get(`${BASE}/feed`, async c => {
+  const entries: TimelineItem[] = [];
+  const responses = await Promise.all(['posts', 'events', 'blog-posts'].map(collection => app.request(`https://internal.invalid${BASE}/${collection}`, { headers: { Authorization: c.req.header('Authorization') ?? '' } })));
+  if (responses.some(r => !r.ok)) return c.json({ error: 'Unable to load feed' }, 503);
+  const collections = await Promise.all(responses.map(r => r.json())) as any[][];
+  for (let n=0;n<collections.length;n++) for (const item of collections[n]) entries.push({kind: (['post','event','blogPost'] as const)[n], id:String(item.id), createdAt:item.createdAt??'', pinned:n===0&&item.pinned===true, value:item});
+  try { return c.json(paginateFeed(entries, { cursor:c.req.query('cursor'),limit:c.req.query('limit'),orgId:c.req.query('orgId'),hashtag:c.req.query('hashtag') })); }
+  catch { return c.json({error:'Invalid feed pagination request'},400); }
 });
 
 Deno.serve(app.fetch);

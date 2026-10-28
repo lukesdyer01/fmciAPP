@@ -1,3 +1,4 @@
+import { queryClient } from '../api-client/queryClient'
 import AdultMembershipGate from './AdultMembershipGate'
 import RecoveryPasswordView from './RecoveryPasswordView'
 import { openExternal } from '../lib/openExternal'
@@ -323,9 +324,13 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [initialPath] = useState(() => (typeof window === 'undefined' ? '' : window.location.pathname))
 
   useEffect(() => {
+    let previousUserId: string | undefined
     // onAuthStateChange fires INITIAL_SESSION immediately, which replaces the need for getSession()
     // Using only one path avoids a race where getSession() resolves after onSession() and clears the session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user.id
+      if (event === 'SIGNED_OUT' || (nextUserId && previousUserId && nextUserId !== previousUserId)) queryClient.clear()
+      if (nextUserId || event === 'SIGNED_OUT') previousUserId = nextUserId
       if (event === 'PASSWORD_RECOVERY') { sessionStorage.setItem('fmci-password-recovery', 'true'); setRecovery(true) }
       setSession(prev => {
         // Only clear a valid session on an explicit SIGNED_OUT — never on a spurious null

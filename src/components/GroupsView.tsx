@@ -455,19 +455,23 @@ function CreateGroupModal({ group, onClose, onSaved }: { group?: Group; onClose:
 
 export default function GroupsView() {
   const [tab, setTab] = useState<'my' | 'discover'>('my')
-  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
+  const selectedId = useUIStore(s => s.viewingGroupId)
+  const viewGroup = useUIStore(s => s.viewGroup)
+  const closeGroup = useUIStore(s => s.closeGroupView)
+  const setSelectedGroup = (group: Group | null) => group ? viewGroup(group.id) : closeGroup()
   const [groups, setGroups] = useState<Group[]>([])
+  const [loadError, setLoadError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [joiningId, setJoiningId] = useState<string | null>(null)
 
   async function load() {
+    setLoadError(false)
     try {
       const data = await api<Group[]>('/groups')
       setGroups(data)
-      setSelectedGroup(sel => sel ? (data.find(g => g.id === sel.id) ?? sel) : sel)
     } catch {
-      setGroups([])
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -490,12 +494,16 @@ export default function GroupsView() {
   const myGroups = groups.filter(g => g.joined)
   const discoverGroups = groups.filter(g => !g.joined)
 
+  if (loadError && selectedId) return <div><p role="alert">Unable to load this group.</p><button onClick={load}>Retry</button><button onClick={closeGroup}>Back to groups</button></div>
+  const selectedGroup = groups.find(g => g.id === selectedId)
+  if (selectedId && !loading && !selectedGroup) return <div><p>This group is no longer available.</p><button onClick={closeGroup}>Back to groups</button></div>
   if (selectedGroup) {
     return <GroupDetail group={selectedGroup} onBack={() => setSelectedGroup(null)} onLeft={() => { setSelectedGroup(null); load() }} onUpdated={load} />
   }
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+      {loadError && <p role="alert">Unable to refresh groups. <button onClick={load}>Retry</button></p>}
       <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>

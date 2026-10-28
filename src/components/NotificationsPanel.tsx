@@ -1,3 +1,4 @@
+import NotificationPreferences from './NotificationPreferences'
 // Full-window Notifications panel — mirrors MessagesPanel: a slide-over on
 // desktop, the whole screen on a phone. The bell tab opens it; the labelled
 // "← Home" (mobile) / ✕ (desktop) buttons and a backdrop tap close it. The
@@ -30,12 +31,9 @@ export default function NotificationsPanel() {
           <div style={{ flex: 1, fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Notifications</div>
           <button onClick={() => setNotifOpen(false)} className="notifications-close-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '32px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '34px' }}>🔔</div>
-          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-1)' }}>No notifications yet</div>
-          <div style={{ fontSize: '13px', color: 'var(--color-text-2)', maxWidth: '280px', lineHeight: 1.5 }}>
-            When someone reacts to your posts, comments, or sends you a message, you'll see it here.
-          </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          <NotificationPreferences />
+          <p>Messages appear in your inbox. Push notifications open the related conversation or event.</p>
         </div>
       </div>
     </div>
