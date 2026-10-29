@@ -1,3 +1,4 @@
+import { optimizePostImage } from '../lib/postImage'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { activeMention, matchesQuery, insertMention, mentionedUsers } from '../lib/mentions'
@@ -30,7 +31,7 @@ const TESTIMONY_CATEGORIES = [
   { value: 'other',       label: 'Other',       icon: '✨' },
 ]
 
-const MAX_IMAGE_MB = 10
+const MAX_IMAGE_MB = 20
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024
 const DEFAULT_POST_PROMPT = 'Share a post, testimony, teaching, or prayer request with the network…'
 
@@ -210,18 +211,17 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       setComposerError("That file isn't a supported image — use a JPEG, PNG, GIF, WEBP or HEIC.")
       return
     }
-    // Nothing anywhere compresses images on the way in, and a phone photo or a
-    // pasted retina screenshot runs to several megabytes, so it's capped here
-    // rather than discovered as an upload that never finishes on cellular.
+    // Bound the source file before decoding; optimized photos upload at 500 KB or less.
     if (file.size > MAX_IMAGE_BYTES) {
       setComposerError(`That image is ${(file.size / 1024 / 1024).toFixed(1)} MB — the limit is ${MAX_IMAGE_MB} MB.`)
       return
     }
     setUploadingImage(true); setComposerError('')
     try {
-      const path = `${currentUser.id}/post-${Date.now()}.${ext}`
-      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
-        upsert: true, contentType: file.type || EXT_BY_MIME[ext] || 'image/jpeg',
+      const optimized = await optimizePostImage(file)
+      const path = `${currentUser.id}/post-${crypto.randomUUID()}.${optimized.extension}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, optimized.blob, {
+        upsert: false, contentType: optimized.blob.type || 'image/gif',
       })
       if (uploadErr) throw uploadErr
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
@@ -300,7 +300,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
 
   function handlePost() {
     // A photo alone is a valid post — text is optional when an image is attached.
-    if ((!text.trim() && !image) || isPending) return
+    if ((!text.trim() && !image) || isPending || uploadingImage) return
     if (type === 'testimony' && !testimonyCategory) { setComposerError('Choose a category for this testimony.'); return }
     // Set only when the user has actively selected an org identity via the
     // pill — orgId still gets set below whenever fixedOrgId is present (so
@@ -670,18 +670,18 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
             <button type="button" className="post-composer-tool emoji" onClick={() => setShowEmojiPicker(open => !open)} aria-label="Add emoji" aria-expanded={showEmojiPicker} title="Add emoji">
               <span aria-hidden="true">☺</span>
             </button>
-            {uploadingImage && <span className="post-composer-uploading">Uploading photo…</span>}
+            {uploadingImage && <span className="post-composer-uploading">Optimizing and uploading photo…</span>}
           </div>
           <button
             className="post-composer-submit"
             onClick={handlePost}
-            disabled={(!text.trim() && !image) || isPending}
+            disabled={(!text.trim() && !image) || isPending || uploadingImage}
             style={{
               marginLeft: 'auto', padding: '8px 22px', borderRadius: '8px', border: 'none',
-              backgroundColor: (text.trim() || image) && !isPending ? 'var(--color-navy)' : 'var(--color-border)',
-              color: (text.trim() || image) && !isPending ? '#fff' : 'var(--color-text-3)',
+              backgroundColor: (text.trim() || image) && !isPending && !uploadingImage ? 'var(--color-navy)' : 'var(--color-border)',
+              color: (text.trim() || image) && !isPending && !uploadingImage ? '#fff' : 'var(--color-text-3)',
               fontSize: '14px', fontWeight: 700,
-              cursor: (text.trim() || image) && !isPending ? 'pointer' : 'not-allowed',
+              cursor: (text.trim() || image) && !isPending && !uploadingImage ? 'pointer' : 'not-allowed',
               fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
             }}
           >{isPending ? 'Posting…' : 'Post'}</button>
