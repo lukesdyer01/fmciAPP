@@ -1,7 +1,11 @@
+import { useNetworkSettings } from './features'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './server'
 
 export interface ConversationSummary {
+  kind?: 'direct' | 'group'
+  muted?: boolean
+  participantCount?: number
   id: string
   otherUser: { id: string; name: string; avatarUrl: string }
   lastMessage: { text: string; senderId: string; createdAt: string } | null
@@ -22,20 +26,22 @@ export const messageKeys = {
   thread: (id: string) => [...messageKeys.all, 'thread', id] as const,
 }
 
-export function useConversations() {
-  return useQuery({
-    queryKey: messageKeys.list(),
-    queryFn: () => api<ConversationSummary[]>('/conversations'),
-    refetchInterval: 15_000,
-  })
+type GroupSummary = { id: string; name: string; participantCount: number; muted: boolean; archived: boolean; lastMessage: ConversationSummary['lastMessage']; unreadCount: number; updatedAt: string }
+async function fetchConversationList(archived: boolean, groupsEnabled: boolean) {
+  const direct = await api<ConversationSummary[]>(archived ? '/conversations?archived=1' : '/conversations')
+  if (!groupsEnabled) return direct
+  const groups = await api<GroupSummary[]>('/group-conversations').catch(() => [] as GroupSummary[])
+  return [...direct, ...groups.filter(g => g.archived === archived).map(g => ({ ...g, id: `group:${g.id}`, kind: 'group' as const, otherUser: { id: `group:${g.id}`, name: g.name, avatarUrl: '' } }))].sort((a,b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 }
-
+export function useConversations() {
+  const { data: settings } = useNetworkSettings()
+  const enabled = settings?.groupMessagesEnabled === 1
+  return useQuery({ queryKey: [...messageKeys.list(), enabled], queryFn: () => fetchConversationList(false, enabled), refetchInterval: 15_000 })
+}
 export function useArchivedConversations() {
-  return useQuery({
-    queryKey: [...messageKeys.list(), 'archived'] as const,
-    queryFn: () => api<ConversationSummary[]>('/conversations?archived=1'),
-    refetchInterval: 15_000,
-  })
+  const { data: settings } = useNetworkSettings()
+  const enabled = settings?.groupMessagesEnabled === 1
+  return useQuery({ queryKey: [...messageKeys.list(), 'archived', enabled], queryFn: () => fetchConversationList(true, enabled), refetchInterval: 15_000 })
 }
 
 export function useConversationMessages(conversationId: string | null) {

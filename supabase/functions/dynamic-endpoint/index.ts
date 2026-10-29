@@ -1,3 +1,4 @@
+import { registerGroupChats } from "./groupChats.ts";
 import { paginateFeed, type TimelineItem } from "./feedPage.ts";
 import { registerMemberTools } from "./memberTools.ts";
 import { geocodeQueries, geocodeOnCooldown } from "./mapLocations.ts";
@@ -73,6 +74,8 @@ async function getCallerUser(authHeader: string | undefined) {
   if (!res.ok) return null;
   return await res.json();
 }
+
+registerGroupChats(app, BASE, kvClient, getCallerUser, kv, sendPushToUser, membersBlocked);
 
 registerMemberTools(app, BASE, kvClient, getCallerUser);
 
@@ -299,8 +302,13 @@ async function sendApnsNotification(deviceToken: string, payload: { title: strin
 }
 
 async function sendPushToUser(userId: string, payload: { title: string; body: string; url?: string; tag?: string }) {
-  const category = payload.tag?.startsWith('dm-') ? 'messages' : payload.tag?.startsWith('event-') ? 'ministry_events' : 'moderation';
-  const { data: preferences, error: preferencesError } = await kvClient().from('network_member_preferences').select('messages,ministry_events,moderation').eq('user_id', userId).maybeSingle();
+  if (payload.tag?.startsWith('group-')) {
+    if ((await kv.get('group_messages_enabled')) !== 1) return;
+    const { data, error } = await kvClient().from('network_member_preferences').select('group_messages').eq('user_id',userId).maybeSingle();
+    if (error || data?.group_messages === false) return;
+  }
+  const category = payload.tag?.startsWith('group-') ? 'group_messages' : payload.tag?.startsWith('dm-') ? 'messages' : payload.tag?.startsWith('event-') ? 'ministry_events' : 'moderation';
+  const { data: preferences, error: preferencesError } = await kvClient().from('network_member_preferences').select('messages,ministry_events,moderation,group_messages').eq('user_id', userId).maybeSingle();
   if (preferencesError || preferences?.[category] === false) return;
   const subs = await getUserSubscriptions(userId);
   if (subs.length > 0) {
@@ -2022,6 +2030,16 @@ app.post(`${BASE}/reports`, async (c) => {
     const blocks = await kv.get('user_blocks') ?? {};
     if ((blocks[caller.id] ?? []).includes(story.author_id) || (blocks[story.author_id] ?? []).includes(caller.id)) return c.json({error:'Story unavailable'},404);
     body.targetAuthorId = story.author_id;
+  }
+  if (body.targetType === 'message' && String(body.targetId).startsWith('group:')) {
+    const match = String(body.targetId).match(/^group:([a-f0-9-]{36}):message:(\d{1,19})$/i);
+    if (!match) return c.json({error:'Invalid group message'},400);
+    const db=kvClient();
+    const {data:member}=await db.from('network_group_members').select('history_after').eq('conversation_id',match[1]).eq('user_id',caller.id).maybeSingle();
+    const {data:message}=await db.from('network_group_messages').select('id,sender_id,text').eq('conversation_id',match[1]).eq('id',match[2]).maybeSingle();
+    if (!member || !message || BigInt(message.id)<=BigInt(member.history_after) || await membersBlocked(caller.id,message.sender_id)) return c.json({error:'Message unavailable'},404);
+    body.targetAuthorId=message.sender_id;
+    body.note=`Group message: ${message.text}\n\nConcern: ${String(body.note??'')}`.slice(0,4000);
   }
   const reports = await kv.get("content_reports") ?? [];
   // One open report per person per item, so a repeat tap doesn't flood the queue.

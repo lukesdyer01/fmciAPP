@@ -1,6 +1,6 @@
 const EditProfileModal = lazy(() => import('./components/EditProfileModal'))
 import { lazy, Suspense } from 'react'
-import { readMessageNotificationUrl } from './lib/messageNotification'
+import { readMessageNotificationUrl, readGroupNotificationUrl } from './lib/messageNotification'
 import { useEffect, useRef, Component, type ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './api-client/queryClient'
@@ -88,6 +88,11 @@ function AppShell() {
   useEffect(() => {
     if (!currentUser) return
     const openMessageFromUrl = () => {
+      const group = readGroupNotificationUrl(window.location.href, window.location.href)
+      if (group) {
+        useUIStore.getState().openMessagesWith(`group:${group.id}`, group.messageId)
+        const url = new URL(window.location.href); url.searchParams.delete('groupConversation'); url.searchParams.delete('message'); window.history.replaceState(null, '', url.pathname + url.search + url.hash); return
+      }
       const target = readMessageNotificationUrl(window.location.href, window.location.href)
       if (!target || target.userId === currentUser.id) return
       useUIStore.getState().openMessagesWith(target.userId, target.messageId)

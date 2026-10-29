@@ -654,3 +654,7 @@ html[data-theme="dark"] .post-composer-modal {
 
 .messages-new-conversation { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; }
 @media (max-width: 480px) { .messages-new-conversation-label { display: none; } }
+
+.group-messages button { border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text-1); background: var(--color-surface); cursor: pointer; padding: 8px 12px; min-height: 40px; }
+.group-messages button:disabled { opacity: .55; cursor: default; }
+.group-messages header > strong { min-width: 0; overflow-wrap: anywhere; }

@@ -6,12 +6,12 @@ export function registerMemberTools(
   getCaller: any,
 ) {
   const user = (c: any) => getCaller(c.req.header("Authorization"))
-  const defaults = { messages: true, ministry_events: true, moderation: true }
+  const defaults = { messages: true, ministry_events: true, moderation: true, group_messages: true }
   app.get(`${base}/me/notification-preferences`, async (c: any) => {
     const caller = await user(c)
     const { data, error } = await client()
       .from("network_member_preferences")
-      .select("messages,ministry_events,moderation")
+      .select("messages,ministry_events,moderation,group_messages")
       .eq("user_id", caller.id)
       .maybeSingle()
     return error
@@ -21,7 +21,7 @@ export function registerMemberTools(
   app.put(`${base}/me/notification-preferences`, async (c: any) => {
     const caller = await user(c)
     const body = await c.req.json()
-    if (Object.keys(defaults).some((k) => typeof body[k] !== "boolean"))
+    if (Object.keys(defaults).filter(k => k !== "group_messages").some((k) => typeof body[k] !== "boolean") || (body.group_messages !== undefined && typeof body.group_messages !== "boolean"))
       return c.json({ error: "Choose each notification preference" }, 400)
     const { data, error } = await client()
       .from("network_member_preferences")
@@ -30,8 +30,9 @@ export function registerMemberTools(
         messages: body.messages,
         ministry_events: body.ministry_events,
         moderation: body.moderation,
+        ...(body.group_messages !== undefined ? { group_messages: body.group_messages } : {}),
       })
-      .select("messages,ministry_events,moderation")
+      .select("messages,ministry_events,moderation,group_messages")
       .single()
     return error
       ? c.json({ error: "Unable to save preferences" }, 500)

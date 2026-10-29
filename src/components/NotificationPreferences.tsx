@@ -1,13 +1,16 @@
+import { useNetworkSettings } from '../api-client/features'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "../api-client/server"
 import { useAuth } from "../providers/AuthProvider"
 type Preferences = {
+  group_messages: boolean
   messages: boolean
   ministry_events: boolean
   moderation: boolean
 }
 export default function NotificationPreferences() {
+  const { data: settings } = useNetworkSettings()
   const { role } = useSupabaseRole()
   const { currentUser } = useAuth(),
     qc = useQueryClient(),
@@ -41,6 +44,7 @@ export default function NotificationPreferences() {
       {query.data &&
         ([
           ["messages", "Direct messages"],
+          ...(settings?.groupMessagesEnabled === 1 ? [["group_messages", "Group messages"]] : []),
           ["ministry_events", "New ministry events"],
           ...(["admin", "superadmin", "moderator"].includes(role)
             ? [["moderation", "Moderation reports"]]

@@ -144,15 +144,16 @@ export default function Topbar() {
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
   const { data: conversations } = useConversations()
   const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
+  const audibleUnreadTotal = (conversations ?? []).filter(c => !c.muted).reduce((sum,c) => sum + c.unreadCount, 0)
   const prevUnreadTotal = useRef<number | null>(null)
   useEffect(() => {
     // Skip the first observation (page load) — only chime when unread count
     // actually rises from a known baseline, i.e. a genuinely new message.
-    if (prevUnreadTotal.current !== null && unreadTotal > prevUnreadTotal.current) {
+    if (prevUnreadTotal.current !== null && audibleUnreadTotal > prevUnreadTotal.current) {
       playNotificationSound()
     }
-    prevUnreadTotal.current = unreadTotal
-  }, [unreadTotal])
+    prevUnreadTotal.current = audibleUnreadTotal
+  }, [audibleUnreadTotal])
   const [search, setSearch] = useState('')
 
   function navigateTo(view: ActiveView) {

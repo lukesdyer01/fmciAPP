@@ -30,7 +30,8 @@
         "paragraphs": [
           "Community content is available to signed-in members, subject to ministry membership and other access controls. Your profile photo and the profile information you choose to publish are visible to other members. Email addresses and phone numbers entered on a profile may be visible to members; omit optional contact details you do not want shared.",
           "Direct messages are available to conversation participants. They are not end-to-end encrypted. Authorized administrators may access reported information to investigate abuse, provide support, secure the service, or meet legal obligations.",
-          "Profile and ordinary post media use public storage URLs. A person who obtains those URLs may be able to view the files without an account. Story photos use separate private storage with short-lived viewing links. Do not upload confidential documents or information you are not authorized to share."
+          "Profile and ordinary post media use public storage URLs. A person who obtains those URLs may be able to view the files without an account. Story photos use separate private storage with short-lived viewing links. Do not upload confidential documents or information you are not authorized to share.",
+          "Group conversations are visible to their current participants. The creator manages membership. Newly added or returning participants see messages sent after their latest join. Leaving or removal ends access. Blocking hides messages between the affected participants, and other group members can continue the conversation. Administrators can review reported group messages. Group chats can be disabled platform-wide without deleting their data."
         ]
       },
       {

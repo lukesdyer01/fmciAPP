@@ -12,3 +12,13 @@ export function readMessageNotificationUrl(value: string, baseUrl: string): Mess
     return { userId, messageId }
   } catch { return null }
 }
+
+export function readGroupNotificationUrl(value: string, baseUrl: string): { id: string; messageId: string | null } | null {
+  try {
+    const base = new URL(baseUrl), url = new URL(value, base)
+    if (url.protocol !== base.protocol || url.host !== base.host || url.pathname !== '/') return null
+    const id = url.searchParams.get('groupConversation'), messageId = url.searchParams.get('message')
+    if (!id || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id) || (messageId && !/^\d{1,19}$/.test(messageId))) return null
+    return { id, messageId }
+  } catch { return null }
+}

@@ -1,5 +1,5 @@
 import { PushNotifications } from '@capacitor/push-notifications'
-import { readMessageNotificationUrl } from './lib/messageNotification'
+import { readMessageNotificationUrl, readGroupNotificationUrl } from './lib/messageNotification'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Capacitor } from '@capacitor/core'
@@ -11,7 +11,7 @@ import './index.css'
 if (Capacitor.isNativePlatform()) {
   PushNotifications.addListener('pushNotificationActionPerformed', action => {
     const url = action.notification.data?.url
-    if (typeof url !== 'string' || !readMessageNotificationUrl(url, window.location.href)) return
+    if (typeof url !== 'string' || (!readMessageNotificationUrl(url, window.location.href) && !readGroupNotificationUrl(url, window.location.href))) return
     const destination = new URL(url, window.location.href)
     window.history.replaceState(null, '', destination.pathname + destination.search)
     window.dispatchEvent(new PopStateEvent('popstate'))

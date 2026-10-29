@@ -1,3 +1,5 @@
+import GroupMessages from './GroupMessages'
+import { useNetworkSettings } from '../api-client/features'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api-client/server'
 import { useState, useEffect, useRef } from 'react'
@@ -302,6 +304,10 @@ function NewConversationPicker({ onSelect, onCancel, busy }: {
 }
 
 export default function MessagesPanel() {
+  const { data: settings } = useNetworkSettings()
+  const [groupMode, setGroupMode] = useState(false)
+  const [groupTarget, setGroupTarget] = useState('')
+  const groupMessageId = useUIStore(s => s.messageTargetMessageId)
   const closeMessages = useUIStore(s => s.closeMessages)
   const messageTargetUserId = useUIStore(s => s.messageTargetUserId)
   const { data: conversations, isLoading } = useConversations()
@@ -314,7 +320,9 @@ export default function MessagesPanel() {
 
   // When opened with a specific target user, find or create that conversation.
   useEffect(() => {
+    if (messageTargetUserId?.startsWith('group:')) { setGroupTarget(messageTargetUserId.slice(6)); setGroupMode(true); useUIStore.setState({ messageTargetUserId: null }); return }
     if (!messageTargetUserId || isLoading || archivedLoading) return
+    setGroupMode(false)
     const existing = [...(conversations ?? []), ...(archivedConversations ?? [])].find(c => c.otherUser.id === messageTargetUserId)
     if (existing) {
       setActiveConv(existing)
@@ -342,7 +350,7 @@ export default function MessagesPanel() {
         width: '760px', maxWidth: '100vw', height: '100vh', backgroundColor: 'var(--color-card)',
         boxShadow: '-8px 0 32px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
           {/* Which of these two shows is a breakpoint decision made in CSS — see
               .messages-home-btn / .messages-close-btn. Both do the same thing;
               full-screen on a phone wants the labelled way out, the desktop
@@ -353,11 +361,13 @@ export default function MessagesPanel() {
             fontFamily: 'var(--font-sans)',
           }}>← Home</button>
           <div style={{ flex: 1, fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Messages</div>
-          <button type="button" className="messages-new-conversation" aria-label="New conversation" title="New conversation" disabled={choosingMember || startConversation.isPending} onClick={() => { startConversation.reset(); setMenu(null); setChoosingMember(true) }} style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-navy-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}><span aria-hidden="true" style={{ fontSize: 18 }}>✎</span><span className="messages-new-conversation-label">New conversation</span></button>
+          {settings?.groupMessagesEnabled === 1 && <button type="button" style={{ padding: 9, background: 'var(--color-surface)', color: 'var(--color-text-1)', border: '1px solid var(--color-border)', borderRadius: 8 }} onClick={() => {setGroupTarget('');setGroupMode(true);setChoosingMember(false)}}>Group chats</button>}
+          <button type="button" className="messages-new-conversation" aria-label="New conversation" title="New conversation" disabled={choosingMember || startConversation.isPending} onClick={() => { startConversation.reset(); setMenu(null); setGroupMode(false); setChoosingMember(true) }} style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-navy-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}><span aria-hidden="true" style={{ fontSize: 18 }}>✎</span><span className="messages-new-conversation-label">New conversation</span></button>
           <button onClick={closeMessages} className="messages-close-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
         {startConversation.isError && <p role="alert" style={{ padding: '0 16px', color: 'var(--color-red-text)', fontSize: 13 }}>Unable to open this conversation. It may no longer be available.</p>}
-        {choosingMember && <NewConversationPicker busy={startConversation.isPending || !!messageTargetUserId} onCancel={() => { setChoosingMember(false); startConversation.reset() }} onSelect={id => { startConversation.reset(); useUIStore.setState({ messageTargetUserId: id, messageTargetMessageId: null }) }} />}<div className="messages-body" data-active={activeConv ? 'true' : 'false'} style={{ display: choosingMember ? 'none' : 'flex', flex: 1, minHeight: 0 }}>
+        {groupMode && (settings?.groupMessagesEnabled === 1 ? <GroupMessages initialId={groupTarget} initialMessage={groupMessageId ?? undefined} onBack={() => setGroupMode(false)} /> : <div style={{ padding: 20 }}><p>Group messaging is currently disabled.</p><button onClick={() => setGroupMode(false)}>Back to messages</button></div>)}
+        {!groupMode && choosingMember && <NewConversationPicker busy={startConversation.isPending || !!messageTargetUserId} onCancel={() => { setChoosingMember(false); startConversation.reset() }} onSelect={id => { startConversation.reset(); useUIStore.setState({ messageTargetUserId: id, messageTargetMessageId: null }) }} />}<div className="messages-body" data-active={activeConv ? 'true' : 'false'} style={{ display: choosingMember || groupMode ? 'none' : 'flex', flex: 1, minHeight: 0 }}>
           {/* width/flex-shrink/display all live in CSS (base + mobile override),
               not here — an inline width or display would always beat the
               mobile class rules that expand this pane full-width and hide it
@@ -380,8 +390,8 @@ export default function MessagesPanel() {
               archived={tab === 'archived'}
               loading={loading}
               activeId={activeConv?.id ?? null}
-              onSelect={setActiveConv}
-              onMenu={(conv, anchor) => setMenu({ conv, archived: tab === 'archived', anchor })}
+              onSelect={conv => { if (conv.kind === 'group') { setGroupTarget(conv.id.slice(6)); setGroupMode(true) } else setActiveConv(conv) }}
+              onMenu={(conv, anchor) => { if (conv.kind === 'group') { setGroupTarget(conv.id.slice(6)); setGroupMode(true) } else setMenu({ conv, archived: tab === 'archived', anchor }) }}
             />
           </div>
           <div className="messages-thread-pane" style={{ flex: 1, flexDirection: 'column', minWidth: 0 }}>
