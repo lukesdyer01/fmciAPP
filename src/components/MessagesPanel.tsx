@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../api-client/server'
 import { useState, useEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { useUIStore } from '../store/ui'
@@ -110,7 +112,7 @@ function ConversationList({ conversations, archived, loading, activeId, onSelect
   if (conversations.length === 0) {
     return (
       <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--color-text-3)', fontSize: '13px', lineHeight: 1.6 }}>
-        {archived ? 'No archived conversations.' : 'No conversations yet. Start one from a member\'s profile.'}
+        {archived ? 'No archived conversations.' : 'No conversations yet. Tap New conversation to find a member.'}
       </div>
     )
   }
@@ -250,6 +252,55 @@ function Thread({ conversation, onBack, onMenu }: {
   )
 }
 
+interface ConversationMember { id: string; name: string; church?: string; title?: string; avatarUrl?: string }
+
+function NewConversationPicker({ onSelect, onCancel, busy }: {
+  onSelect: (id: string) => void
+  onCancel: () => void
+  busy: boolean
+}) {
+  const { currentUser } = useAuth()
+  const [search, setSearch] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const members = useQuery({
+    queryKey: ['conversation-members', currentUser?.id],
+    queryFn: () => api<ConversationMember[]>('/members'),
+  })
+  const blocked = useBlockedMembers()
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    inputRef.current?.focus()
+    return () => { if (previous?.isConnected) previous.focus() }
+  }, [])
+  const blockedIds = new Set((blocked.data ?? []).map(member => member.id))
+  const query = search.trim().toLowerCase()
+  const matches = (members.data ?? []).filter(member => member.id !== currentUser?.id && !blockedIds.has(member.id) &&
+    [member.name, member.church, member.title].some(value => value?.toLowerCase().includes(query)))
+  const loading = members.isPending || blocked.isPending
+  const error = members.isError || blocked.isError
+  return <section aria-labelledby="new-conversation-title" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, color: 'var(--color-text-1)' }}>
+    <div style={{ padding: '16px', borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <h2 id="new-conversation-title" style={{ margin: '0 0 12px', fontSize: 17 }}>New conversation</h2>
+        <button type="button" disabled={busy} onClick={onCancel} style={{ ...menuItemStyle, width: 'auto' }}>Cancel</button>
+      </div>
+      <label htmlFor="conversation-member-search" style={{ display: 'block', fontSize: 13, marginBottom: 8 }}>Find a member</label>
+      <input ref={inputRef} id="conversation-member-search" type="search" autoComplete="off" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, church, or title" style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-1)', fontSize: 16 }} />
+    </div>
+    <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, overscrollBehavior: 'contain' }}>
+      {loading && <p role="status" style={{ padding: 16 }}>Loading members…</p>}
+      {error && <p role="alert" style={{ padding: 16 }}>Unable to load members. <button onClick={() => { void members.refetch(); void blocked.refetch() }}>Retry</button></p>}
+      {!loading && !error && !matches.length && <p style={{ padding: 16 }}>{query ? 'No members match your search.' : 'No members available to message.'}</p>}
+      {!loading && !error && matches.slice(0, 30).map(member => <button type="button" key={member.id} disabled={busy} onClick={() => onSelect(member.id)} style={{ ...menuItemStyle, padding: '14px 16px', borderBottom: '1px solid var(--color-border)', opacity: busy ? 0.6 : 1 }}>
+        <Avatar name={member.name} avatarUrl={member.avatarUrl} />
+        <span style={{ minWidth: 0 }}><strong style={{ display: 'block', overflowWrap: 'anywhere' }}>{member.name || 'Member'}</strong><span style={{ display: 'block', color: 'var(--color-text-2)', fontSize: 12, marginTop: 4 }}>{[member.title, member.church].filter(Boolean).join(' · ')}</span></span>
+      </button>)}
+      {!loading && !error && matches.length > 30 && <p style={{ padding: 16 }}>Showing the first 30 members. Refine your search to find someone.</p>}
+      {busy && <p role="status" style={{ padding: 16 }}>Opening conversation…</p>}
+    </div>
+  </section>
+}
+
 export default function MessagesPanel() {
   const closeMessages = useUIStore(s => s.closeMessages)
   const messageTargetUserId = useUIStore(s => s.messageTargetUserId)
@@ -258,6 +309,7 @@ export default function MessagesPanel() {
   const startConversation = useStartConversation()
   const [activeConv, setActiveConv] = useState<ConversationSummary | null>(null)
   const [tab, setTab] = useState<'inbox' | 'archived'>('inbox')
+  const [choosingMember, setChoosingMember] = useState(false)
   const [menu, setMenu] = useState<{ conv: ConversationSummary; archived: boolean; anchor: { x: number; y: number } } | null>(null)
 
   // When opened with a specific target user, find or create that conversation.
@@ -266,10 +318,12 @@ export default function MessagesPanel() {
     const existing = [...(conversations ?? []), ...(archivedConversations ?? [])].find(c => c.otherUser.id === messageTargetUserId)
     if (existing) {
       setActiveConv(existing)
+      setChoosingMember(false)
+      setTab((archivedConversations ?? []).some(c => c.id === existing.id) ? 'archived' : 'inbox')
       useUIStore.setState({ messageTargetUserId: null })
     } else if (!startConversation.isPending) {
       startConversation.mutate(messageTargetUserId, {
-        onSuccess: conv => { setActiveConv(conv); useUIStore.setState({ messageTargetUserId: null }) },
+        onSuccess: conv => { setActiveConv(conv); setChoosingMember(false); setTab('inbox'); useUIStore.setState({ messageTargetUserId: null }) },
         onError: () => useUIStore.setState({ messageTargetUserId: null }),
       })
     }
@@ -299,10 +353,11 @@ export default function MessagesPanel() {
             fontFamily: 'var(--font-sans)',
           }}>← Home</button>
           <div style={{ flex: 1, fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Messages</div>
+          <button type="button" className="messages-new-conversation" aria-label="New conversation" title="New conversation" disabled={choosingMember || startConversation.isPending} onClick={() => { startConversation.reset(); setMenu(null); setChoosingMember(true) }} style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-navy-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}><span aria-hidden="true" style={{ fontSize: 18 }}>✎</span><span className="messages-new-conversation-label">New conversation</span></button>
           <button onClick={closeMessages} className="messages-close-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
         {startConversation.isError && <p role="alert" style={{ padding: '0 16px', color: 'var(--color-red-text)', fontSize: 13 }}>Unable to open this conversation. It may no longer be available.</p>}
-        <div className="messages-body" data-active={activeConv ? 'true' : 'false'} style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        {choosingMember && <NewConversationPicker busy={startConversation.isPending || !!messageTargetUserId} onCancel={() => { setChoosingMember(false); startConversation.reset() }} onSelect={id => { startConversation.reset(); useUIStore.setState({ messageTargetUserId: id, messageTargetMessageId: null }) }} />}<div className="messages-body" data-active={activeConv ? 'true' : 'false'} style={{ display: choosingMember ? 'none' : 'flex', flex: 1, minHeight: 0 }}>
           {/* width/flex-shrink/display all live in CSS (base + mobile override),
               not here — an inline width or display would always beat the
               mobile class rules that expand this pane full-width and hide it

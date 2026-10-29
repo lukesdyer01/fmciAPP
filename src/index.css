@@ -651,3 +651,6 @@ html[data-theme="dark"] .post-composer-modal {
 
 .comment-composer input::placeholder { color: var(--color-text-3); opacity: 1; }
 .comment-composer:focus-within { outline: 2px solid var(--color-navy-text); outline-offset: 2px; }
+
+.messages-new-conversation { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; }
+@media (max-width: 480px) { .messages-new-conversation-label { display: none; } }
