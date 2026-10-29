@@ -1,3 +1,4 @@
+import { useNetworkSettings } from '../api-client/features'
 // Facebook-inspired mobile menu panel with searchable destinations and account actions.
 
 import { useEffect, useMemo, useState } from 'react'
@@ -27,6 +28,7 @@ const DESCRIPTIONS: Record<string, string> = {
 }
 
 export default function MobileNavDrawer() {
+  const { data: settings } = useNetworkSettings()
   const activeView = useUIStore(s => s.activeView)
   const setActiveView = useUIStore(s => s.setActiveView)
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
@@ -52,11 +54,11 @@ export default function MobileNavDrawer() {
   }
 
   const destinations = useMemo(() => [
-    ...NAV.map(item => ({ ...item, description: DESCRIPTIONS[item.id] ?? '' })),
+    ...NAV.filter(item => item.id !== 'saved' || settings?.savedPostsEnabled === 1).map(item => ({ ...item, description: DESCRIPTIONS[item.id] ?? '' })),
     { id: 'map' as const, icon: '🗺', label: 'Global Map', description: DESCRIPTIONS.map },
     { id: 'about' as const, icon: 'ℹ️', label: 'About FMCI', description: DESCRIPTIONS.about },
     { id: 'privacy' as const, icon: '🔒', label: 'Privacy Policy', description: DESCRIPTIONS.privacy },
-  ].filter(item => `${item.label} ${item.description}`.toLowerCase().includes(query.trim().toLowerCase())), [query])
+  ].filter(item => `${item.label} ${item.description}`.toLowerCase().includes(query.trim().toLowerCase())), [query, settings?.savedPostsEnabled])
 
   return (
     <div

@@ -1,3 +1,4 @@
+import { useNetworkSettings } from '../api-client/features'
 import { useState, useEffect } from 'react'
 import type { ActiveView } from '../App'
 import { api } from '../api-client/server'
@@ -79,6 +80,7 @@ export const NAV: { id: ActiveView; icon: string; label: string }[] = [
 ]
 
 export default function LeftSidebar({ activeView, setActiveView }: Props) {
+  const { data: settings } = useNetworkSettings()
   return (
     // Desktop: sticky sidebar. Hidden below 768px (see .left-sidebar-desktop in
     // index.css) — the mobile equivalent is the hamburger-triggered MobileNavDrawer.
@@ -89,7 +91,7 @@ export default function LeftSidebar({ activeView, setActiveView }: Props) {
       scrollbarWidth: 'thin',
     }}>
       <div style={{ backgroundColor: 'var(--color-card)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '8px' }}>
-        {NAV.map(item => {
+        {NAV.filter(item => item.id !== 'saved' || settings?.savedPostsEnabled === 1).map(item => {
           const active = activeView === item.id
           return (
             <button key={item.id} onClick={() => setActiveView(item.id)} style={{

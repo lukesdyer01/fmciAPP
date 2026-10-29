@@ -1,3 +1,4 @@
+import { useNetworkSettings } from '../api-client/features'
 const BetaFeedback = lazy(() => import('./BetaFeedback'))
 const SavedItemsView = lazy(() => import('./SavedItemsView'))
 import { lazy, Suspense } from 'react'
@@ -268,8 +269,9 @@ function MainFeed() {
 }
 
 export default function Feed({ activeView }: { activeView: ActiveView }) {
+  const { data: settings } = useNetworkSettings()
   if (activeView === 'feedback') return <BetaFeedback />
-  if (activeView === 'saved') return <SavedItemsView />
+  if (activeView === 'saved') return settings?.savedPostsEnabled === 1 ? <SavedItemsView /> : <p>Saved posts are currently unavailable.</p>
   if (activeView === 'safety') return <SafetySupportView />
   if (activeView === 'invite') return <InviteMembersView />
   if (activeView === 'directory') return <DirectoryView />

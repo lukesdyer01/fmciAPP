@@ -1,3 +1,4 @@
+import { useNetworkSettings } from '../api-client/features'
 import { useSavedItems, useSaveItem } from "../api-client/memberTools"
 export default function SaveItemButton({
   kind,
@@ -6,9 +7,12 @@ export default function SaveItemButton({
   kind: "post" | "resource"
   id: string
 }) {
-  const items = useSavedItems(),
+  const { data: settings } = useNetworkSettings()
+  const visible = kind !== "post" || settings?.savedPostsEnabled === 1
+  const items = useSavedItems(visible),
     save = useSaveItem()
   const saved = !!items.data?.some((i) => i.kind === kind && i.item_id === id)
+  if (!visible) return null
   return (
     <span>
       <button

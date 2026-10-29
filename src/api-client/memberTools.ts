@@ -6,12 +6,12 @@ export type SavedItem = {
   item_id: string
   created_at: string
 }
-export function useSavedItems() {
+export function useSavedItems(enabled = true) {
   const { currentUser } = useAuth()
   return useQuery({
     queryKey: ["saved-items", currentUser?.id],
     queryFn: () => api<SavedItem[]>("/me/saved"),
-    enabled: !!currentUser,
+    enabled: !!currentUser && enabled,
   })
 }
 export function useSaveItem() {

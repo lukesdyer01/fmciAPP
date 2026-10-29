@@ -33,8 +33,12 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
   const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    // Read the actual fields too: some password managers autofill without firing React change events.
+    const fields = new FormData(e.currentTarget)
+    const submittedEmail = String(fields.get('email') ?? email).trim()
+    const submittedPassword = String(fields.get('password') ?? password)
     setError('')
     setInfo('')
     if (mode === 'signup' && signupStep === 1) {
@@ -45,13 +49,13 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
 
     try {
       if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email: submittedEmail, password: submittedPassword })
         if (error) throw error
         if (data.session) onSession(data.session)
       } else if (mode === 'signup') {
         if (!adultConfirmed) throw new Error('You must confirm you are at least 18 to join.')
         const { data, error } = await supabase.auth.signUp({
-          email, password,
+          email: submittedEmail, password: submittedPassword,
           // onboarding_complete: false marks this as a brand-new account so
           // AuthGate shows the OnboardingWizard once, right after signup —
           // existing accounts never have this key at all, which is what
@@ -69,7 +73,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
           setPassword('')
         }
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(submittedEmail, {
           // A fixed, real URL rather than window.location.origin — inside a
           // Capacitor WebView, the origin is a meaningless capacitor://localhost
           // that the reset email can't link back into. Native users complete
@@ -151,12 +155,12 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
             <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', whiteSpace: 'nowrap' }}>Step {signupStep} of 2</span>
           </div>}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <form onSubmit={handleSubmit} method="post" autoComplete="on" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {mode === 'signup' && signupStep === 1 && <>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</label>
+                <label htmlFor="auth-name" style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</label>
                 <input
-                  type="text" value={name} onChange={e => setName(e.target.value)}
+                  id="auth-name" name="name" autoComplete="name" type="text" value={name} onChange={e => setName(e.target.value)}
                   placeholder="Your full name" required
                   style={inputStyle}
                   onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}
@@ -164,9 +168,9 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
                 />
               </div>
               <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
+              <label htmlFor="auth-email" style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
               <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                id="auth-email" name="email" autoComplete="email" autoCapitalize="none" spellCheck={false} type="email" value={email} onChange={e => setEmail(e.target.value)}
                 readOnly={!!invitation?.email}
                 placeholder="you@yourchurch.org" required
                 style={inputStyle}
@@ -177,9 +181,9 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
             </>}
 
             {mode !== 'signup' && <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
+              <label htmlFor="auth-email" style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
               <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                id="auth-email" name="email" autoComplete={mode === 'login' ? 'username' : 'email'} autoCapitalize="none" spellCheck={false} type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="you@yourchurch.org" required
                 style={inputStyle}
                 onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}
@@ -190,7 +194,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
             {((mode === 'login') || (mode === 'signup' && signupStep === 2)) && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Password</label>
+                  <label htmlFor="auth-password" style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Password</label>
                   {mode === 'login' && (
                     <button type="button" onClick={() => { setMode('forgot'); setError('') }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--color-gold)', fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
@@ -199,7 +203,7 @@ function AuthForm({ onSession }: { onSession: (s: Session) => void }) {
                   )}
                 </div>
                 <input
-                  type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  id="auth-password" name="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} type="password" value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" required minLength={8}
                   style={inputStyle}
                   onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-gold)' }}

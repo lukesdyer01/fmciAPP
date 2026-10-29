@@ -2732,14 +2732,18 @@ app.get(`${BASE}/settings`, async (c) => c.json({
   openRegistration: false,
   inviteOnly: true,
   photoStoriesEnabled: (await kv.get("photo_stories_enabled")) !== false,
+  savedPostsEnabled: (await kv.get("saved_posts_enabled")) === 1 ? 1 : 0,
 }));
 app.put(`${BASE}/settings`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller || caller.app_metadata?.role !== "superadmin") return c.json({ error: "Forbidden" }, 403);
   const body = await c.req.json();
-  if (typeof body.photoStoriesEnabled !== "boolean") return c.json({ error: "Invalid feature setting" }, 400);
-  await kv.set("photo_stories_enabled", body.photoStoriesEnabled);
-  return c.json({ openRegistration: false, inviteOnly: true, photoStoriesEnabled: body.photoStoriesEnabled });
+  if ((body.photoStoriesEnabled !== undefined && typeof body.photoStoriesEnabled !== 'boolean') ||
+      (body.savedPostsEnabled !== undefined && body.savedPostsEnabled !== 0 && body.savedPostsEnabled !== 1) ||
+      (body.photoStoriesEnabled === undefined && body.savedPostsEnabled === undefined)) return c.json({ error: 'Invalid feature setting' }, 400);
+  if (body.photoStoriesEnabled !== undefined) await kv.set('photo_stories_enabled', body.photoStoriesEnabled);
+  if (body.savedPostsEnabled !== undefined) await kv.set('saved_posts_enabled', body.savedPostsEnabled);
+  return c.json({ openRegistration: false, inviteOnly: true, photoStoriesEnabled: (await kv.get('photo_stories_enabled')) !== false, savedPostsEnabled: (await kv.get('saved_posts_enabled')) === 1 ? 1 : 0 });
 });
 
 // ── Analytics ────────────────────────────────────────────────────────────
