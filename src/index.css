@@ -648,3 +648,6 @@ html[data-theme="dark"] .post-composer-modal {
   .sheet-card.edit-profile-dialog { max-height: min(90dvh, calc(100% - var(--safe-top) - 12px)) !important; }
   .sheet-card.edit-profile-dialog::before { flex-shrink: 0; }
 }
+
+.comment-composer input::placeholder { color: var(--color-text-3); opacity: 1; }
+.comment-composer:focus-within { outline: 2px solid var(--color-navy-text); outline-offset: 2px; }

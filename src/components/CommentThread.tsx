@@ -40,7 +40,7 @@ export default function CommentThread({ comments, onSubmit, onDelete, submitting
                   ? <img onClick={() => openProfile(cm.authorId)} src={cm.authorAvatarUrl} alt="" style={{ width: '30px', height: '30px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, cursor: 'pointer' }} />
                   : <div onClick={() => openProfile(cm.authorId)} style={{ width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>{(cm.authorName || '?').slice(0, 2).toUpperCase()}</div>
                 }
-                <div style={{ flex: 1, backgroundColor: '#fff', borderRadius: '10px', padding: '8px 12px', border: '1px solid var(--color-border)' }}>
+                <div style={{ flex: 1, backgroundColor: 'var(--color-surface)', borderRadius: '10px', padding: '8px 12px', border: '1px solid var(--color-border)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                     <span onClick={() => openProfile(cm.authorId)} style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--color-text-1)', cursor: 'pointer' }}>{cm.authorName}</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -60,13 +60,14 @@ export default function CommentThread({ comments, onSubmit, onDelete, submitting
         </div>
       )}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderRadius: '8px', padding: '8px 14px', border: '1px solid var(--color-border)', gap: '8px' }}>
+        <div className="comment-composer" style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderRadius: '8px', padding: '8px 14px', border: '1px solid var(--color-border)', gap: '8px' }}>
           <input
+            aria-label="Write a comment"
             value={commentText}
             onChange={e => setCommentText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit() }}
             placeholder="Write a comment…"
-            style={{ flex: 1, border: 'none', background: 'none', outline: 'none', fontSize: '14px', fontFamily: 'var(--font-sans)' }}
+            style={{ flex: 1, border: 'none', background: 'none', color: 'var(--color-text-1)', caretColor: 'var(--color-text-1)', minWidth: 0, outline: 'none', fontSize: '14px', fontFamily: 'var(--font-sans)' }}
           />
           {commentText && (
             <button onClick={submit} disabled={submitting} style={{ background: 'none', border: 'none', cursor: submitting ? 'default' : 'pointer', color: 'var(--color-gold)', fontWeight: 700, fontSize: '13px', fontFamily: 'var(--font-sans)' }}>
