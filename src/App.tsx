@@ -1,3 +1,4 @@
+const EditProfileModal = lazy(() => import('./components/EditProfileModal'))
 import { lazy, Suspense } from 'react'
 import { readMessageNotificationUrl } from './lib/messageNotification'
 import { useEffect, useRef, Component, type ReactNode } from 'react'
@@ -54,6 +55,7 @@ function AppShell() {
   const setAdminMode = useUIStore(s => s.setAdminMode)
   const profileId = useUIStore(s => s.profileId)
   const closeProfile = useUIStore(s => s.closeProfile)
+  const editProfileOpen = useUIStore(s => s.editProfileOpen)
   const messagesOpen = useUIStore(s => s.messagesOpen)
   const notifOpen = useUIStore(s => s.notifOpen)
   const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
@@ -173,6 +175,7 @@ function AppShell() {
       {notifOpen && <NotificationsPanel />}
       {mobileNavOpen && <MobileNavDrawer />}
       {searchOpen && <MobileSearchOverlay onClose={() => useUIStore.getState().setSearchOpen(false)} />}
+      {editProfileOpen && <EditProfileModal />}
       <BottomTabBar />
       <InstallPrompt />
       <PushPrompt />

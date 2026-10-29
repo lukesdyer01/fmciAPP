@@ -638,3 +638,13 @@ html[data-theme="dark"] .post-composer-modal {
 .member-tool-section form label { display: grid; gap: 8px; }
 .member-tool-section textarea, .member-tool-section select { width: 100%; padding: 12px; font: inherit; font-size: 16px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-1); }
 .member-tool-section button { padding: 10px 16px; cursor: pointer; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-navy); color: white; }
+
+/* Profile fields scroll independently so actions never move under the home indicator. */
+.edit-profile-backdrop { box-sizing: border-box; }
+.sheet-card.edit-profile-dialog { max-height: min(90dvh, 100%); min-height: 0; }
+.edit-profile-fields { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll-padding-bottom: 24px; }
+.edit-profile-footer { padding: 16px 24px max(16px, var(--safe-bottom)); }
+@media (max-width: 768px) {
+  .sheet-card.edit-profile-dialog { max-height: min(90dvh, calc(100% - var(--safe-top) - 12px)) !important; }
+  .sheet-card.edit-profile-dialog::before { flex-shrink: 0; }
+}

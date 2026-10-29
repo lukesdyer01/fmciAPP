@@ -6,7 +6,6 @@ import { useUIStore } from '../store/ui'
 import { useFeedPosts } from '../api-client/posts'
 import PostComposer from './PostComposer'
 import PostCard, { type Post } from './PostCard'
-import EditProfileModal from './EditProfileModal'
 import VerifiedBadge from './VerifiedBadge'
 import { openExternal } from '../lib/openExternal'
 import { useSwipeBack } from '../hooks/useSwipeBack'
@@ -42,7 +41,6 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
   useSwipeBack(onBack)
   const { currentUser } = useAuth()
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
-  const editProfileOpen = useUIStore(s => s.editProfileOpen)
   const openMessagesWith = useUIStore(s => s.openMessagesWith)
   const [member, setMember] = useState<MemberProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -236,7 +234,6 @@ export default function ProfileView({ userId, onBack }: { userId: string; onBack
         <PostCard key={post.id} post={post as unknown as Post} />
       ))}
 
-      {editProfileOpen && <EditProfileModal />}
     </div>
   )
 }

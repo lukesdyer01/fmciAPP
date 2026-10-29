@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUIStore } from '../store/ui'
 import { useOpenProfile } from './ProfileView'
-import EditProfileModal from './EditProfileModal'
 import ProfileHoverCard from './ProfileHoverCard'
 import { api } from '../api-client/server'
 import { useConversations } from '../api-client/messages'
@@ -138,7 +137,6 @@ export default function Topbar() {
   const { colorScheme } = useColorScheme()
   const mobileNavOpen = useUIStore(s => s.mobileNavOpen)
   const setMobileNavOpen = useUIStore(s => s.setMobileNavOpen)
-  const editProfileOpen = useUIStore(s => s.editProfileOpen)
   const setActiveView = useUIStore(s => s.setActiveView)
   const openProfile = useOpenProfile()
   const setSearchOpen = useUIStore(s => s.setSearchOpen)
@@ -263,7 +261,6 @@ export default function Topbar() {
         {/* Avatar — hover to see profile preview, Edit Profile, Admin Panel, Sign Out. */}
         <div className="topbar-avatar"><ProfileHoverCard /></div>
       </div>
-      {editProfileOpen && <EditProfileModal />}
     </header>
   )
 }

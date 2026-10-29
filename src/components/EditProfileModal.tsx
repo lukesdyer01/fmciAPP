@@ -32,7 +32,7 @@ function Field({ label, value, onChange, multiline = false, placeholder = '' }: 
     padding: '10px 12px',
     border: '1px solid var(--color-border)',
     borderRadius: '8px',
-    fontSize: '14px',
+    fontSize: '16px',
     fontFamily: 'var(--font-sans)',
     color: 'var(--color-text-1)',
     backgroundColor: 'var(--color-surface)',
@@ -65,6 +65,35 @@ export default function EditProfileModal() {
   const updateUserProfile = useUIStore(s => s.updateUserProfile)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
   const { currentUser, updateCurrentUser } = useAuth()
+  const backdropRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const viewport = window.visualViewport
+    const updateViewport = () => {
+      const backdrop = backdropRef.current
+      if (!backdrop) return
+      if (viewport && window.matchMedia('(max-width: 768px)').matches) {
+        backdrop.style.top = `${viewport.offsetTop}px`
+        backdrop.style.height = `${viewport.height}px`
+        backdrop.style.bottom = 'auto'
+      } else {
+        backdrop.style.top = '0px'
+        backdrop.style.bottom = '0px'
+        backdrop.style.removeProperty('height')
+      }
+    }
+    updateViewport()
+    viewport?.addEventListener('resize', updateViewport)
+    viewport?.addEventListener('scroll', updateViewport)
+    window.addEventListener('resize', updateViewport)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      viewport?.removeEventListener('resize', updateViewport)
+      viewport?.removeEventListener('scroll', updateViewport)
+      window.removeEventListener('resize', updateViewport)
+    }
+  }, [])
 
   const [draft, setDraft] = useState<UserProfile>(() => {
     const locationFields = readMemberLocation(userProfile)
@@ -212,19 +241,19 @@ export default function EditProfileModal() {
   }
 
   return (
-    <div className="sheet-backdrop" style={{
+    <div ref={backdropRef} className="sheet-backdrop edit-profile-backdrop" style={{
       position: 'fixed', inset: 0, zIndex: 400,
       backgroundColor: 'rgba(0,0,0,0.55)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '20px',
       backdropFilter: 'blur(4px)',
     }} onClick={e => { if (e.target === e.currentTarget) setEditProfileOpen(false) }}>
-      <div className="sheet-card" style={{
+      <div className="sheet-card edit-profile-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title" style={{
         backgroundColor: 'var(--color-card)',
         borderRadius: '16px',
         border: '1px solid var(--color-border)',
         width: '100%', maxWidth: '560px',
-        maxHeight: '90vh', overflowY: 'auto',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
         boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
       }}>
         {/* Header */}
@@ -232,17 +261,17 @@ export default function EditProfileModal() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '20px 24px 16px',
           borderBottom: '1px solid var(--color-border)',
-          position: 'sticky', top: 0, backgroundColor: 'var(--color-card)', zIndex: 1,
+          flexShrink: 0, backgroundColor: 'var(--color-card)',
           borderRadius: '16px 16px 0 0',
         }}>
-          <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Edit Profile</div>
+          <div id="edit-profile-title" style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-1)' }}>Edit Profile</div>
           <button onClick={() => setEditProfileOpen(false)} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px',
           }}>✕</button>
         </div>
 
-        <div style={{ padding: '0 0 24px' }}>
+        <div className="edit-profile-fields" style={{ padding: '0 0 24px' }}>
           {/* Avatar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '20px 24px 0', marginBottom: '4px' }}>
             <div
@@ -474,18 +503,13 @@ export default function EditProfileModal() {
               </div>
             )}
           </div>
-
-          {/* Keeps the confirm box's own buttons from being covered by the
-              sticky footer below — that footer overlays whatever's scrolled
-              to the bottom of this container rather than pushing it up. */}
-          {showDeleteConfirm && <div style={{ height: '80px' }} />}
         </div>
 
         {/* Footer */}
-        <div style={{
-          display: 'flex', gap: '10px', padding: '16px 24px',
+        <div className="edit-profile-footer" style={{
+          display: 'flex', gap: '10px',
           borderTop: '1px solid var(--color-border)',
-          position: 'sticky', bottom: 0, backgroundColor: 'var(--color-card)',
+          flexShrink: 0, backgroundColor: 'var(--color-card)',
           borderRadius: '0 0 16px 16px',
         }}>
           <button onClick={() => setEditProfileOpen(false)} style={{
