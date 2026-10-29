@@ -58,6 +58,7 @@ app.use(`${BASE}/*`, async (c, next) => {
     try { body = await c.req.json(); } catch { return c.json({ error: "Invalid request" }, 400); }
     if (contentSafetyIssue(body)) return c.json({ error: "This text may violate the community rules. Edit it before posting, or contact luke@dyerplex.com for review." }, 422);
   }
+  if (c.req.path.startsWith(`${BASE}/group-conversations`) && (await kv.get('group_messages_enabled')) !== 1) return c.json({ error: 'Group messaging is currently disabled', code: 'GROUP_MESSAGING_DISABLED' }, 403);
   await next();
 });
 
@@ -2732,6 +2733,7 @@ app.get(`${BASE}/settings`, async (c) => c.json({
   openRegistration: false,
   inviteOnly: true,
   photoStoriesEnabled: (await kv.get("photo_stories_enabled")) !== false,
+  groupMessagesEnabled: (await kv.get("group_messages_enabled")) === 1 ? 1 : 0,
   savedPostsEnabled: (await kv.get("saved_posts_enabled")) === 1 ? 1 : 0,
 }));
 app.put(`${BASE}/settings`, async (c) => {
@@ -2739,11 +2741,13 @@ app.put(`${BASE}/settings`, async (c) => {
   if (!caller || caller.app_metadata?.role !== "superadmin") return c.json({ error: "Forbidden" }, 403);
   const body = await c.req.json();
   if ((body.photoStoriesEnabled !== undefined && typeof body.photoStoriesEnabled !== 'boolean') ||
+      (body.groupMessagesEnabled !== undefined && body.groupMessagesEnabled !== 0 && body.groupMessagesEnabled !== 1) ||
       (body.savedPostsEnabled !== undefined && body.savedPostsEnabled !== 0 && body.savedPostsEnabled !== 1) ||
-      (body.photoStoriesEnabled === undefined && body.savedPostsEnabled === undefined)) return c.json({ error: 'Invalid feature setting' }, 400);
+      (body.photoStoriesEnabled === undefined && body.savedPostsEnabled === undefined && body.groupMessagesEnabled === undefined)) return c.json({ error: 'Invalid feature setting' }, 400);
   if (body.photoStoriesEnabled !== undefined) await kv.set('photo_stories_enabled', body.photoStoriesEnabled);
+  if (body.groupMessagesEnabled !== undefined) await kv.set('group_messages_enabled', body.groupMessagesEnabled);
   if (body.savedPostsEnabled !== undefined) await kv.set('saved_posts_enabled', body.savedPostsEnabled);
-  return c.json({ openRegistration: false, inviteOnly: true, photoStoriesEnabled: (await kv.get('photo_stories_enabled')) !== false, savedPostsEnabled: (await kv.get('saved_posts_enabled')) === 1 ? 1 : 0 });
+  return c.json({ groupMessagesEnabled: (await kv.get('group_messages_enabled')) === 1 ? 1 : 0, openRegistration: false, inviteOnly: true, photoStoriesEnabled: (await kv.get('photo_stories_enabled')) !== false, savedPostsEnabled: (await kv.get('saved_posts_enabled')) === 1 ? 1 : 0 });
 });
 
 // ── Analytics ────────────────────────────────────────────────────────────

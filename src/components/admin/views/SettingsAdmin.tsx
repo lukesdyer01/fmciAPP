@@ -21,6 +21,10 @@ export default function SettingsAdmin() {
     }),
     onSuccess: updated => queryClient.setQueryData(networkSettingsKey, updated),
   })
+  const groupMessagingMutation = useMutation({
+    mutationFn: (enabled: boolean) => api<NetworkSettings>('/settings', { method: 'PUT', body: JSON.stringify({ groupMessagesEnabled: enabled ? 1 : 0 }) }),
+    onSuccess: updated => queryClient.setQueryData(networkSettingsKey, updated),
+  })
   const [groupCode, setGroupCode] = useState('')
   const [email, setEmail] = useState('')
   const [invitation, setInvitation] = useState<{ email: string; token: string; expiresAt: string } | null>(null)
@@ -52,6 +56,9 @@ export default function SettingsAdmin() {
   return <div style={{ maxWidth: '760px', color: '#e6edf3' }}>
     {isSuperAdmin && <section style={{ background: '#161b22', borderRadius: '12px', padding: '24px', marginBottom: '16px' }}>
       <h2 style={{ marginTop: 0 }}>Feature controls</h2>
+      <label style={{ display: 'block', marginBottom: 16 }}><input type="checkbox" checked={settings?.groupMessagesEnabled === 1} disabled={settingsLoading || !settings || groupMessagingMutation.isPending} onChange={event => groupMessagingMutation.mutate(event.target.checked)} /> Group messaging</label>
+      {groupMessagingMutation.isError && <p role="alert">Unable to change group messaging. Please retry.</p>}
+      {groupMessagingMutation.isSuccess && <p role="status">Group messaging setting saved.</p>}
       <p style={{ color: '#adb5c0', fontSize: '13px' }}>Turn photo Stories on or off for everyone in FMCI Network.</p>
       <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: storiesMutation.isPending ? 'wait' : 'pointer' }}>
         <input

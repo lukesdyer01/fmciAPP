@@ -4,6 +4,7 @@ import { api } from './server'
 export interface NetworkSettings {
   inviteOnly: boolean
   openRegistration: boolean
+  groupMessagesEnabled: 0 | 1
   savedPostsEnabled: 0 | 1
   photoStoriesEnabled: boolean
 }
