@@ -15,3 +15,5 @@ Verification: tests cover per-user saved-item constraints, admin denials, prefer
 ## iPhone build
 
 Version 1.0.2 build 10 archived, signed, and uploaded successfully on October 27, 2026 (Central time). Xcode reported Upload succeeded and EXPORT SUCCEEDED. The signed archive includes the new beta feedback and saved-items assets. Apple reported the uploaded package is processing. TestFlight availability and physical-device testing have not been verified. Archive: `/tmp/fmci-beta-build10.xcarchive`. Upload log: `/tmp/fmci-beta-build10-upload.log`.
+
+Version 1.0.2 build 11 archived, signed, and uploaded successfully on October 28, 2026 (Central time). Includes the mobile profile Save footer, independently scrolling fields, keyboard/safe-area handling, and removal of duplicate profile dialogs. Verified the fixes in the signed archive. Xcode reported Upload succeeded and EXPORT SUCCEEDED. Apple processing, TestFlight availability, and physical-device verification remain pending. Archive: `/tmp/fmci-profile-build11.xcarchive`. Upload log: `/tmp/fmci-profile-build11-upload.log`.

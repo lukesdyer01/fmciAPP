@@ -36,13 +36,13 @@
     "Current iOS screenshots and final listing fields",
     "Final App Privacy answers including embedded services",
     "Physical-device verification of recovery email and production push",
-    "Verify build 10 processing, select build, and provide completed response to the existing 2.1 rejection",
+    "Verify build 11 processing, select build, and provide completed response to the existing 2.1 rejection",
     "Separate reviewer signup/deletion instructions and disposable access"
   ],
   "uploadedBuild": {
     "version": "1.0.2",
-    "build": 10,
-    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 10 uploaded with beta feedback, saved posts/resources, notification preferences, invitation controls, search navigation, and paginated feed. Apple reports uploaded package is processing. TestFlight availability and physical-device verification remain pending."
+    "build": 11,
+    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 11 uploaded with mobile profile scrolling fix, visible Save footer, keyboard/safe-area handling, and single profile dialog. Apple processing, TestFlight availability, and physical-device verification remain pending."
   },
   "appStoreConnectVerified": {
     "appId": "6809304019",
