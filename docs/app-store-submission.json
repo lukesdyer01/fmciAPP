@@ -36,13 +36,13 @@
     "Current iOS screenshots and final listing fields",
     "Final App Privacy answers including embedded services",
     "Physical-device verification of recovery email and production push",
-    "Verify build 12 processing, select build, and provide completed response to the existing 2.1 rejection",
+    "Verify build 13 processing, select build, and provide completed response to the existing 2.1 rejection",
     "Separate reviewer signup/deletion instructions and disposable access"
   ],
   "uploadedBuild": {
     "version": "1.0.2",
-    "build": 12,
-    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 12 uploaded with automatic post image optimization, browser login autofill, and the saved-posts feature flag defaulting to 0. Includes build 11 profile scrolling fixes. Apple processing, TestFlight availability, and physical-device verification remain pending."
+    "build": 13,
+    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 13 uploaded with New conversation member search directly in Messages and theme-aware comment fields/bubbles. Includes previous build 12 enhancements. Apple processing, TestFlight availability, and physical-device verification remain pending."
   },
   "appStoreConnectVerified": {
     "appId": "6809304019",
