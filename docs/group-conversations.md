@@ -11,3 +11,11 @@ Only the creator can rename, add/remove participants, or transfer ownership. Tra
 Migration order: 202610290001, then 202610290002. Deploy the backend, then web/native clients, and set `group_messages_enabled` to JSON number 1 once ready. Existing direct-message endpoints and storage remain compatible. Group endpoints are GET/POST `/group-conversations`, GET `/:id/messages?before=ID`, and POST `/:id/actions` with a validated action. Only the backend supplies the caller ID to `group_chat`.
 
 Verification: run the Node test suite and `supabase/tests/group-conversations.sql` against an already-migrated database. The SQL test requires an existing superadmin and rolls back every fixture. It covers ownership checks, concurrent-safe append storage, join history, removal, blocking in both directions, mute/archive, runtime disable and account cleanup. Native push URLs support `/?groupConversation=UUID&message=ID`; cold-start parsing uses the same origin checks as direct messages. Physical-device notification verification remains necessary.
+
+## Deployment and iPhone build
+
+Implementation commit `e626313` deployed successfully to GitHub Pages (run 40804772686). Both group-chat migrations and the dynamic-endpoint backend are deployed. The production settings endpoint was rechecked October 30, 2026 and reports `groupMessagesEnabled: 1` and `savedPostsEnabled: 0`.
+
+All 61 Node tests, TypeScript checks, and the production build passed before release. Rollback-only SQL integration tests passed for group creation, creator permissions, joining history boundaries, removal, blocking in both directions, mute/archive, feature disabling, and account-deletion cleanup. The live mobile-sized creation form was inspected in Chrome without creating a conversation or sending messages to members.
+
+Version 1.0.2 build 14 archived, signed, and uploaded successfully October 28, 2026 (Central time). The archive was checked for group-chat UI, feature-flag handling, and notification routing. Xcode reported Upload succeeded and EXPORT SUCCEEDED. Apple reported the package was processing at upload completion. TestFlight availability and physical-device notification behavior remain unverified. Archive: `/tmp/fmci-group-build14.xcarchive`. Upload log: `/tmp/fmci-group-build14-upload.log`.

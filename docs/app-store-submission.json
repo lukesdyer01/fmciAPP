@@ -36,13 +36,13 @@
     "Current iOS screenshots and final listing fields",
     "Final App Privacy answers including embedded services",
     "Physical-device verification of recovery email and production push",
-    "Verify build 13 processing, select build, and provide completed response to the existing 2.1 rejection",
+    "Verify build 14 processing, select build, and provide completed response to the existing 2.1 rejection",
     "Separate reviewer signup/deletion instructions and disposable access"
   ],
   "uploadedBuild": {
     "version": "1.0.2",
-    "build": 13,
-    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 13 uploaded with New conversation member search directly in Messages and theme-aware comment fields/bubbles. Includes previous build 12 enhancements. Apple processing, TestFlight availability, and physical-device verification remain pending."
+    "build": 14,
+    "uploadStatus": "Xcode EXPORT SUCCEEDED: build 14 uploaded successfully October 28, 2026 (Central time), including private group conversations, participant controls, new-member history boundaries, group notification routing, and the runtime feature switch. Apple accepted the upload and reported package processing. TestFlight availability and physical-device verification have not been verified."
   },
   "appStoreConnectVerified": {
     "appId": "6809304019",
