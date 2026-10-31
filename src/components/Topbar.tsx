@@ -4,6 +4,7 @@ import { useOpenProfile } from './ProfileView'
 import ProfileHoverCard from './ProfileHoverCard'
 import { api } from '../api-client/server'
 import { useConversations } from '../api-client/messages'
+import { useNotifications } from '../api-client/notifications'
 import { playNotificationSound } from '../lib/notificationSound'
 import { useSearchResults } from '../lib/search'
 import type { ActiveView } from '../App'
@@ -140,6 +141,8 @@ export default function Topbar() {
   const setActiveView = useUIStore(s => s.setActiveView)
   const openProfile = useOpenProfile()
   const setSearchOpen = useUIStore(s => s.setSearchOpen)
+  const {data: notifications}=useNotifications()
+  const unreadNotifications=(notifications??[]).filter(item=>!item.readAt).length
   const notifOpen = useUIStore(s => s.notifOpen)
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
   const { data: conversations } = useConversations()
@@ -183,7 +186,7 @@ export default function Topbar() {
       </div>
 
       <button className="mobile-search-toggle" onClick={() => setSearchOpen(true)} title="Search" aria-label="Search" style={{
-        width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+        position: 'relative', width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
         backgroundColor: 'var(--color-surface)', color: 'var(--color-text-2)',
         alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s', flexShrink: 0,
       }}>
@@ -218,7 +221,7 @@ export default function Topbar() {
           type="button"
           className="mobile-notifications-toggle"
           onClick={() => setNotifOpen(true)}
-          aria-label="Open notifications"
+          aria-label={unreadNotifications ? `Open notifications, ${unreadNotifications} unread` : "Open notifications"}
           aria-expanded={notifOpen}
           style={{
             width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
@@ -226,6 +229,7 @@ export default function Topbar() {
             alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}
         >
+          {unreadNotifications>0&&<span className="notification-count">{unreadNotifications>99?"99+":unreadNotifications}</span>}
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M10 21h4" />

@@ -923,3 +923,8 @@ html[data-theme="dark"] .post-composer-modal {
 .comment-reaction-icons button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 4px; border-radius: 8px; font-size: 18px; border: 1px solid transparent; }
 .comment-reaction-icons button[aria-pressed="true"] { background: var(--color-gold-bg); border-color: var(--color-gold); }
 .comment-reaction-icons button:hover:not(:disabled) { background: var(--color-hover); }
+
+.reaction-notification { display:flex;align-items:flex-start;gap:12px;text-align:left;width:100%;padding:14px;margin:8px 0;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);color:var(--color-text-1);font:inherit;font-size:14px;cursor:pointer; }
+.reaction-notification>span:nth-child(2){flex:1;min-width:0}.notification-preview {display:block;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--color-text-2);margin:5px 0}.reaction-notification time{font-size:11px;color:var(--color-text-3)}.notification-unread{width:9px;height:9px;background:var(--color-gold);border-radius:50%;flex-shrink:0;margin-top:5px}.notification-count{position:absolute;top:-3px;right:-3px;min-width:18px;padding:2px 4px;border-radius:12px;background:#b91c1c;color:white;font-size:10px;font-weight:700;line-height:14px}
+/* Reaction notifications are available from the bell on desktop as well as mobile. */
+.mobile-notifications-toggle { display: inline-flex; }

@@ -1,4 +1,7 @@
 import NotificationPreferences from './NotificationPreferences'
+import { useState } from 'react'
+import { useNotifications, useReadNotification, type ReactionNotification } from '../api-client/notifications'
+import PostCard from './PostCard'
 // Full-window Notifications panel — mirrors MessagesPanel: a slide-over on
 // desktop, the whole screen on a phone. The bell tab opens it; the labelled
 // "← Home" (mobile) / ✕ (desktop) buttons and a backdrop tap close it. The
@@ -7,6 +10,9 @@ import NotificationPreferences from './NotificationPreferences'
 import { useUIStore } from '../store/ui'
 
 export default function NotificationsPanel() {
+  const notifications=useNotifications(),read=useReadNotification()
+  const [selected,setSelected]=useState<ReactionNotification|null>(null)
+  const reactions={amen:"✝️ Amen",pray:"🙏 Pray",heart:"❤️ Love",praise:"🙌 Praise"}
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
 
   return (
@@ -32,6 +38,22 @@ export default function NotificationsPanel() {
           <button onClick={() => setNotifOpen(false)} className="notifications-close-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          <section aria-label="Reaction activity">
+            <h2 style={{fontSize:16,marginTop:0}}>Recent activity</h2>
+            {notifications.isPending&&<p role="status">Loading notifications…</p>}
+            {notifications.isError&&<p role="alert">Unable to load notifications. <button onClick={()=>notifications.refetch()}>Retry</button></p>}
+            {notifications.data?.length===0&&<p>Reactions to your posts and comments will appear here.</p>}
+            {notifications.data?.map(item=><button key={item.id} className="reaction-notification" onClick={()=>{setSelected(item);read.mutate(item)}}>
+              <span aria-hidden="true">{reactions[item.reaction].split(' ')[0]}</span>
+              <span><strong>{item.actorName}</strong> reacted with {reactions[item.reaction].split(' ')[1]} to your {item.commentId?'comment':'post'}.
+                <span className="notification-preview">{item.preview.slice(0,140)}</span>
+                <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
+              </span>
+              {!item.readAt&&<span className="notification-unread" aria-label="Unread"/>}
+            </button>)}
+            {read.isError&&<p role="alert">Unable to mark notification read. Please try again.</p>}
+            {selected&&<div style={{margin:'16px 0'}}><button onClick={()=>setSelected(null)}>Close post</button><PostCard key={selected.id+selected.createdAt} post={notifications.data?.find(item=>item.id===selected.id)?.post??selected.post} initialCommentId={selected.commentId}/></div>}
+          </section>
           <NotificationPreferences />
           <p>Messages appear in your inbox. Push notifications open the related conversation or event.</p>
         </div>

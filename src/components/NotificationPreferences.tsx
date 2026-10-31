@@ -66,7 +66,7 @@ export default function NotificationPreferences() {
         <p role="alert">Unable to save your preferences. Please retry.</p>
       )}
       {save.isSuccess && <p role="status">Preferences saved.</p>}
-      <p>Replies and reactions do not currently send push notifications.</p>
+      <p>Reactions appear in your notification activity. Replies and reactions do not send device push notifications.</p>
     </section>
   )
 }

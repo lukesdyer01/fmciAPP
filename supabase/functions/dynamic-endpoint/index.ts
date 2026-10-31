@@ -1,3 +1,4 @@
+import { visibleReactionNotifications } from "./reactionNotifications.ts";
 import { applyPostReactions } from "./postReactions.ts";
 import { registerGroupChats } from "./groupChats.ts";
 import { paginateFeed, type TimelineItem } from "./feedPage.ts";
@@ -848,6 +849,28 @@ app.post(`${BASE}/posts/:id/react`, async (c) => {
   if(!raw)return c.json({error:'Post unavailable'},404);
   const [updated]=await applyPostReactions([raw],caller.id,kvClient);
   return c.json({reactions:updated.reactions,myReaction:updated.myReaction});
+});
+
+// Notifications are caller-scoped and recheck content visibility on every read.
+app.get(`${BASE}/notifications`, async c => {
+ const caller=await getCallerUser(c.req.header('Authorization'));
+ if(!caller)return c.json({error:'Sign in to view notifications'},401);
+ const {data,error}=await kvClient().from('network_reaction_notifications').select('*').eq('recipient_id',caller.id).order('created_at',{ascending:false}).limit(100);
+ if(error)return c.json({error:'Unable to load notifications'},500);
+ if(!data?.length)return c.json([]);
+ const response=await app.request(`https://internal.invalid${BASE}/posts`,{headers:{Authorization:c.req.header('Authorization')??''}});
+ if(!response.ok)return c.json({error:'Unable to load notification content'},503);
+ const posts=await response.json() as any[],blocked=new Set(await getBlockedIds(caller.id)),users=await listAuthUsers();
+ return c.json(visibleReactionNotifications(data,posts,blocked,users));
+});
+app.post(`${BASE}/notifications/:id/read`,async c=>{
+ const caller=await getCallerUser(c.req.header('Authorization'));
+ if(!caller)return c.json({error:'Sign in to continue'},401);
+ const body=await c.req.json();
+ // Match the displayed revision so a concurrent new reaction remains unread.
+ const {error}=await kvClient().from('network_reaction_notifications').update({read_at:new Date().toISOString()}).eq('recipient_id',caller.id).eq('id',c.req.param('id')).eq('created_at',body.createdAt);
+ if(error)return c.json({error:'Unable to mark notification read'},500);
+ return c.json({ok:true});
 });
 
 app.get(`${BASE}/profile`, async (c) => {

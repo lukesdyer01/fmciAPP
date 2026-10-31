@@ -70,10 +70,10 @@ export const TESTIMONY_CATEGORY_STYLE: Record<string, { label: string; icon: str
   other:       { label: 'Other',       icon: '✨', color: '#1D4ED8', bg: '#EFF6FF' },
 }
 
-export default function PostCard({ post }: { post: Post }) {
+export default function PostCard({ post, initialCommentId }: { post: Post; initialCommentId?: string | null }) {
   const [reactions, setReactions] = useState(post.reactions ?? { amen: 0, pray: 0, heart: 0 })
   const [active, setActive] = useState<'amen' | 'pray' | 'heart' | null>(post.myReaction ?? null)
-  const [showComments, setShowComments] = useState(false)
+  const [showComments, setShowComments] = useState(!!initialCommentId)
   const [focusComment, setFocusComment] = useState(false)
   const commentReaction = useReactToComment()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -474,6 +474,7 @@ export default function PostCard({ post }: { post: Post }) {
       {showComments && (
         <PostCommentsPanel count={post.comments} onClose={()=>setShowComments(false)}>
           <CommentThread
+            highlightedCommentId={initialCommentId}
             comments={post.commentsList ?? []}
             onNavigate={()=>setShowComments(false)}
             autoFocus={focusComment}

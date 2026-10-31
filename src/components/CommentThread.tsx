@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useOpenProfile } from "./ProfileView"
 import type { FeedComment, CommentReaction } from "../api-client/comments"
 const commentReactions = [{type:"amen",icon:"✝️",label:"Amen"},{type:"pray",icon:"🙏",label:"Pray"},{type:"heart",icon:"❤️",label:"Love"},{type:"praise",icon:"🙌",label:"Praise"}] as const
@@ -18,6 +18,7 @@ const emojis = [
 ]
 export default function CommentThread({
   comments,
+  highlightedCommentId,
   onSubmit,
   onDelete,
   submitting,
@@ -29,6 +30,7 @@ export default function CommentThread({
   onNavigate,
 }: {
   comments: FeedComment[]
+  highlightedCommentId?: string | null
   onSubmit: (text: string, parentId?: string | null) => void | Promise<unknown>
   onDelete: (id: string) => void | Promise<unknown>
   submitting: boolean
@@ -54,6 +56,15 @@ export default function CommentThread({
     [replyLimits, setReplyLimits] = useState<Record<string, number>>({})
   const input = useRef<HTMLTextAreaElement>(null),
     openProfile = useOpenProfile()
+  useEffect(()=>{
+    if(!highlightedCommentId)return
+    const target=comments.find(cm=>cm.id===highlightedCommentId)
+    if(target?.parentId)setExpanded(old=>new Set([...old,target.parentId!]))
+    setLimit(comments.length)
+    setReplyLimits(old=>({...old,...Object.fromEntries(comments.filter(cm=>!cm.parentId).map(cm=>[cm.id,comments.length]))}))
+  },[highlightedCommentId,comments])
+  useEffect(()=>{if(highlightedCommentId)highlight.current?.scrollIntoView({block:"center"})},[highlightedCommentId,expanded,limit])
+  const highlight=useRef<HTMLDivElement>(null)
   async function submit() {
     if (!text.trim() || busy || submitting) return
     setBusy(true)
@@ -78,7 +89,7 @@ export default function CommentThread({
     )
   function renderComment(cm: FeedComment) {
     return (
-      <div className="thread-comment" key={cm.id}>
+      <div ref={cm.id===highlightedCommentId?highlight:undefined} className="thread-comment" key={cm.id} style={cm.id===highlightedCommentId?{outline:"2px solid var(--color-gold)",borderRadius:12}:undefined}>
         <button
           className="comment-avatar"
           aria-label={`View ${cm.authorName}'s profile`}
