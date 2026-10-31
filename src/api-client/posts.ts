@@ -22,6 +22,7 @@ export interface FeedPost {
   image: string | null
   imageAlt: string | null
   videoId?: string
+  myReaction?: 'amen' | 'pray' | 'heart' | null
   reactions: { amen: number; pray: number; heart: number }
   comments: number
   commentsList: FeedComment[]
@@ -72,9 +73,10 @@ export function adaptPost(raw: any, index: number): FeedPost {
     image: raw.image ?? null,
     imageAlt: raw.imageAlt ?? null,
     videoId: raw.videoId,
+    myReaction: ['amen','pray','heart'].includes(raw.myReaction) ? raw.myReaction : null,
     reactions: {
       amen: Number(rxn.amen ?? rxn['🙏'] ?? 0) || 0,
-      pray: Number(rxn.pray ?? rxn['🙏'] ?? 0) || 0,
+      pray: Number(rxn.pray ?? 0) || 0,
       heart: Number(rxn.heart ?? rxn['❤️'] ?? 0) || 0,
     },
     comments: Number(raw.commentCount ?? 0) || 0,
@@ -216,21 +218,9 @@ export function useDeleteComment() {
 export function useReactToPost() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ postId, reaction, delta }: { postId: string; reaction: 'amen' | 'pray' | 'heart'; delta: 1 | -1 }) =>
-      api(`/posts/${postId}/react`, { method: 'POST', body: JSON.stringify({ reaction, delta }) }),
-    onMutate: async ({ postId, reaction, delta }) => {
-      await qc.cancelQueries({ queryKey: feedKeys.all })
-      const prev = qc.getQueryData<FeedPost[]>(feedKeys.posts())
-      qc.setQueryData<FeedPost[]>(feedKeys.posts(), old =>
-        old?.map(p => p.id === postId
-          ? { ...p, reactions: { ...p.reactions, [reaction]: p.reactions[reaction] + delta } }
-          : p) ?? []
-      )
-      return { prev }
-    },
-    onSettled: () => { qc.invalidateQueries({ queryKey: ['timeline'] }) },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(feedKeys.posts(), ctx.prev)
-    },
+    retry: 0,
+    mutationFn: ({ postId, reaction }: { postId: string; reaction: 'amen' | 'pray' | 'heart' | null }) =>
+      api<{reactions:FeedPost['reactions'];myReaction:FeedPost['myReaction']}>(`/posts/${postId}/react`, { method: 'POST', body: JSON.stringify({ reaction }) }),
+    onSuccess: () => { qc.invalidateQueries({queryKey:feedKeys.all});qc.invalidateQueries({queryKey:['timeline']}) },
   })
 }

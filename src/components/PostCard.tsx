@@ -1,10 +1,10 @@
 import SaveItemButton from './SaveItemButton'
 import YouTubePreview from './YouTubePreview'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import VerifiedBadge from './VerifiedBadge'
 import { useOpenProfile } from './ProfileView'
-import { useEditPost, useDeletePost, useSetPrayerStatus, useAddComment, useDeleteComment, type FeedComment } from '../api-client/posts'
+import { useReactToPost, useEditPost, useDeletePost, useSetPrayerStatus, useAddComment, useDeleteComment, type FeedComment } from '../api-client/posts'
 import CommentThread from './CommentThread'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
@@ -30,6 +30,7 @@ export interface Post {
   image: string | null
   imageAlt: string | null
   videoId?: string
+  myReaction?: 'amen' | 'pray' | 'heart' | null
   reactions: { amen: number; pray: number; heart: number }
   comments: number
   commentsList?: FeedComment[]
@@ -69,7 +70,7 @@ export const TESTIMONY_CATEGORY_STYLE: Record<string, { label: string; icon: str
 
 export default function PostCard({ post }: { post: Post }) {
   const [reactions, setReactions] = useState(post.reactions ?? { amen: 0, pray: 0, heart: 0 })
-  const [active, setActive] = useState<'amen' | 'pray' | 'heart' | null>(null)
+  const [active, setActive] = useState<'amen' | 'pray' | 'heart' | null>(post.myReaction ?? null)
   const [showComments, setShowComments] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   // Holds what is being reported (the post itself, or one of its comments) —
@@ -85,6 +86,8 @@ export default function PostCard({ post }: { post: Post }) {
   const editPost = useEditPost()
   const deletePost = useDeletePost()
   const setPrayerStatus = useSetPrayerStatus()
+  const reactionMutation = useReactToPost()
+  useEffect(() => { if (!reactionMutation.isPending) { setReactions(post.reactions); setActive(post.myReaction ?? null) } }, [post.reactions, post.myReaction])
   const addComment = useAddComment()
   const deleteComment = useDeleteComment()
 
@@ -124,13 +127,13 @@ export default function PostCard({ post }: { post: Post }) {
   }
 
   const handleReaction = (type: 'amen' | 'pray' | 'heart') => {
+    if (reactionMutation.isPending) return
     hapticImpact()
-    setReactions(r => {
-      const next = { ...r }
-      if (active === type) { next[type]--; setActive(null) }
-      else { if (active) next[active]--; next[type]++; setActive(type) }
-      return next
-    })
+    const previous = reactions, previousActive = active
+    const next = active === type ? null : type
+    setReactions({ ...reactions, ...(active ? { [active]: Math.max(0,reactions[active]-1) } : {}), ...(next ? { [next]: reactions[next]+1 } : {}) })
+    setActive(next)
+    reactionMutation.mutate({postId:post.id,reaction:next},{onSuccess:data=>{setReactions(data.reactions);setActive(data.myReaction??null)},onError:()=>{setReactions(previous);setActive(previousActive)}})
   }
 
   function startEdit() {
@@ -453,7 +456,7 @@ export default function PostCard({ post }: { post: Post }) {
           { type: 'pray' as const, icon: '🙏', label: 'Praying' },
           { type: 'heart' as const, icon: '❤️', label: 'Bless' },
         ]).map(a => (
-          <button key={a.type} onClick={() => handleReaction(a.type)} style={{
+          <button key={a.type} disabled={reactionMutation.isPending} aria-pressed={active === a.type} onClick={() => handleReaction(a.type)} style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             padding: '10px 4px', border: 'none', cursor: 'pointer',
             backgroundColor: active === a.type ? 'var(--color-gold-bg)' : 'transparent',
@@ -480,6 +483,7 @@ export default function PostCard({ post }: { post: Post }) {
         </button>
       </div>
 
+      {reactionMutation.isError && <p role="alert" style={{ padding: "0 16px", color: "var(--color-red-text)" }}>Unable to save your reaction. Please try again.</p>}
       {/* Comments */}
       {showComments && (
         <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)' }}>

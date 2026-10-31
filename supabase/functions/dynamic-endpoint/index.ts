@@ -1,3 +1,4 @@
+import { applyPostReactions } from "./postReactions.ts";
 import { registerGroupChats } from "./groupChats.ts";
 import { paginateFeed, type TimelineItem } from "./feedPage.ts";
 import { registerMemberTools } from "./memberTools.ts";
@@ -689,7 +690,7 @@ app.get(`${BASE}/posts`, async (c) => {
   const visible = posts.filter((p: any) => p.visibility !== "private" || memberOrgIds.has(p.orgId));
   const blocked = new Set(await getBlockedIds(caller.id));
   const reported = await getReportedByCaller(caller.id);
-  return c.json(withoutHidden(visible, blocked, reported).map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)));
+  return c.json(await applyPostReactions(withoutHidden(visible, blocked, reported).map((p: any) => withComments(withComputedPinned(withPostedOnOrgName(p, orgs)), users)), caller.id, kvClient));
 });
 
 app.post(`${BASE}/posts`, async (c) => {
@@ -834,13 +835,20 @@ app.delete(`${BASE}/posts/:id/comments/:commentId`, async (c) => {
 });
 
 app.post(`${BASE}/posts/:id/react`, async (c) => {
-  const { id } = c.req.param();
-  const { emoji } = await c.req.json();
-  const posts = await kv.get("posts") ?? SEED_POSTS;
-  await kv.set("posts", posts.map((p: any) =>
-    p.id === id ? { ...p, reactions: { ...p.reactions, [emoji]: ((p.reactions?.[emoji] ?? 0) + 1) } } : p
-  ));
-  return c.json({ ok: true });
+  const caller=await getCallerUser(c.req.header('Authorization'));
+  if(!caller)return c.json({error:'Sign in to react'},401);
+  const {id}=c.req.param();const body=await c.req.json();
+  if(body.reaction!==null&&!['amen','pray','heart'].includes(body.reaction))return c.json({error:'Invalid reaction'},400);
+  const response=await app.request(`https://internal.invalid${BASE}/posts`,{headers:{Authorization:c.req.header('Authorization')??''}});
+  if(!response.ok)return c.json({error:'Unable to load post'},503);
+  if(!(await response.json() as any[]).some(p=>p.id===id))return c.json({error:'Post unavailable'},404);
+  const table=kvClient().from('network_post_reactions');
+  const {error}=body.reaction===null?await table.delete().eq('post_id',id).eq('user_id',caller.id):await table.upsert({post_id:id,user_id:caller.id,reaction:body.reaction},{onConflict:'post_id,user_id'});
+  if(error)return c.json({error:'Unable to save reaction'},500);
+  const raw=(await kv.get('posts')??SEED_POSTS).find((p:any)=>p.id===id);
+  if(!raw)return c.json({error:'Post unavailable'},404);
+  const [updated]=await applyPostReactions([raw],caller.id,kvClient);
+  return c.json({reactions:updated.reactions,myReaction:updated.myReaction});
 });
 
 app.get(`${BASE}/profile`, async (c) => {
