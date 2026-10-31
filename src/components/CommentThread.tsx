@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { useOpenProfile } from "./ProfileView"
-import type { FeedComment } from "../api-client/comments"
-import ReactionPicker, { type Reaction } from "./ReactionPicker"
+import type { FeedComment, CommentReaction } from "../api-client/comments"
+const commentReactions = [{type:"amen",icon:"✝️",label:"Amen"},{type:"pray",icon:"🙏",label:"Pray"},{type:"heart",icon:"❤️",label:"Love"},{type:"praise",icon:"🙌",label:"Praise"}] as const
 const emojis = [
   "😀",
   "😂",
@@ -37,7 +37,7 @@ export default function CommentThread({
   onReport?: (comment: FeedComment) => void
   onReact?: (
     comment: FeedComment,
-    reaction: Reaction | null,
+    reaction: CommentReaction | null,
   ) => Promise<unknown>
   autoFocus?: boolean
   onNavigate?: () => void
@@ -125,19 +125,12 @@ export default function CommentThread({
             </time>
             {onReact && (
               <>
-                <ReactionPicker
-                  value={cm.myReaction ?? null}
-                  disabled={reacting !== null}
-                  onChange={(reaction) => {
-                    setError("")
-                    setReacting(cm.id)
-                    void onReact(cm, reaction)
-                      .catch(() =>
-                        setError("Unable to save reaction. Please try again."),
-                      )
-                      .finally(() => setReacting(null))
-                  }}
-                />
+                <div className="comment-reaction-icons" role="group" aria-label="Comment reactions">
+                  {commentReactions.map(choice=><button key={choice.type} type="button" title={choice.label} aria-label={choice.label} aria-pressed={cm.myReaction===choice.type} disabled={reacting!==null} onClick={()=>{
+                    setError("");setReacting(cm.id)
+                    void onReact(cm,cm.myReaction===choice.type?null:choice.type).catch(()=>setError("Unable to save reaction. Please try again.")).finally(()=>setReacting(null))
+                  }}><span aria-hidden="true">{choice.icon}</span></button>)}
+                </div>
                 <button
                   onClick={() => {
                     setReply(cm)
@@ -171,7 +164,8 @@ export default function CommentThread({
             <div className="comment-totals">
               {cm.reactions.amen > 0 && `✝️ ${cm.reactions.amen} `}
               {cm.reactions.pray > 0 && `🙏 ${cm.reactions.pray} `}
-              {cm.reactions.heart > 0 && `❤️ ${cm.reactions.heart}`}
+              {cm.reactions.heart > 0 && `❤️ ${cm.reactions.heart} `}
+              {(cm.reactions.praise ?? 0) > 0 && `🙌 ${cm.reactions.praise}`}
             </div>
           )}
         </div>

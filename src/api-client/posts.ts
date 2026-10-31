@@ -237,7 +237,7 @@ export function useReactToComment() {
     }: {
       postId: string
       commentId: string
-      reaction: "amen" | "pray" | "heart" | null
+      reaction: FeedComment["myReaction"]
     }) =>
       api<FeedComment>(`/posts/${postId}/comments/${commentId}/react`, {
         method: "POST",

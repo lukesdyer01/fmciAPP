@@ -39,7 +39,7 @@ export async function applyPostReactions(
       const r: any = byComment.get(`${p.id}:${cm.id}`)
       return {
         ...cm,
-        reactions: r?.counts ?? { amen: 0, pray: 0, heart: 0 },
+        reactions: r?.counts ?? { amen: 0, pray: 0, heart: 0, praise: 0 },
         myReaction: r?.my_reaction ?? null,
       }
     }),

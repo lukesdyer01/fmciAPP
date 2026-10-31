@@ -823,7 +823,7 @@ app.delete(`${BASE}/posts/:id/comments/:commentId`, async c=>{
 app.post(`${BASE}/posts/:id/comments/:commentId/react`,async c=>{
  const caller=await getCallerUser(c.req.header('Authorization'));if(!caller)return c.json({error:'Sign in to continue'},401);
  const {id,commentId}=c.req.param(),body=await c.req.json();
- if(body.reaction!==null&&!['amen','pray','heart'].includes(body.reaction))return c.json({error:'Invalid reaction'},400);
+ if(body.reaction!==null&&!['amen','pray','heart','praise'].includes(body.reaction))return c.json({error:'Invalid reaction'},400);
  const post=await visibleFeedPost(c,id);
  if(!post?.commentsList.some((cm:any)=>cm.id===commentId))return c.json({error:'Comment unavailable'},404);
  const table=kvClient().from('network_comment_reactions');

@@ -918,3 +918,8 @@ html[data-theme="dark"] .post-composer-modal {
 }
 
 }
+
+.comment-reaction-icons { display: inline-flex; align-items: center; gap: 3px; }
+.comment-reaction-icons button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 4px; border-radius: 8px; font-size: 18px; border: 1px solid transparent; }
+.comment-reaction-icons button[aria-pressed="true"] { background: var(--color-gold-bg); border-color: var(--color-gold); }
+.comment-reaction-icons button:hover:not(:disabled) { background: var(--color-hover); }

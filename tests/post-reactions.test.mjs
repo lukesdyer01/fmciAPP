@@ -20,6 +20,6 @@ test('restores comment reactions by post and comment identity and propagates fai
  assert.equal(posts[0].commentsList[0].text,'Original')
  assert.equal(posts[0].commentsList[0].myReaction,'pray')
  assert.equal(posts[1].commentsList[0].myReaction,null)
- assert.deepEqual(posts[0].commentsList[1].reactions,{amen:0,pray:0,heart:0})
+ assert.deepEqual(posts[0].commentsList[1].reactions,{amen:0,pray:0,heart:0,praise:0})
  await assert.rejects(()=>applyPostReactions([{id:'one'}],'user',()=>({rpc:async name=>name==='post_reaction_totals'?{data:[]}:{error:true}})),/Unable to load comment reactions/)
 })

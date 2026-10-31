@@ -18,8 +18,8 @@ begin
  rejected=false;
  begin perform public.write_post_comment('thread-test-fixture',actor,'bad','missing');exception when others then rejected=true;end;
  if not rejected then raise exception 'Missing parent accepted';end if;
- insert into public.network_comment_reactions values('thread-test-fixture',reply,actor,'pray');
- if (select my_reaction from public.comment_reaction_totals(array['thread-test-fixture'],actor))<>'pray' then raise exception 'Reaction not restored';end if;
+ insert into public.network_comment_reactions values('thread-test-fixture',reply,actor,'praise');
+ if (select my_reaction from public.comment_reaction_totals(array['thread-test-fixture'],actor))<>'praise' then raise exception 'Reaction not restored';end if;
  p=public.write_post_comment('thread-test-fixture',actor,null,null,root);
  if jsonb_array_length(p->'comments')<>0 or (p->>'commentCount')::int<>0 then raise exception 'Reply cascade failed';end if;
  if exists(select from public.network_comment_reactions where post_id='thread-test-fixture') then raise exception 'Reactions not removed';end if;
