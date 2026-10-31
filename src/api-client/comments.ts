@@ -6,5 +6,9 @@ export interface FeedComment {
   authorName: string
   authorAvatarUrl: string
   text: string
+  parentId?: string | null
+  replyToId?: string | null
+  reactions?: { amen: number; pray: number; heart: number }
+  myReaction?: "amen" | "pray" | "heart" | null
   createdAt: string
 }

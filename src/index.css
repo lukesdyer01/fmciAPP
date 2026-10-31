@@ -658,3 +658,263 @@ html[data-theme="dark"] .post-composer-modal {
 .group-messages button { border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text-1); background: var(--color-surface); cursor: pointer; padding: 8px 12px; min-height: 40px; }
 .group-messages button:disabled { opacity: .55; cursor: default; }
 .group-messages header > strong { min-width: 0; overflow-wrap: anywhere; }
+
+/* Threaded discussions use the visual viewport so the keyboard cannot cover the composer. */
+.comments-backdrop {
+  position:fixed;
+  left:0;
+  right:0;
+  z-index:1200;
+  background:#0008;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px
+}
+
+.comments-panel {
+  width:100%;
+  max-width:640px;
+  height: min(760px,100%);
+  display:flex;
+  flex-direction:column;
+  background:var(--color-card);
+  color:var(--color-text-1);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 20px 80px #0005
+}
+
+.comments-panel>header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px;
+  border-bottom:1px solid var(--color-border);
+  flex-shrink:0
+}
+
+.comments-panel button,.comment-thread button {
+  font:inherit;
+  color:inherit;
+  background:none;
+  border:0;
+  cursor:pointer
+}
+
+.comments-panel button:disabled,.comment-thread button:disabled {
+  opacity:.5;
+  cursor:default
+}
+
+.comment-thread {
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  flex:1
+}
+
+.thread-scroll {
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:14px;
+  flex:1;
+  min-height:0
+}
+
+.thread-sort {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:16px;
+  font-size:13px;
+  color:var(--color-text-2)
+}
+
+.thread-sort select {
+  background:var(--color-surface);
+  color:var(--color-text-1);
+  border:1px solid var(--color-border);
+  border-radius:6px;
+  padding:6px
+}
+
+.thread-comment {
+  display:flex;
+  gap:8px;
+  margin-bottom:12px
+}
+.comment-avatar {
+  width:32px;
+  height:32px;
+  flex-shrink:0;
+  border-radius:50%;
+  background:var(--color-surface)!important;
+  overflow:hidden;
+  font-size:11px!important
+}
+.comment-avatar img {
+  width:100%;
+  height:100%;
+  object-fit:cover
+}
+.comment-detail {
+  flex:1;
+  min-width:0
+}
+.comment-bubble {
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:14px;
+  padding:8px 12px
+}
+.comment-name {
+  font-size:13px!important;
+  font-weight:700!important
+}
+.comment-bubble p {
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:14px;
+  line-height:1.5;
+  margin:3px 0
+}
+.comment-tools {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+  font-size:11px;
+  color:var(--color-text-2);
+  padding:4px
+}
+.comment-totals {
+  font-size:12px;
+  padding:0 6px
+}
+.thread-replies {
+  margin-left:38px;
+  border-left:2px solid var(--color-border);
+  padding-left:10px
+}
+.thread-reveal {
+  font-weight:700!important;
+  color:var(--color-text-2)!important;
+  margin-bottom:12px;
+  font-size:13px!important
+}
+.thread-compose {
+  flex-shrink:0;
+  border-top:1px solid var(--color-border);
+  padding:12px;
+  padding-bottom:max(12px,env(safe-area-inset-bottom));
+  background:var(--color-card)
+}
+.comment-composer {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:14px;
+  padding:8px 12px
+}
+.comment-composer textarea {
+  resize:none;
+  flex:1;
+  min-width:0;
+  max-height:120px;
+  border:0;
+  outline:none;
+  background:none;
+  color:var(--color-text-1);
+  font:inherit;
+  font-size:16px
+}
+.comment-composer textarea::placeholder {
+  color:var(--color-text-3)
+}
+.reply-banner {
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  padding:0 4px 8px
+}
+.comment-emojis {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-bottom:10px
+}
+.comment-emojis button {
+  font-size:24px;
+  padding:5px
+}
+.thread-compose [role=alert] {
+  font-size:13px;
+  color:var(--color-red-text)
+}
+.thread-empty {
+  color:var(--color-text-2);
+  text-align:center;
+  padding:24px
+}
+.reaction-control {
+  position:relative;
+  display:inline-flex;
+  align-items:center
+}
+.reaction-control>button {
+  padding:8px 5px;
+  border:0;
+  background:none;
+  color:var(--color-text-2);
+  font:inherit;
+  cursor:pointer
+}
+.reaction-control>button[aria-pressed=true] {
+  color:var(--color-gold);
+  font-weight:700
+}
+.reaction-options {
+  position:absolute;
+  bottom:100%;
+  left:0;
+  display:flex;
+  gap:5px;
+  background:var(--color-card);
+  color:var(--color-text-1);
+  padding:8px;
+  border:1px solid var(--color-border);
+  border-radius:18px;
+  box-shadow:0 4px 18px #0003;
+  z-index:3;
+  white-space:nowrap
+}
+.reaction-options button {
+  background:none;
+  border:0;
+  color:inherit;
+  padding:8px;
+  font:inherit;
+  cursor:pointer
+}
+
+@media(max-width:640px) {
+  .comments-backdrop {
+  padding:0;
+  align-items:flex-end
+}
+.comments-panel {
+  height:100%;
+  border-radius:14px 14px 0 0
+}
+.comment-tools {
+  gap:7px
+}
+.reaction-options {
+  gap:0;
+  padding:3px
+}
+
+}

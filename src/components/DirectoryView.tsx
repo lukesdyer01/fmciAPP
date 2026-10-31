@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import VerifiedBadge from './VerifiedBadge'
 import { api } from '../api-client/server'
+import { useActiveMembers } from '../api-client/presence'
+import { useAuth } from '../providers/AuthProvider'
 import { useOpenProfile } from './ProfileView'
 import { usePullToRefresh, RefreshIndicator } from '../hooks/usePullToRefresh'
 
@@ -25,6 +27,10 @@ const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', '
 
 export default function DirectoryView() {
   const openProfile = useOpenProfile()
+  const { currentUser } = useAuth()
+  const { data: activeMembers, isError: presenceError } = useActiveMembers()
+  const onlineIds = new Set(presenceError ? [] : (activeMembers ?? []).map(member => member.id))
+  if (currentUser) onlineIds.add(currentUser.id)
   const [leadershipFilter, setLeadershipFilter] = useState('All FMCI Leadership Roles')
   const [fiveFoldFilter, setFiveFoldFilter] = useState('All 5-Fold Roles')
   const [additionalFilter, setAdditionalFilter] = useState('All Additional Roles')
@@ -203,10 +209,10 @@ export default function DirectoryView() {
           gridTemplateColumns: effectiveView === 'grid' ? 'repeat(auto-fill, minmax(240px, 1fr))' : '1fr',
           gap: '12px',
         }}>
-          {filtered.map((member, i) => (
+          {filtered.map(member => (
             effectiveView === 'grid'
-              ? <MemberCard key={i} member={member} onOpen={openProfile} />
-              : <MemberRow key={i} member={member} onOpen={openProfile} />
+              ? <MemberCard key={member.id} member={member} online={onlineIds.has(member.id)} onOpen={openProfile} />
+              : <MemberRow key={member.id} member={member} online={onlineIds.has(member.id)} onOpen={openProfile} />
           ))}
         </div>
       )}
@@ -214,7 +220,7 @@ export default function DirectoryView() {
   )
 }
 
-function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
+function MemberCard({ member, online, onOpen }: { member: Member; online: boolean; onOpen: (id: string) => void }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '12px',
@@ -234,6 +240,7 @@ function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) =
           {member.name}
           {member.badges.includes('verified') && <VerifiedBadge size={13} />}
         </div>
+        {online && <OnlineBadge />}
         <div style={{ fontSize: '12px', color: 'var(--color-text-2)', marginBottom: '2px' }}>{member.title}</div>
         <div style={{ fontSize: '11px', color: 'var(--color-text-3)', marginBottom: '8px' }}>{member.church} · {member.location}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '10px' }}>
@@ -265,7 +272,7 @@ function MemberCard({ member, onOpen }: { member: Member; onOpen: (id: string) =
   )
 }
 
-function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) => void }) {
+function MemberRow({ member, online, onOpen }: { member: Member; online: boolean; onOpen: (id: string) => void }) {
   return (
     <div onClick={() => onOpen(member.id)} style={{
       backgroundColor: 'var(--color-card)', borderRadius: '10px',
@@ -285,6 +292,7 @@ function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) =>
           {member.name}
           {member.badges.includes('verified') && <VerifiedBadge size={12} />}
         </div>
+        {online && <OnlineBadge />}
         {member.title && (
           <div style={{ fontSize: '12px', color: 'var(--color-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.title}</div>
         )}
@@ -304,5 +312,14 @@ function MemberRow({ member, onOpen }: { member: Member; onOpen: (id: string) =>
         </div>
       </div>
     </div>
+  )
+}
+
+function OnlineBadge() {
+  return (
+    <span title="Active within the last 5 minutes. Updates every 30 seconds." style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 600, color: 'var(--color-text-2)', margin: '2px 0' }}>
+      <span aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0 }} />
+      Online
+    </span>
   )
 }

@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import VerifiedBadge from './VerifiedBadge'
 import { useOpenProfile } from './ProfileView'
-import { useReactToPost, useEditPost, useDeletePost, useSetPrayerStatus, useAddComment, useDeleteComment, type FeedComment } from '../api-client/posts'
+import { useReactToComment, useReactToPost, useEditPost, useDeletePost, useSetPrayerStatus, useAddComment, useDeleteComment, type FeedComment } from '../api-client/posts'
 import CommentThread from './CommentThread'
+import PostCommentsPanel from './PostCommentsPanel'
+import ReactionPicker from './ReactionPicker'
 import { useAuth } from '../providers/AuthProvider'
 import { useSupabaseRole } from '../contexts/SupabaseRoleContext'
 import { useUIStore } from '../store/ui'
@@ -72,6 +74,8 @@ export default function PostCard({ post }: { post: Post }) {
   const [reactions, setReactions] = useState(post.reactions ?? { amen: 0, pray: 0, heart: 0 })
   const [active, setActive] = useState<'amen' | 'pray' | 'heart' | null>(post.myReaction ?? null)
   const [showComments, setShowComments] = useState(false)
+  const [focusComment, setFocusComment] = useState(false)
+  const commentReaction = useReactToComment()
   const [menuOpen, setMenuOpen] = useState(false)
   // Holds what is being reported (the post itself, or one of its comments) —
   // both open the same modal.
@@ -150,8 +154,8 @@ export default function PostCard({ post }: { post: Post }) {
   }
 
   function removeComment(commentId: string) {
-    if (!window.confirm('Delete this comment?')) return
-    deleteComment.mutate({ postId: post.id, commentId })
+    if (!window.confirm('Delete this comment and its replies?')) return
+    return deleteComment.mutateAsync({ postId: post.id, commentId })
   }
 
   function handleDelete() {
@@ -444,33 +448,15 @@ export default function PostCard({ post }: { post: Post }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-2)' }}>
           {total > 0 && <><span>🙏❤️✝️</span><span>{(total ?? 0).toLocaleString()} reactions</span></>}
         </div>
-        <button onClick={() => setShowComments(!showComments)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-2)', fontFamily: 'var(--font-sans)', padding: '0' }}>
+        <button onClick={() => { setFocusComment(false); setShowComments(true) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-2)', fontFamily: 'var(--font-sans)', padding: '0' }}>
           {post.comments} comments
         </button>
       </div>
 
       {/* Actions */}
       <div style={{ display: 'flex', borderTop: '1px solid var(--color-border)' }}>
-        {([
-          { type: 'amen' as const, icon: '✝️', label: 'Amen' },
-          { type: 'pray' as const, icon: '🙏', label: 'Praying' },
-          { type: 'heart' as const, icon: '❤️', label: 'Bless' },
-        ]).map(a => (
-          <button key={a.type} disabled={reactionMutation.isPending} aria-pressed={active === a.type} onClick={() => handleReaction(a.type)} style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            padding: '10px 4px', border: 'none', cursor: 'pointer',
-            backgroundColor: active === a.type ? 'var(--color-gold-bg)' : 'transparent',
-            color: active === a.type ? 'var(--color-gold)' : 'var(--color-text-2)',
-            fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: active === a.type ? 700 : 500,
-            transition: 'all 0.15s', borderRight: '1px solid var(--color-border)',
-          }}
-            onMouseEnter={e => { if (active !== a.type) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-            onMouseLeave={e => { if (active !== a.type) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-          >
-            <span style={{ fontSize: '16px' }}>{a.icon}</span> {a.label}
-          </button>
-        ))}
-        <button onClick={() => setShowComments(!showComments)} style={{
+        <div style={{flex:1,display:'flex',justifyContent:'center'}}><ReactionPicker value={active} disabled={reactionMutation.isPending} onChange={value=>handleReaction(value ?? active ?? 'amen')}/></div>
+        <button onClick={() => { setFocusComment(true); setShowComments(true) }} style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           padding: '10px 4px', border: 'none', cursor: 'pointer',
           backgroundColor: 'transparent', color: 'var(--color-text-2)',
@@ -486,17 +472,20 @@ export default function PostCard({ post }: { post: Post }) {
       {reactionMutation.isError && <p role="alert" style={{ padding: "0 16px", color: "var(--color-red-text)" }}>Unable to save your reaction. Please try again.</p>}
       {/* Comments */}
       {showComments && (
-        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)' }}>
+        <PostCommentsPanel count={post.comments} onClose={()=>setShowComments(false)}>
           <CommentThread
             comments={post.commentsList ?? []}
-            onSubmit={text => addComment.mutate({ postId: post.id, text })}
+            onNavigate={()=>setShowComments(false)}
+            autoFocus={focusComment}
+            onReact={(cm,reaction)=>commentReaction.mutateAsync({postId:post.id,commentId:cm.id,reaction})}
+            onSubmit={(text,parentId) => addComment.mutateAsync({ postId: post.id, text, parentId })}
             onDelete={removeComment}
             submitting={addComment.isPending}
             currentUserId={currentUser?.id}
             isAdmin={isAdmin}
-            onReport={currentUser ? cm => setReporting({ type: 'comment', id: cm.id, authorId: cm.authorId, label: 'this comment' }) : undefined}
+            onReport={currentUser ? cm => {setShowComments(false);setReporting({ type: 'comment', id: cm.id, authorId: cm.authorId, label: 'this comment' })} : undefined}
           />
-        </div>
+        </PostCommentsPanel>
       )}
 
       {reporting && (

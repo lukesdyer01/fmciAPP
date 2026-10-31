@@ -83,6 +83,7 @@ export function adaptPost(raw: any, index: number): FeedPost {
     commentsList: Array.isArray(raw.commentsList) ? raw.commentsList.map((cm: any) => ({
       id: String(cm.id ?? ''), authorId: cm.authorId ?? '', authorName: cm.authorName ?? 'Unknown',
       authorAvatarUrl: cm.authorAvatarUrl ?? '', text: cm.text ?? '', createdAt: cm.createdAt ?? '',
+      parentId: cm.parentId ?? null, replyToId: cm.replyToId ?? null, reactions: cm.reactions, myReaction: cm.myReaction ?? null,
     })) : [],
     shares: Number(raw.shares ?? 0) || 0,
     scripture: raw.scripture,
@@ -190,8 +191,8 @@ export function useDeletePost() {
 export function useAddComment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ postId, text }: { postId: string; text: string }) =>
-      api<any>(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) }),
+    mutationFn: ({ postId, text, parentId }: { postId: string; text: string; parentId?: string | null }) =>
+      api<any>(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text, parentId }) }),
     onSuccess: (updated, { postId }) => {
       qc.invalidateQueries({ queryKey: ['timeline'] })
       qc.setQueryData<FeedPost[]>(feedKeys.posts(), old =>
@@ -222,5 +223,29 @@ export function useReactToPost() {
     mutationFn: ({ postId, reaction }: { postId: string; reaction: 'amen' | 'pray' | 'heart' | null }) =>
       api<{reactions:FeedPost['reactions'];myReaction:FeedPost['myReaction']}>(`/posts/${postId}/react`, { method: 'POST', body: JSON.stringify({ reaction }) }),
     onSuccess: () => { qc.invalidateQueries({queryKey:feedKeys.all});qc.invalidateQueries({queryKey:['timeline']}) },
+  })
+}
+
+export function useReactToComment() {
+  const qc = useQueryClient()
+  return useMutation({
+    retry: 0,
+    mutationFn: ({
+      postId,
+      commentId,
+      reaction,
+    }: {
+      postId: string
+      commentId: string
+      reaction: "amen" | "pray" | "heart" | null
+    }) =>
+      api<FeedComment>(`/posts/${postId}/comments/${commentId}/react`, {
+        method: "POST",
+        body: JSON.stringify({ reaction }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: feedKeys.all })
+      qc.invalidateQueries({ queryKey: ["timeline"] })
+    },
   })
 }

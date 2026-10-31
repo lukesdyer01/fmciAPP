@@ -608,13 +608,13 @@ function withComments(p: any, users: any[]) {
   const commentsList = raw.map((cm: any) => {
     const cu = users.find((x: any) => x.id === cm.authorId);
     return {
-      id: cm.id, authorId: cm.authorId, text: cm.text, createdAt: cm.createdAt,
+      id: cm.id, authorId: cm.authorId, text: cm.text, createdAt: cm.createdAt, parentId: cm.parentId ?? null, replyToId: cm.replyToId ?? null,
       authorName: cu?.user_metadata?.full_name ?? cu?.user_metadata?.name ?? "Unknown",
       authorAvatarUrl: cu?.user_metadata?.avatar_url ?? cu?.user_metadata?.avatarUrl ?? "",
     };
   });
   const { comments: _comments, ...rest } = p;
-  return { ...rest, commentsList, commentCount: raw.length > 0 ? commentsList.length : (p.commentCount ?? 0) };
+  return { ...rest, commentsList, commentCount: Array.isArray(p.comments) ? commentsList.length : (p.commentCount ?? 0) };
 }
 
 // Moderation. App Store guideline 1.2 requires user-generated content to carry
@@ -798,40 +798,39 @@ app.delete(`${BASE}/posts/:id`, async (c) => {
   return c.json({ ok: true });
 });
 
-app.post(`${BASE}/posts/:id/comments`, async (c) => {
-  const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json({ error: "Must be signed in" }, 401);
-  const { id } = c.req.param();
-  const body = await c.req.json();
-  const text = String(body.text ?? "").trim();
-  if (!text) return c.json({ error: "Comment text is required" }, 400);
-  const posts = await kv.get("posts") ?? SEED_POSTS;
-  const post = posts.find((p: any) => p.id === id);
-  if (!post) return c.json({ error: "Post not found" }, 404);
-  const comments = Array.isArray(post.comments) ? post.comments : [];
-  const newComment = { id: `c${Date.now()}`, authorId: caller.id, text, createdAt: new Date().toISOString() };
-  const updated = { ...post, comments: [...comments, newComment] };
-  await kv.set("posts", posts.map((p: any) => p.id === id ? updated : p));
-  const orgs = await kv.get("orgs") ?? SEED_ORGS;
-  return c.json(withComments(withComputedPinned(withPostedOnOrgName(updated, orgs)), await listAuthUsers()), 201);
+async function visibleFeedPost(c: any, id: string) {
+  const response=await app.request(`https://internal.invalid${BASE}/posts`,{headers:{Authorization:c.req.header('Authorization')??''}});
+  if(!response.ok)throw new Error('Unable to load post');
+  return (await response.json() as any[]).find(p=>p.id===id);
+}
+app.post(`${BASE}/posts/:id/comments`, async c=>{
+ const caller=await getCallerUser(c.req.header('Authorization'));if(!caller)return c.json({error:'Sign in to comment'},401);
+ const {id}=c.req.param(),body=await c.req.json();const post=await visibleFeedPost(c,id);
+ if(!post)return c.json({error:'Post unavailable'},404);
+ if(body.parentId && !post.commentsList.some((cm:any)=>cm.id===body.parentId))return c.json({error:'Comment unavailable'},404);
+ const {error}=await kvClient().rpc('write_post_comment',{p_post:id,p_user:caller.id,p_text:String(body.text??''),p_parent:body.parentId??null});
+ if(error)return c.json({error:error.message},400);
+ return c.json(await visibleFeedPost(c,id),201);
 });
-
-app.delete(`${BASE}/posts/:id/comments/:commentId`, async (c) => {
-  const caller = await getCallerUser(c.req.header("Authorization"));
-  if (!caller) return c.json({ error: "Must be signed in" }, 401);
-  const { id, commentId } = c.req.param();
-  const posts = await kv.get("posts") ?? SEED_POSTS;
-  const post = posts.find((p: any) => p.id === id);
-  if (!post) return c.json({ error: "Post not found" }, 404);
-  const comments = Array.isArray(post.comments) ? post.comments : [];
-  const comment = comments.find((cm: any) => cm.id === commentId);
-  if (!comment) return c.json({ error: "Comment not found" }, 404);
-  const isAdmin = ["superadmin", "admin"].includes(callerRole(caller));
-  if (comment.authorId !== caller.id && !isAdmin) return c.json({ error: "Forbidden" }, 403);
-  const updated = { ...post, comments: comments.filter((cm: any) => cm.id !== commentId) };
-  await kv.set("posts", posts.map((p: any) => p.id === id ? updated : p));
-  const orgs = await kv.get("orgs") ?? SEED_ORGS;
-  return c.json(withComments(withComputedPinned(withPostedOnOrgName(updated, orgs)), await listAuthUsers()));
+app.delete(`${BASE}/posts/:id/comments/:commentId`, async c=>{
+ const caller=await getCallerUser(c.req.header('Authorization'));if(!caller)return c.json({error:'Sign in to continue'},401);
+ const {id,commentId}=c.req.param();const post=await visibleFeedPost(c,id);
+ if(!post?.commentsList.some((cm:any)=>cm.id===commentId))return c.json({error:'Comment unavailable'},404);
+ const {error}=await kvClient().rpc('write_post_comment',{p_post:id,p_user:caller.id,p_delete:commentId,p_admin:['admin','superadmin'].includes(callerRole(caller))});
+ if(error)return c.json({error:error.message},400);
+ return c.json(await visibleFeedPost(c,id));
+});
+app.post(`${BASE}/posts/:id/comments/:commentId/react`,async c=>{
+ const caller=await getCallerUser(c.req.header('Authorization'));if(!caller)return c.json({error:'Sign in to continue'},401);
+ const {id,commentId}=c.req.param(),body=await c.req.json();
+ if(body.reaction!==null&&!['amen','pray','heart'].includes(body.reaction))return c.json({error:'Invalid reaction'},400);
+ const post=await visibleFeedPost(c,id);
+ if(!post?.commentsList.some((cm:any)=>cm.id===commentId))return c.json({error:'Comment unavailable'},404);
+ const table=kvClient().from('network_comment_reactions');
+ const {error}=body.reaction===null?await table.delete().eq('post_id',id).eq('comment_id',commentId).eq('user_id',caller.id):await table.upsert({post_id:id,comment_id:commentId,user_id:caller.id,reaction:body.reaction},{onConflict:'post_id,comment_id,user_id'});
+ if(error)return c.json({error:'Unable to save reaction'},500);
+ const updated=await visibleFeedPost(c,id);
+ return c.json(updated.commentsList.find((cm:any)=>cm.id===commentId));
 });
 
 app.post(`${BASE}/posts/:id/react`, async (c) => {

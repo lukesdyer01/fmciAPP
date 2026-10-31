@@ -15,3 +15,11 @@ test('loads authoritative totals and selection per caller, including posts with 
  assert.deepEqual(args,{p_post_ids:['one','two'],p_user:'user'});assert.equal(posts[0].myReaction,'amen');assert.equal(posts[1].myReaction,null);assert.equal(posts[1].reactions.amen,2)
  await assert.rejects(()=>applyPostReactions([{id:'one'}],'user',()=>({rpc:async()=>({error:true})})),/Unable to load/)
 })
+test('restores comment reactions by post and comment identity and propagates failures',async()=>{
+ const posts=await applyPostReactions([{id:'one',commentsList:[{id:'c',text:'Original'},{id:'empty'}]},{id:'two',commentsList:[{id:'c'}]}],'user',()=>({rpc:async name=>({data:name==='post_reaction_totals'?[]:[{post_id:'one',comment_id:'c',counts:{amen:0,pray:1,heart:0},my_reaction:'pray'}]})}))
+ assert.equal(posts[0].commentsList[0].text,'Original')
+ assert.equal(posts[0].commentsList[0].myReaction,'pray')
+ assert.equal(posts[1].commentsList[0].myReaction,null)
+ assert.deepEqual(posts[0].commentsList[1].reactions,{amen:0,pray:0,heart:0})
+ await assert.rejects(()=>applyPostReactions([{id:'one'}],'user',()=>({rpc:async name=>name==='post_reaction_totals'?{data:[]}:{error:true}})),/Unable to load comment reactions/)
+})

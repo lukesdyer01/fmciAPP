@@ -1,79 +1,329 @@
-import { useState } from 'react'
-import { useOpenProfile } from './ProfileView'
-import type { FeedComment } from '../api-client/comments'
-
-// Entity-agnostic comment thread — originally built inline in PostCard for
-// feed-post comments, extracted so the same UI/behavior can be reused for
-// event discussion threads without duplicating it.
-export default function CommentThread({ comments, onSubmit, onDelete, submitting, currentUserId, isAdmin, onReport }: {
+import { useRef, useState } from "react"
+import { useOpenProfile } from "./ProfileView"
+import type { FeedComment } from "../api-client/comments"
+import ReactionPicker, { type Reaction } from "./ReactionPicker"
+const emojis = [
+  "😀",
+  "😂",
+  "🥰",
+  "🙏",
+  "❤️",
+  "👏",
+  "🎉",
+  "✨",
+  "🙌",
+  "👍",
+  "😢",
+  "🔥",
+]
+export default function CommentThread({
+  comments,
+  onSubmit,
+  onDelete,
+  submitting,
+  currentUserId,
+  isAdmin,
+  onReport,
+  onReact,
+  autoFocus = false,
+  onNavigate,
+}: {
   comments: FeedComment[]
-  onSubmit: (text: string) => void
-  onDelete: (commentId: string) => void
+  onSubmit: (text: string, parentId?: string | null) => void | Promise<unknown>
+  onDelete: (id: string) => void | Promise<unknown>
   submitting: boolean
   currentUserId?: string
   isAdmin: boolean
-  // Optional so the threads that have no reporting surface yet (event and
-  // meeting-series discussions) can leave it off and behave as before.
   onReport?: (comment: FeedComment) => void
+  onReact?: (
+    comment: FeedComment,
+    reaction: Reaction | null,
+  ) => Promise<unknown>
+  autoFocus?: boolean
+  onNavigate?: () => void
 }) {
-  const [commentText, setCommentText] = useState('')
-  const openProfile = useOpenProfile()
-
-  function submit() {
-    const text = commentText.trim()
-    if (!text || submitting) return
-    onSubmit(text)
-    setCommentText('')
+  const [text, setText] = useState(""),
+    [reply, setReply] = useState<FeedComment | null>(null),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [emoji, setEmoji] = useState(false),
+    [limit, setLimit] = useState(20),
+    [expanded, setExpanded] = useState<Set<string>>(new Set()),
+    [newest, setNewest] = useState(false),
+    [reacting, setReacting] = useState<string | null>(null),
+    [replyLimits, setReplyLimits] = useState<Record<string, number>>({})
+  const input = useRef<HTMLTextAreaElement>(null),
+    openProfile = useOpenProfile()
+  async function submit() {
+    if (!text.trim() || busy || submitting) return
+    setBusy(true)
+    setError("")
+    try {
+      await onSubmit(text.trim(), reply?.id)
+      setText("")
+      setReply(null)
+      setEmoji(false)
+    } catch {
+      setError("Unable to post. Your draft is saved here; try again.")
+    } finally {
+      setBusy(false)
+    }
   }
-
-  return (
-    <div>
-      {comments.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
-          {comments.map(cm => {
-            const canDeleteComment = !!currentUserId && (cm.authorId === currentUserId || isAdmin)
-            // Reporting only makes sense against someone else's comment.
-            const canReportComment = !!onReport && !!currentUserId && cm.authorId !== currentUserId
-            return (
-              <div key={cm.id} style={{ display: 'flex', gap: '8px' }}>
-                {cm.authorAvatarUrl
-                  ? <img onClick={() => openProfile(cm.authorId)} src={cm.authorAvatarUrl} alt="" style={{ width: '30px', height: '30px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, cursor: 'pointer' }} />
-                  : <div onClick={() => openProfile(cm.authorId)} style={{ width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'var(--color-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>{(cm.authorName || '?').slice(0, 2).toUpperCase()}</div>
-                }
-                <div style={{ flex: 1, backgroundColor: 'var(--color-surface)', borderRadius: '10px', padding: '8px 12px', border: '1px solid var(--color-border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                    <span onClick={() => openProfile(cm.authorId)} style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--color-text-1)', cursor: 'pointer' }}>{cm.authorName}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      {canReportComment && (
-                        <button onClick={() => onReport!(cm)} title="Report this comment" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '11px', padding: 0 }}>🚩</button>
-                      )}
-                      {canDeleteComment && (
-                        <button onClick={() => onDelete(cm.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', fontSize: '11px', padding: 0 }}>✕</button>
-                      )}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--color-text-1)', lineHeight: 1.5, marginTop: '2px', whiteSpace: 'pre-wrap' }}>{cm.text}</div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <div className="comment-composer" style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderRadius: '8px', padding: '8px 14px', border: '1px solid var(--color-border)', gap: '8px' }}>
-          <input
-            aria-label="Write a comment"
-            value={commentText}
-            onChange={e => setCommentText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') submit() }}
-            placeholder="Write a comment…"
-            style={{ flex: 1, border: 'none', background: 'none', color: 'var(--color-text-1)', caretColor: 'var(--color-text-1)', minWidth: 0, outline: 'none', fontSize: '14px', fontFamily: 'var(--font-sans)' }}
-          />
-          {commentText && (
-            <button onClick={submit} disabled={submitting} style={{ background: 'none', border: 'none', cursor: submitting ? 'default' : 'pointer', color: 'var(--color-gold)', fontWeight: 700, fontSize: '13px', fontFamily: 'var(--font-sans)' }}>
-              {submitting ? 'Posting…' : 'Post'}
-            </button>
+  const ids = new Set(comments.map((c) => c.id))
+  const roots = comments
+    .filter((c) => !onReact || !c.parentId || !ids.has(c.parentId))
+    .sort(
+      (a, b) =>
+        (newest ? -1 : 1) * (Date.parse(a.createdAt) - Date.parse(b.createdAt)),
+    )
+  function renderComment(cm: FeedComment) {
+    return (
+      <div className="thread-comment" key={cm.id}>
+        <button
+          className="comment-avatar"
+          aria-label={`View ${cm.authorName}'s profile`}
+          onClick={() => {
+            onNavigate?.()
+            openProfile(cm.authorId)
+          }}
+        >
+          {cm.authorAvatarUrl ? (
+            <img src={cm.authorAvatarUrl} alt="" />
+          ) : (
+            (cm.authorName || "?").slice(0, 2)
           )}
+        </button>
+        <div className="comment-detail">
+          <div className="comment-bubble">
+            <button
+              className="comment-name"
+              onClick={() => {
+                onNavigate?.()
+                openProfile(cm.authorId)
+              }}
+            >
+              {cm.authorName}
+            </button>
+            {cm.replyToId &&
+              cm.replyToId !== cm.parentId &&
+              comments.find((c) => c.id === cm.replyToId) && (
+                <small>
+                  Replying to{" "}
+                  {comments.find((c) => c.id === cm.replyToId)?.authorName}
+                </small>
+              )}
+            <p>{cm.text}</p>
+          </div>
+          <div className="comment-tools">
+            <time dateTime={cm.createdAt}>
+              {new Date(cm.createdAt).toLocaleString(undefined, {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </time>
+            {onReact && (
+              <>
+                <ReactionPicker
+                  value={cm.myReaction ?? null}
+                  disabled={reacting !== null}
+                  onChange={(reaction) => {
+                    setError("")
+                    setReacting(cm.id)
+                    void onReact(cm, reaction)
+                      .catch(() =>
+                        setError("Unable to save reaction. Please try again."),
+                      )
+                      .finally(() => setReacting(null))
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    setReply(cm)
+                    input.current?.focus()
+                  }}
+                >
+                  Reply
+                </button>
+              </>
+            )}
+            {onReport && cm.authorId !== currentUserId && (
+              <button aria-label="Report comment" onClick={() => onReport(cm)}>
+                Report
+              </button>
+            )}
+            {currentUserId && (cm.authorId === currentUserId || isAdmin) && (
+              <button
+                aria-label="Delete comment"
+                onClick={() => {
+                  setError("")
+                  Promise.resolve(onDelete(cm.id)).catch(() =>
+                    setError("Unable to delete comment. Please try again."),
+                  )
+                }}
+              >
+                Delete
+              </button>
+            )}
+          </div>
+          {cm.reactions && Object.values(cm.reactions).some(Boolean) && (
+            <div className="comment-totals">
+              {cm.reactions.amen > 0 && `✝️ ${cm.reactions.amen} `}
+              {cm.reactions.pray > 0 && `🙏 ${cm.reactions.pray} `}
+              {cm.reactions.heart > 0 && `❤️ ${cm.reactions.heart}`}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="comment-thread">
+      <div className="thread-scroll">
+        {onReact && (
+          <label className="thread-sort">
+            Comments{" "}
+            <select
+              value={newest ? "new" : "old"}
+              onChange={(e) => {
+                setNewest(e.target.value === "new")
+                setLimit(20)
+              }}
+            >
+              <option value="old">Oldest first</option>
+              <option value="new">Newest first</option>
+            </select>
+          </label>
+        )}
+        {!comments.length && (
+          <p className="thread-empty">Be the first to comment.</p>
+        )}
+        {roots.slice(0, limit).map((cm) => {
+          const replies = onReact
+            ? comments.filter((r) => r.parentId === cm.id)
+            : []
+          return (
+            <div key={cm.id}>
+              {renderComment(cm)}
+              {replies.length > 0 && (
+                <div className="thread-replies">
+                  <button
+                    className="thread-reveal"
+                    aria-expanded={expanded.has(cm.id)}
+                    onClick={() =>
+                      setExpanded((old) => {
+                        const next = new Set(old)
+                        next.has(cm.id) ? next.delete(cm.id) : next.add(cm.id)
+                        return next
+                      })
+                    }
+                  >
+                    {expanded.has(cm.id) ? "Hide" : `View ${replies.length}`}{" "}
+                    replies
+                  </button>
+                  {expanded.has(cm.id) && (
+                    <>
+                      {replies
+                        .slice(0, replyLimits[cm.id] ?? 3)
+                        .map(renderComment)}
+                      {replies.length > (replyLimits[cm.id] ?? 3) && (
+                        <button
+                          className="thread-reveal"
+                          onClick={() =>
+                            setReplyLimits((old) => ({
+                              ...old,
+                              [cm.id]: (old[cm.id] ?? 3) + 10,
+                            }))
+                          }
+                        >
+                          View more replies
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {roots.length > limit && (
+          <button
+            className="thread-reveal"
+            onClick={() => setLimit(limit + 20)}
+          >
+            View more comments
+          </button>
+        )}
+      </div>
+      <div className="thread-compose">
+        {reply && (
+          <div className="reply-banner">
+            Replying to {reply.authorName}
+            <button
+              disabled={busy}
+              aria-label="Cancel reply"
+              onClick={() => setReply(null)}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {error && <p role="alert">{error}</p>}
+        {emoji && (
+          <div className="comment-emojis" aria-label="Choose emoji">
+            {emojis.map((e) => (
+              <button
+                key={e}
+                disabled={busy}
+                onClick={() => {
+                  const field = input.current,
+                    start = field?.selectionStart ?? text.length,
+                    end = field?.selectionEnd ?? start
+                  setText(text.slice(0, start) + e + text.slice(end))
+                  requestAnimationFrame(() => {
+                    field?.focus()
+                    field?.setSelectionRange(start + e.length, start + e.length)
+                  })
+                }}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="comment-composer">
+          <textarea
+            ref={input}
+            autoFocus={autoFocus}
+            aria-label={reply ? "Write a reply" : "Write a comment"}
+            placeholder={reply ? "Write a reply…" : "Write a comment…"}
+            maxLength={4000}
+            rows={2}
+            value={text}
+            disabled={busy || submitting}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault()
+                void submit()
+              }
+            }}
+          />
+          <button
+            disabled={busy}
+            aria-label="Choose emoji"
+            aria-expanded={emoji}
+            onClick={() => setEmoji(!emoji)}
+          >
+            ☺
+          </button>
+          <button
+            disabled={!text.trim() || busy || submitting}
+            onClick={() => void submit()}
+          >
+            {busy || submitting ? "Posting…" : "Post"}
+          </button>
         </div>
       </div>
     </div>
