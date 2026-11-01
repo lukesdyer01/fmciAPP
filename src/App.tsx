@@ -106,6 +106,19 @@ function AppShell() {
     return () => window.removeEventListener('popstate', openMessageFromUrl)
   }, [currentUser?.id])
 
+  useEffect(() => {
+    if (!currentUser) return
+    const openActivity = () => {
+      const url = new URL(window.location.href)
+      const notification = url.searchParams.get('notification')
+      if (!notification || !/^[a-f0-9-]{36}$/i.test(notification)) return
+      useUIStore.getState().setNotifOpen(true)
+    }
+    openActivity()
+    window.addEventListener('popstate', openActivity)
+    return () => window.removeEventListener('popstate', openActivity)
+  }, [currentUser?.id])
+
   useHeartbeat()
 
   useEffect(() => {

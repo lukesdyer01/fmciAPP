@@ -1,7 +1,7 @@
 {
   "privacy": {
     "title": "FMCI Network Privacy Policy",
-    "updated": "October 28, 2026",
+    "updated": "November 1, 2026",
     "sections": [
       {
         "title": "Who we are",
@@ -37,7 +37,7 @@
       {
         "title": "Photo Stories",
         "paragraphs": [
-          "Stories are photo updates visible to eligible FMCI members, subject to blocks and reporting. Story authors can see who viewed each photo and each viewer\u2019s reaction while the Story is active. Viewer records are part of the Story feature and are separate from optional usage analytics.",
+          "Stories are photo updates visible to eligible FMCI members, subject to blocks and reporting. Story authors can see who viewed each photo and each viewer’s reaction while the Story is active. Viewer records are part of the Story feature and are separate from optional usage analytics.",
           "Stories disappear from the app after 24 hours. There is no Story archive. Automated cleanup normally removes the uploaded photo and associated viewer/reaction records within the next five minutes; transient failures are retried. Previously issued photo links expire within 60 seconds or the remaining Story lifetime. People who have viewed a photo can still take screenshots or save their own copies.",
           "Photos are compressed and photo metadata is removed before storage. Up to 10 Story photos can be published per member per rolling 24 hours. Deleting a Story does not reset the limit. Report records may remain after the photo has expired or been removed."
         ]
@@ -46,7 +46,8 @@
         "title": "Service providers and external content",
         "paragraphs": [
           "Supabase provides authentication, database, storage, and backend services. GitHub Pages hosts the website. Apple delivers native push notifications. Our service providers process information necessary to provide those services. Data may be processed outside the United States, including in Canada.",
-          "Maps use OpenStreetMap services. Embedded videos and externally hosted images may send technical information such as an IP address to their providers when displayed. External links open third-party services with their own privacy policies. We do not send your private messages to map or video providers."
+          "Maps use OpenStreetMap services. Embedded videos and externally hosted images may send technical information such as an IP address to their providers when displayed. External links open third-party services with their own privacy policies. We do not send your private messages to map or video providers.",
+          "Resend delivers optional notification emails. We send the recipient email address and a generic activity notice with a link to FMCI Network; private message text is not included. Delivery, bounce, and complaint events help us retry failures and stop sending to undeliverable addresses. You can disable email categories in Settings or unsubscribe using the link in each notification email."
         ]
       },
       {
@@ -60,7 +61,7 @@
         "title": "Retention and account deletion",
         "paragraphs": [
           "We keep account and community information while it is needed to operate your account and service. First-party session and page-view analytics are retained in a rolling 90-day window. Operational logs and backups follow provider retention periods and may persist for a limited period after deletion.",
-          "Delete your account from Profile \u2192 Edit Profile \u2192 Delete Account. You can also delete an unfinished account from the signup/onboarding screen. Deletion removes your authentication account, owned uploads, contributions, memberships, messages, invitation records, and role requests. Contributions by other members remain; your activity on them is removed where stored. Retained aggregate analytics no longer name your account. We may retain information when legally required and will explain any applicable exception.",
+          "Delete your account from Profile → Edit Profile → Delete Account. You can also delete an unfinished account from the signup/onboarding screen. Deletion removes your authentication account, owned uploads, contributions, memberships, messages, invitation records, and role requests. Contributions by other members remain; your activity on them is removed where stored. Retained aggregate analytics no longer name your account. We may retain information when legally required and will explain any applicable exception.",
           "You may request access, correction, or assistance with deletion by emailing luke@dyerplex.com. We do not require contacting support to use in-app account deletion."
         ]
       },
@@ -104,7 +105,7 @@
       {
         "title": "Delete your account",
         "paragraphs": [
-          "Open Profile \u2192 Edit Profile \u2192 Delete Account, type DELETE, and confirm. During unfinished signup, use Delete account on the onboarding screen. This deletes your account and associated contributions and uploads. If the operation fails, retry or contact support."
+          "Open Profile → Edit Profile → Delete Account, type DELETE, and confirm. During unfinished signup, use Delete account on the onboarding screen. This deletes your account and associated contributions and uploads. If the operation fails, retry or contact support."
         ]
       },
       {

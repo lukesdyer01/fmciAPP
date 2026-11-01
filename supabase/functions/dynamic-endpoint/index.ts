@@ -1,3 +1,4 @@
+import { registerEmailPreferences } from "./emailPreferences.ts";
 import { visibleReactionNotifications } from "./reactionNotifications.ts";
 import { applyPostReactions } from "./postReactions.ts";
 import { registerGroupChats } from "./groupChats.ts";
@@ -80,6 +81,7 @@ async function getCallerUser(authHeader: string | undefined) {
 registerGroupChats(app, BASE, kvClient, getCallerUser, kv, sendPushToUser, membersBlocked);
 
 registerMemberTools(app, BASE, kvClient, getCallerUser);
+registerEmailPreferences(app, BASE, kvClient, getCallerUser);
 
 registerStories(app, BASE, kvClient, getCallerUser, kv, callerRole);
 
