@@ -228,7 +228,7 @@ export default function Topbar() {
           aria-expanded={notifOpen}
           aria-controls="notifications-dropdown"
           style={{
-            width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+            position: 'relative', width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
             backgroundColor: 'var(--color-surface)', color: 'var(--color-text-1)',
             alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}
