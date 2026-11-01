@@ -1,3 +1,4 @@
+import ActiveMembersCarousel from './ActiveMembersCarousel'
 import { MINISTRY_ROLES as FIVE_FOLD_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useEffect } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
@@ -28,8 +29,8 @@ const REGIONS = ['All Regions', 'North America', 'West Africa', 'East Africa', '
 export default function DirectoryView() {
   const openProfile = useOpenProfile()
   const { currentUser } = useAuth()
-  const { data: activeMembers, isError: presenceError } = useActiveMembers()
-  const onlineIds = new Set(presenceError ? [] : (activeMembers ?? []).map(member => member.id))
+  const { data: activeMembers, isError: presenceError, refetch: refreshActiveMembers } = useActiveMembers()
+  const onlineIds = new Set(presenceError ? [] : (activeMembers ?? []).filter(member => Date.parse(member.lastActiveAt) > Date.now() - 5 * 60_000).map(member => member.id))
   if (currentUser) onlineIds.add(currentUser.id)
   const [leadershipFilter, setLeadershipFilter] = useState('All FMCI Leadership Roles')
   const [fiveFoldFilter, setFiveFoldFilter] = useState('All 5-Fold Roles')
@@ -61,7 +62,7 @@ export default function DirectoryView() {
 
   useEffect(() => { loadMembers() }, [])
 
-  const { refreshing, pulling, distance } = usePullToRefresh(loadMembers)
+  const { refreshing, pulling, distance } = usePullToRefresh(async () => { await Promise.all([loadMembers(), refreshActiveMembers()]) })
 
   const filtered = members.filter(m =>
     (search === '' ||
@@ -176,6 +177,8 @@ export default function DirectoryView() {
           </>
         )}
       </div>
+
+      <ActiveMembersCarousel />
 
       {/* Results count */}
       <div style={{ fontSize: '13px', color: 'var(--color-text-2)', marginBottom: '12px', paddingLeft: '4px' }}>

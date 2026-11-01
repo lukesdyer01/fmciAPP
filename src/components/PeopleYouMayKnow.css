@@ -21,3 +21,8 @@
 .people-suggestion-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-1); font-size: 14px; font-weight: 700; margin-bottom: 10px; }
 .people-suggestion-profile { width: 100%; min-height: 38px; border: 0; border-radius: 7px; background: var(--color-navy); color: white; font-size: 12px; font-weight: 700; }
 .people-suggestions button:focus-visible, .people-suggestions-track:focus-visible { outline: 2px solid var(--color-gold); outline-offset: -2px; }
+.active-carousel-description { font-size:12px; color:var(--color-text-2); }
+.active-carousel-badge { position:absolute; top:8px; left:8px; display:inline-flex; align-items:center; gap:5px; border-radius:20px; padding:5px 8px; background:rgba(0,0,0,.72); color:#fff; font-size:10px; font-weight:700; }
+.active-carousel-badge>span { width:8px; height:8px; border-radius:50%; background:#42d66c; }
+.active-carousel-status { padding:0 16px 16px; margin:0; color:var(--color-text-2); font-size:13px; }
+.active-carousel-status button { border:0; background:none; color:var(--color-navy-text); font:inherit; text-decoration:underline; }

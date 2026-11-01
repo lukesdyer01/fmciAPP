@@ -4,7 +4,8 @@ import { api } from '../api-client/server'
 import { useAuth } from '../providers/AuthProvider'
 import { useUIStore } from '../store/ui'
 import { useOpenProfile } from './ProfileView'
-import { memberInitials, rankPeopleSuggestions, type SuggestedMember } from '../lib/peopleSuggestions'
+import MemberCarouselPhoto from './MemberCarouselPhoto'
+import { rankPeopleSuggestions, type SuggestedMember } from '../lib/peopleSuggestions'
 import './PeopleYouMayKnow.css'
 
 export default function PeopleYouMayKnow() {
@@ -32,7 +33,7 @@ export default function PeopleYouMayKnow() {
       <ul className="people-suggestions-track" aria-label="Suggested members" tabIndex={0}>
         {members.map(member => (
           <li className="people-suggestion-card" key={member.id}>
-            <SuggestionPhoto key={member.avatarUrl} member={member} />
+            <MemberCarouselPhoto key={member.avatarUrl} member={member} />
             <button type="button" className="people-suggestion-dismiss" aria-label={`Hide ${member.name || 'member'} suggestion`}
               onClick={() => setDismissed(previous => new Set([...previous, member.id]))}>×</button>
             <div className="people-suggestion-details">
@@ -45,11 +46,4 @@ export default function PeopleYouMayKnow() {
       </ul>
     </section>
   )
-}
-
-function SuggestionPhoto({ member }: { member: SuggestedMember }) {
-  const [failed, setFailed] = useState(false)
-  return member.avatarUrl && !failed
-    ? <img className="people-suggestion-photo" src={member.avatarUrl} alt="" loading="lazy" onError={() => setFailed(true)} />
-    : <div className="people-suggestion-photo people-suggestion-initials" aria-hidden="true">{memberInitials(member.name)}</div>
 }
