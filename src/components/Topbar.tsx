@@ -143,6 +143,8 @@ export default function Topbar() {
   const setSearchOpen = useUIStore(s => s.setSearchOpen)
   const {data: notifications}=useNotifications()
   const unreadActivity=(notifications??[]).filter(item=>!item.readAt).length
+  const messagesOpen = useUIStore(s => s.messagesOpen)
+  const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
   const notifOpen = useUIStore(s => s.notifOpen)
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
   const { data: conversations } = useConversations()
@@ -168,7 +170,7 @@ export default function Topbar() {
   }
 
   return (
-    <header style={{
+    <header className="app-topbar" style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
       // Grows into the status-bar area rather than hiding under it.
       height: 'calc(56px + var(--safe-top))',
@@ -264,6 +266,21 @@ export default function Topbar() {
             />
           )}
         </div>
+
+        <button
+          type="button"
+          className="topbar-messages-toggle"
+          aria-label={unreadTotal ? `Open messages, ${unreadTotal} unread` : 'Open messages'}
+          aria-expanded={messagesOpen}
+          title="Messages"
+          onClick={() => { setNotifOpen(false); setMessagesOpen(!messagesOpen) }}
+          style={{ position: 'relative', width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-1)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+        >
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill={messagesOpen ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          {unreadTotal > 0 && <span className="notification-count">{unreadTotal > 99 ? '99+' : unreadTotal}</span>}
+        </button>
 
         {/* Avatar — hover to see profile preview, Edit Profile, Admin Panel, Sign Out. */}
         <div className="topbar-avatar"><ProfileHoverCard /></div>

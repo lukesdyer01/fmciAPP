@@ -2,22 +2,17 @@
 // desktop sidebars take over). Six destinations, thumb-reachable, one tap.
 // Tapping the active tab scrolls to the top, the standard social-app behavior.
 //
-// Messages are panels, not views — the chat bubble opens the full-screen
-// Messages panel (and carries the unread badge). Notifications are opened
-// from the mobile header. The header menu opens the
-// drawer containing secondary destinations. The bar hides while the keyboard
-// is up and while either
-// panel is full-screen, so it never fights those surfaces.
+// Messages and notifications open from the header. Hide the bar while a panel
+// or keyboard is open so navigation never fights those surfaces.
 
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useUIStore } from '../store/ui'
 import { hapticSelection } from '../lib/haptics'
-import { useConversations } from '../api-client/messages'
 import { useAutoHideNavigation } from '../hooks/useAutoHideNavigation'
 import type { ActiveView } from '../App'
 
-type TabId = ActiveView | 'messages'
+type TabId = ActiveView
 
 const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[] = [
   {
@@ -62,19 +57,20 @@ const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[]
     ),
   },
   {
+    id: 'groups', label: 'Groups',
+    icon: active => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="7" r="3" fill={active ? 'currentColor' : 'none'} />
+        <path d="M6 21v-2a6 6 0 0 1 12 0v2M4 6a3 3 0 0 0 0 6M20 6a3 3 0 0 1 0 6M2 20v-2a4 4 0 0 1 3-4M22 20v-2a4 4 0 0 0-3-4" />
+      </svg>
+    ),
+  },
+  {
     id: 'resources', label: 'Resources',
     icon: active => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 7v14" />
         <path d="M3 3h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5v16h-5a4 4 0 0 0-4 2 4 4 0 0 0-4-2H3z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'messages', label: 'Messages',
-    icon: active => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
   },
@@ -85,10 +81,7 @@ export default function BottomTabBar() {
   const activeView = useUIStore(s => s.activeView)
   const setActiveView = useUIStore(s => s.setActiveView)
   const messagesOpen = useUIStore(s => s.messagesOpen)
-  const setMessagesOpen = useUIStore(s => s.setMessagesOpen)
   const notifOpen = useUIStore(s => s.notifOpen)
-  const { data: conversations } = useConversations()
-  const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
   const routeKey = useUIStore(s => [s.activeView, s.profileId, s.viewingOrgId, s.viewingBlogPostId, s.viewingEventId, s.viewingSeriesId].join('|'))
   const overlayOpen = useUIStore(s => s.mobileNavOpen || s.searchOpen || s.editProfileOpen)
@@ -113,10 +106,6 @@ export default function BottomTabBar() {
 
   function onTab(tab: (typeof TABS)[number]) {
     hapticSelection()
-    if (tab.id === 'messages') {
-      setMessagesOpen(true)
-      return
-    }
     if (tab.id === activeView) {
       // Tap the active tab → scroll to top, the standard behavior.
       const scroller = [document.getElementById('root'), document.body, document.documentElement].find(node => node && node.scrollTop > 0) ?? document.scrollingElement
@@ -135,8 +124,7 @@ export default function BottomTabBar() {
       inert={hidden}
     >
       {TABS.map(tab => {
-        const active = tab.id === 'messages' ? messagesOpen
-          : activeView === tab.id
+        const active = activeView === tab.id
         return (
           <button
             key={tab.id}
@@ -154,15 +142,7 @@ export default function BottomTabBar() {
           >
             <span style={{ position: 'relative', display: 'flex' }}>
               {tab.icon(active)}
-              {tab.id === 'messages' && unreadTotal > 0 && (
-                <span style={{
-                  position: 'absolute', top: '-4px', right: '-9px',
-                  minWidth: '16px', height: '16px', borderRadius: '8px',
-                  backgroundColor: 'var(--color-red)', color: '#fff',
-                  fontSize: '9px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '0 4px', border: '2px solid var(--color-card)',
-                }}>{unreadTotal > 9 ? '9+' : unreadTotal}</span>
-              )}
+
             </span>
             <span style={{
               fontSize: 'clamp(9px, 2.5vw, 10px)', fontWeight: active ? 800 : 600,

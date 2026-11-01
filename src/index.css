@@ -983,3 +983,7 @@ html[data-theme="dark"] .post-composer-modal {
 .notifications-dropdown-header button { background:var(--color-surface); border:0; color:var(--color-text-2); border-radius:50%; width:32px; height:32px; cursor:pointer; }
 .notifications-dropdown .reaction-notification { margin:0 0 8px; }
 @media(max-width:640px) { .notifications-dropdown { right:12px; } }
+@media(max-width:380px) {
+  .app-topbar { padding-left:8px!important; padding-right:8px!important; gap:6px!important; }
+  .topbar-actions { gap:4px!important; }
+}
