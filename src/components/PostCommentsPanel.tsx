@@ -4,10 +4,12 @@ export default function PostCommentsPanel({
   children,
   onClose,
   count,
+  title,
 }: {
   children: ReactNode
   onClose: () => void
   count: number
+  title?: string
 }) {
   const panel = useRef<HTMLDivElement>(null)
   const returnFocus = useRef(document.activeElement as HTMLElement | null)
@@ -54,7 +56,7 @@ export default function PostCommentsPanel({
           if (e.key === "Escape") onClose()
           if (e.key === "Tab") {
             const nodes = panel.current?.querySelectorAll<HTMLElement>(
-              "button:not(:disabled),textarea:not(:disabled),select",
+              'button:not(:disabled),textarea:not(:disabled),select,a[href],input:not(:disabled),[tabindex="0"]',
             )
             if (!nodes?.length) return
             const first = nodes[0],
@@ -70,7 +72,7 @@ export default function PostCommentsPanel({
         }}
       >
         <header>
-          <strong>Comments · {count}</strong>
+          <strong>{title ?? "Comments"}<small>{count} {count === 1 ? "comment" : "comments"}</small></strong>
           <button aria-label="Close comments" onClick={onClose}>
             ✕
           </button>

@@ -7,6 +7,7 @@ import Stories from './Stories'
 import PeopleYouMayKnow from './PeopleYouMayKnow'
 import RecommendedResources from './RecommendedResources'
 import { feedCarouselPosition } from '../lib/resourceSuggestions'
+const SettingsView = lazy(() => import('./SettingsView'))
 const SafetySupportView = lazy(() => import('./SafetySupportView'))
 import { useState, useEffect, Fragment } from 'react'
 import PostComposer from './PostComposer'
@@ -270,6 +271,7 @@ function MainFeed() {
 
 export default function Feed({ activeView }: { activeView: ActiveView }) {
   const { data: settings } = useNetworkSettings()
+  if (activeView === 'settings') return <SettingsView />
   if (activeView === 'feedback') return <BetaFeedback />
   if (activeView === 'saved') return settings?.savedPostsEnabled === 1 ? <SavedItemsView /> : <p>Saved posts are currently unavailable.</p>
   if (activeView === 'safety') return <SafetySupportView />

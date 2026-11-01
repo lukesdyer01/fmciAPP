@@ -9,10 +9,16 @@ export default function ReactionPicker({
   value,
   onChange,
   disabled = false,
+  count,
+  compact = false,
+  allowPraise = false,
 }: {
-  value: Reaction | null
-  onChange: (value: Reaction | null) => void
+  value: Reaction | "praise" | null
+  onChange: (value: Reaction | "praise" | null) => void
   disabled?: boolean
+  count?: number
+  compact?: boolean
+  allowPraise?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const control=useRef<HTMLDivElement>(null),toggle=useRef<HTMLButtonElement>(null)
@@ -23,11 +29,14 @@ export default function ReactionPicker({
     if (timer.current) clearTimeout(timer.current)
   }
   useEffect(() => () => cancelHold(), [])
-  const selected = choices.find((c) => c.type === value)
+  const available = allowPraise ? [...choices, { type: "praise" as const, icon: "🙌", label: "Praise" }] : choices
+  const selected = available.find((c) => c.type === value)
   return (
     <div ref={control} className="reaction-control">
       <button
         disabled={disabled}
+        aria-label={selected ? `Remove ${selected.label} reaction` : "React with Amen"}
+        title={selected?.label ?? "Amen · hold for more reactions"}
         aria-pressed={!!value}
         onPointerDown={() => {
           held.current = false
@@ -44,7 +53,7 @@ export default function ReactionPicker({
           held.current = false
         }}
       >
-        {selected?.icon ?? "✝️"} {selected?.label ?? "Amen"}
+        <span className="reaction-main-icon" aria-hidden="true">{selected?.icon ?? "👍"}</span> {compact ? (count ?? selected?.label ?? "Amen") : (selected?.label ?? "Amen")}
       </button>
       <button
         disabled={disabled}
@@ -64,17 +73,19 @@ export default function ReactionPicker({
             if (e.key === "Escape") {e.stopPropagation();setOpen(false);toggle.current?.focus()}
           }}
         >
-          {choices.map((c) => (
+          {available.map((c) => (
             <button
               key={c.type}
               disabled={disabled}
+              aria-label={c.label}
+              title={c.label}
               aria-pressed={value === c.type}
               onClick={() => {
                 onChange(value === c.type ? null : c.type)
                 setOpen(false)
               }}
             >
-              {c.icon} {c.label}
+              <span aria-hidden="true">{c.icon}</span><small>{c.label}</small>
             </button>
           ))}
         </div>

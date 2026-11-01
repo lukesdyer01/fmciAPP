@@ -6,7 +6,8 @@ import type { CommentReaction } from './comments'
 export interface ReactionNotification {
  id: string
  actorName: string
- reaction: CommentReaction
+ kind?: 'reaction' | 'mention' | 'wall_post' | 'wall_comment' | 'comment' | 'reply'
+ reaction: CommentReaction | null
  createdAt: string
  readAt: string | null
  commentId: string | null
@@ -18,7 +19,7 @@ export function useNotifications() {
  return useQuery({queryKey:['notifications',currentUser?.id],queryFn:async()=>{
   const rows=await api<ReactionNotification[]>('/notifications')
   return rows.map(row=>({...row,post:adaptPost(row.post,0)}))
- },refetchInterval:30_000})
+ },refetchInterval:15_000})
 }
 export function useReadNotification() {
  const qc=useQueryClient()

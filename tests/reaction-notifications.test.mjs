@@ -16,3 +16,18 @@ test('hidden/deleted posts, hidden/deleted comments and blocked actors produce n
  assert.deepEqual(visibleReactionNotifications([{...row,comment_id:'missing'}],[post],new Set(),[]),[])
  assert.deepEqual(visibleReactionNotifications([row],[post],new Set(['actor']),[]),[])
 })
+
+test('activity alerts preserve kind and exact comment destination with current post content',()=>{
+ const currentPost={...post,content:'Tagged post',body:undefined}
+ const notices=visibleReactionNotifications([
+  {...row,kind:'mention',reaction:null},
+  {...row,id:'reply',kind:'reply',comment_id:'comment',reaction:null},
+  {...row,id:'wall',kind:'wall_comment',comment_id:'comment',reaction:null},
+ ],[currentPost],new Set(),[])
+ assert.equal(notices[0].kind,'mention')
+ assert.equal(notices[0].preview,'Tagged post')
+ assert.equal(notices[1].kind,'reply')
+ assert.equal(notices[1].commentId,'comment')
+ assert.equal(notices[2].kind,'wall_comment')
+ assert.deepEqual(visibleReactionNotifications([{...row,kind:'mention'}],[currentPost],new Set(['actor']),[]),[])
+})

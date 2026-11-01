@@ -142,11 +142,12 @@ export default function Topbar() {
   const openProfile = useOpenProfile()
   const setSearchOpen = useUIStore(s => s.setSearchOpen)
   const {data: notifications}=useNotifications()
-  const unreadNotifications=(notifications??[]).filter(item=>!item.readAt).length
+  const unreadActivity=(notifications??[]).filter(item=>!item.readAt).length
   const notifOpen = useUIStore(s => s.notifOpen)
   const setNotifOpen = useUIStore(s => s.setNotifOpen)
   const { data: conversations } = useConversations()
   const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0)
+  const unreadNotifications = unreadActivity + unreadTotal
   const audibleUnreadTotal = (conversations ?? []).filter(c => !c.muted).reduce((sum,c) => sum + c.unreadCount, 0)
   const prevUnreadTotal = useRef<number | null>(null)
   useEffect(() => {
@@ -220,9 +221,10 @@ export default function Topbar() {
         <button
           type="button"
           className="mobile-notifications-toggle"
-          onClick={() => setNotifOpen(true)}
+          onClick={() => setNotifOpen(!notifOpen)}
           aria-label={unreadNotifications ? `Open notifications, ${unreadNotifications} unread` : "Open notifications"}
           aria-expanded={notifOpen}
+          aria-controls="notifications-dropdown"
           style={{
             width: '44px', height: '44px', borderRadius: '50%', border: 'none', cursor: 'pointer',
             backgroundColor: 'var(--color-surface)', color: 'var(--color-text-1)',

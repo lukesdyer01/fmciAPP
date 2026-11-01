@@ -928,3 +928,58 @@ html[data-theme="dark"] .post-composer-modal {
 .reaction-notification>span:nth-child(2){flex:1;min-width:0}.notification-preview {display:block;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--color-text-2);margin:5px 0}.reaction-notification time{font-size:11px;color:var(--color-text-3)}.notification-unread{width:9px;height:9px;background:var(--color-gold);border-radius:50%;flex-shrink:0;margin-top:5px}.notification-count{position:absolute;top:-3px;right:-3px;min-width:18px;padding:2px 4px;border-radius:12px;background:#b91c1c;color:white;font-size:10px;font-weight:700;line-height:14px}
 /* Reaction notifications are available from the bell on desktop as well as mobile. */
 .mobile-notifications-toggle { display: inline-flex; }
+
+/* Compact feed actions and a dedicated, keyboard-aware discussion surface. */
+.post-actions { display:flex; align-items:center; gap:16px; min-height:48px; padding:2px 14px; border-top:1px solid var(--color-border); color:var(--color-text-2); font-size:13px; }
+.post-comment-action { display:inline-flex; align-items:center; gap:7px; min-height:44px; padding:0; background:none; border:0; color:inherit; font:inherit; cursor:pointer; }
+.post-reaction-summary { display:flex; margin-left:auto; padding-left:8px; }
+.post-reaction-summary span { display:grid; place-items:center; width:23px; height:23px; margin-left:-5px; border:2px solid var(--color-card); border-radius:50%; background:var(--color-surface); font-size:15px; }
+.reaction-control { gap:0; }
+.reaction-control>button { min-height:44px; display:inline-flex; align-items:center; gap:7px; font-size:13px; border-radius:8px; touch-action:manipulation; }
+.reaction-main-icon { font-size:20px; line-height:1; }
+.reaction-control>button:last-of-type { width:24px; justify-content:center; padding:0; }
+.reaction-options { bottom:calc(100% + 4px); border-radius:32px; padding:7px; gap:4px; z-index:10; }
+.reaction-options button { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:52px; border-radius:24px; padding:7px 5px; }
+.reaction-options button span { font-size:30px; transition:transform .15s; }
+.reaction-options button small { font-size:10px; }
+.reaction-options button:hover span,.reaction-options button:focus-visible span { transform:translateY(-5px) scale(1.16); }
+.reaction-options button[aria-pressed=true] { background:var(--color-gold-bg); }
+.comments-panel>header { position:relative; justify-content:center; min-height:64px; padding:10px 60px; text-align:center; }
+.comments-panel>header strong { font-size:17px; }
+.comments-panel>header small { display:block; font-size:11px; font-weight:400; color:var(--color-text-2); margin-top:3px; }
+.comments-panel>header>button { position:absolute; right:14px; width:36px; height:36px; border-radius:50%; background:var(--color-surface); font-size:20px; }
+.discussion-post { margin:-14px -14px 14px; border-bottom:1px solid var(--color-border); }
+.discussion-author { display:flex; align-items:center; gap:10px; padding:16px 16px 0; }
+.discussion-author img { width:38px; height:38px; border-radius:50%; object-fit:cover; }
+.discussion-author strong { font-size:14px; }
+.discussion-author small { display:block; color:var(--color-text-2); font-size:11px; margin-top:3px; }
+.discussion-post>p { padding:0 16px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; line-height:1.6; }
+.discussion-image { display:block; width:100%; max-height:480px; object-fit:contain; background:var(--color-surface); }
+.thread-sort { justify-content:flex-start; margin-bottom:14px; }
+.thread-sort select { border:0; padding:4px 0; background:transparent; color:var(--color-text-2); font-weight:600; }
+.comment-bubble { background:none; border:0; padding:0 4px; }
+.comment-bubble p { margin:4px 0 0; }
+.comment-tools { padding:0 4px; gap:10px; }
+.comment-tools .reaction-control>button { min-height:32px; font-size:11px; }
+.comment-tools .reaction-main-icon { font-size:16px; }
+.comment-tools .reaction-options { left:-40px; }
+.comment-tools .reaction-options button { min-width:46px; }
+.comment-tools>time { font-size:10px; }
+.comment-totals { display:inline-flex; border-radius:16px; padding:3px 7px; background:var(--color-surface); font-size:11px; }
+.thread-replies { border-left:1px solid var(--color-border); margin-left:16px; padding-left:24px; }
+.thread-reveal { padding:4px 0; }
+.composer-row { display:flex; align-items:flex-start; gap:8px; }
+.composer-avatar { width:32px; height:32px; object-fit:cover; border-radius:50%; margin-top:6px; }
+.comment-composer { flex:1; min-width:0; flex-wrap:wrap; border:0; border-radius:22px; padding:12px; gap:4px; }
+.comment-composer textarea { flex-basis:100%; width:100%; line-height:1.5; min-height:26px; }
+.comment-composer>button { min-width:32px; min-height:32px; font-size:22px; color:var(--color-text-2); }
+.comment-composer>button:last-child { margin-left:auto; color:var(--color-navy-text); }
+.thread-compose { padding:10px 14px; padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+@media(max-width:640px) { .comments-backdrop { padding:0; } .comments-panel { border-radius:0; } .post-actions { gap:12px; } }
+
+.notifications-dropdown-backdrop { position:fixed; inset:calc(56px + var(--safe-top)) 0 0; z-index:400; }
+.notifications-dropdown { position:absolute; top:8px; right:16px; width:390px; max-width:calc(100vw - 24px); max-height:calc(100dvh - 80px - var(--safe-top) - var(--safe-bottom)); display:flex; flex-direction:column; background:var(--color-card); color:var(--color-text-1); border:1px solid var(--color-border); border-radius:14px; box-shadow:0 10px 40px #0004; overflow:hidden; }
+.notifications-dropdown-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--color-border); font-size:20px; }
+.notifications-dropdown-header button { background:var(--color-surface); border:0; color:var(--color-text-2); border-radius:50%; width:32px; height:32px; cursor:pointer; }
+.notifications-dropdown .reaction-notification { margin:0 0 8px; }
+@media(max-width:640px) { .notifications-dropdown { right:12px; } }

@@ -1,0 +1,9 @@
+# Bell activity notifications
+
+The bell combines unread activity rows with unread message counts. Its dropdown lists unread direct/group conversations and post activity. Message entries open the inbox; post activity opens the post and highlights the relevant comment. Viewing the dropdown alone does not mark everything read. Message read state comes from the existing conversation endpoints. Foreground polling runs every 15 seconds.
+
+Apply `202611010001_activity_notifications.sql`, deploy `dynamic-endpoint`, then publish the frontend. This migration extends the existing reaction inbox with mentions, wall posts, wall comments, post comments, and replies. A service-only database trigger detects newly added tags and comments in the same transaction as the post write. No historical backfill, self-alerts, or duplicate alerts on unchanged writes. A recipient who owns both the wall and a reply target receives one alert per comment, preferring reply wording. Existing reaction triggers remain compatible.
+
+Notification reads still resolve posts through caller visibility and block/report filtering; deleted or inaccessible targets are omitted. Messages reuse existing inbox visibility and read state. These are in-app badges, not new device push senders.
+
+Validation: TypeScript, 67 Node tests, and production build passed. Migration plus `tests/sql/activity-notifications.sql` passed against the linked database in a transaction that rolled back schema and fixtures. Covers wall entries, tags, no self-notification, unchanged-write read-state preservation, wall comments, replies, replies to replies, and inbox privileges. Migration and dynamic-endpoint deployed successfully November 1, 2026 (UTC). Rollback-only SQL checks passed again against the installed migration. Website release uses the main-branch GitHub Pages workflow. Native iPhone clients need a separate bundled build for the new UI.

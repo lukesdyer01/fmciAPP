@@ -443,37 +443,24 @@ export default function PostCard({ post, initialCommentId }: { post: Post; initi
         </div>
       )}
 
-      {/* Reaction summary */}
-      <div style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-2)' }}>
-          {total > 0 && <><span>🙏❤️✝️</span><span>{(total ?? 0).toLocaleString()} reactions</span></>}
+      <div className="post-actions">
+        <ReactionPicker compact count={total} value={active} disabled={reactionMutation.isPending} onChange={value=>handleReaction(value === 'praise' ? 'amen' : value ?? active ?? 'amen')}/>
+        <button className="post-comment-action" aria-label={`Open comments, ${post.comments} comments`} onClick={() => { setFocusComment(false); setShowComments(true) }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 10 10 0 0 1-4-.9L3 21l1.8-5.3a8.5 8.5 0 1 1 16.2-4.2Z"/></svg>
+          <span>{post.comments.toLocaleString()}</span>
+        </button>
+        <div className="post-reaction-summary" aria-label={`${total} reactions`}>
+          {([{type:'amen',icon:'✝️'},{type:'pray',icon:'🙏'},{type:'heart',icon:'❤️'}] as const).filter(r=>reactions[r.type]>0).sort((a,b)=>reactions[b.type]-reactions[a.type]).map(r=><span key={r.type} title={`${reactions[r.type]} ${r.type}`} aria-hidden="true">{r.icon}</span>)}
         </div>
-        <button onClick={() => { setFocusComment(false); setShowComments(true) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-2)', fontFamily: 'var(--font-sans)', padding: '0' }}>
-          {post.comments} comments
-        </button>
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: 'flex', borderTop: '1px solid var(--color-border)' }}>
-        <div style={{flex:1,display:'flex',justifyContent:'center'}}><ReactionPicker value={active} disabled={reactionMutation.isPending} onChange={value=>handleReaction(value ?? active ?? 'amen')}/></div>
-        <button onClick={() => { setFocusComment(true); setShowComments(true) }} style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          padding: '10px 4px', border: 'none', cursor: 'pointer',
-          backgroundColor: 'transparent', color: 'var(--color-text-2)',
-          fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 500, transition: 'background 0.15s',
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-hover)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-        >
-          <span style={{ fontSize: '16px' }}>💬</span> Comment
-        </button>
       </div>
 
       {reactionMutation.isError && <p role="alert" style={{ padding: "0 16px", color: "var(--color-red-text)" }}>Unable to save your reaction. Please try again.</p>}
       {/* Comments */}
       {showComments && (
-        <PostCommentsPanel count={post.comments} onClose={()=>setShowComments(false)}>
+        <PostCommentsPanel title={`${post.author}’s post`} count={post.comments} onClose={()=>setShowComments(false)}>
           <CommentThread
+            postPreview={<div className="discussion-post"><div className="discussion-author">{post.avatar && <img src={post.avatar} alt="" />}<div><strong>{post.author}</strong><small>{post.time}</small></div></div><p>{post.content}</p>{post.image && <img className="discussion-image" src={post.image} alt={post.imageAlt ?? ''} />}{videoId && <YouTubePreview videoId={videoId} />}<div className="post-actions"><ReactionPicker compact count={total} value={active} disabled={reactionMutation.isPending} onChange={value=>handleReaction(value === 'praise' ? 'amen' : value ?? active ?? 'amen')}/><button className="post-comment-action" onClick={()=>setFocusComment(true)} aria-label="Write a comment"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 10 10 0 0 1-4-.9L3 21l1.8-5.3a8.5 8.5 0 1 1 16.2-4.2Z"/></svg>{post.comments}</button></div></div>}
+            composerAvatar={currentUser?.avatarUrl ?? undefined}
             highlightedCommentId={initialCommentId}
             comments={post.commentsList ?? []}
             onNavigate={()=>setShowComments(false)}

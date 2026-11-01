@@ -15,6 +15,7 @@ export default function ProfileHoverCard() {
   const containerRef = useRef<HTMLDivElement>(null)
   const userProfile = useUIStore(s => s.userProfile)
   const setEditProfileOpen = useUIStore(s => s.setEditProfileOpen)
+  const setActiveView = useUIStore(s => s.setActiveView)
   const setAdminMode = useUIStore(s => s.setAdminMode)
   const { currentUser } = useAuth()
   const { role } = useSupabaseRole()
@@ -103,6 +104,7 @@ export default function ProfileHoverCard() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <MenuButton icon="✏" label="Edit Profile" onClick={() => closeAnd(() => setEditProfileOpen(true))} />
+                <MenuButton icon="⚙" label="Settings" onClick={() => closeAnd(() => setActiveView('settings'))} />
                 <ToggleRow
                   icon={colorScheme === 'dark' ? '☀' : '🌙'}
                   label={colorScheme === 'dark' ? 'Light Mode' : 'Dark Mode'}

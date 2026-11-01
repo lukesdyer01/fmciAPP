@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import ReactionPicker from "./ReactionPicker"
 import { useOpenProfile } from "./ProfileView"
 import type { FeedComment, CommentReaction } from "../api-client/comments"
-const commentReactions = [{type:"amen",icon:"✝️",label:"Amen"},{type:"pray",icon:"🙏",label:"Pray"},{type:"heart",icon:"❤️",label:"Love"},{type:"praise",icon:"🙌",label:"Praise"}] as const
 const emojis = [
   "😀",
   "😂",
@@ -28,6 +28,8 @@ export default function CommentThread({
   onReact,
   autoFocus = false,
   onNavigate,
+  postPreview,
+  composerAvatar,
 }: {
   comments: FeedComment[]
   highlightedCommentId?: string | null
@@ -43,6 +45,8 @@ export default function CommentThread({
   ) => Promise<unknown>
   autoFocus?: boolean
   onNavigate?: () => void
+  postPreview?: ReactNode
+  composerAvatar?: string
 }) {
   const [text, setText] = useState(""),
     [reply, setReply] = useState<FeedComment | null>(null),
@@ -64,6 +68,7 @@ export default function CommentThread({
     setReplyLimits(old=>({...old,...Object.fromEntries(comments.filter(cm=>!cm.parentId).map(cm=>[cm.id,comments.length]))}))
   },[highlightedCommentId,comments])
   useEffect(()=>{if(highlightedCommentId)highlight.current?.scrollIntoView({block:"center"})},[highlightedCommentId,expanded,limit])
+  useEffect(()=>{if(autoFocus)input.current?.focus()},[autoFocus])
   const highlight=useRef<HTMLDivElement>(null)
   async function submit() {
     if (!text.trim() || busy || submitting) return
@@ -136,12 +141,11 @@ export default function CommentThread({
             </time>
             {onReact && (
               <>
-                <div className="comment-reaction-icons" role="group" aria-label="Comment reactions">
-                  {commentReactions.map(choice=><button key={choice.type} type="button" title={choice.label} aria-label={choice.label} aria-pressed={cm.myReaction===choice.type} disabled={reacting!==null} onClick={()=>{
-                    setError("");setReacting(cm.id)
-                    void onReact(cm,cm.myReaction===choice.type?null:choice.type).catch(()=>setError("Unable to save reaction. Please try again.")).finally(()=>setReacting(null))
-                  }}><span aria-hidden="true">{choice.icon}</span></button>)}
-                </div>
+                <ReactionPicker compact allowPraise value={cm.myReaction ?? null} disabled={reacting !== null} onChange={reaction=>{
+                  setError(""); setReacting(cm.id)
+                  void onReact(cm,reaction).catch(()=>setError("Unable to save reaction. Please try again.")).finally(()=>setReacting(null))
+                }}/>
+
                 <button
                   onClick={() => {
                     setReply(cm)
@@ -186,9 +190,10 @@ export default function CommentThread({
   return (
     <div className="comment-thread">
       <div className="thread-scroll">
+        {postPreview}
         {onReact && (
           <label className="thread-sort">
-            Comments{" "}
+            <span className="sr-only">Sort comments</span>
             <select
               value={newest ? "new" : "old"}
               onChange={(e) => {
@@ -224,8 +229,7 @@ export default function CommentThread({
                       })
                     }
                   >
-                    {expanded.has(cm.id) ? "Hide" : `View ${replies.length}`}{" "}
-                    replies
+                    {expanded.has(cm.id) ? "⌃ Hide replies" : `⌄ View ${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}
                   </button>
                   {expanded.has(cm.id) && (
                     <>
@@ -297,17 +301,17 @@ export default function CommentThread({
             ))}
           </div>
         )}
-        <div className="comment-composer">
+        <div className="composer-row">{composerAvatar && <img className="composer-avatar" src={composerAvatar} alt="" />}<div className="comment-composer">
           <textarea
             ref={input}
             autoFocus={autoFocus}
             aria-label={reply ? "Write a reply" : "Write a comment"}
             placeholder={reply ? "Write a reply…" : "Write a comment…"}
             maxLength={4000}
-            rows={2}
+            rows={1}
             value={text}
             disabled={busy || submitting}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); e.target.style.height = "auto"; e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px` }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault()
@@ -324,12 +328,13 @@ export default function CommentThread({
             ☺
           </button>
           <button
+            aria-label={reply ? "Post reply" : "Post comment"}
             disabled={!text.trim() || busy || submitting}
             onClick={() => void submit()}
           >
-            {busy || submitting ? "Posting…" : "Post"}
+            <span aria-hidden="true">{busy || submitting ? "…" : "➤"}</span>
           </button>
-        </div>
+        </div></div>
       </div>
     </div>
   )
