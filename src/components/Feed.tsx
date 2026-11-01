@@ -1,7 +1,7 @@
+import { lazy, Suspense } from 'react'
 import { useNetworkSettings } from '../api-client/features'
 const BetaFeedback = lazy(() => import('./BetaFeedback'))
 const SavedItemsView = lazy(() => import('./SavedItemsView'))
-import { lazy, Suspense } from 'react'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import Stories from './Stories'
 import PeopleYouMayKnow from './PeopleYouMayKnow'

@@ -1,5 +1,5 @@
 // Bottom tab bar — the primary navigation on phones (hidden ≥768px where the
-// desktop sidebars take over). Five destinations, thumb-reachable, one tap.
+// desktop sidebars take over). Six destinations, thumb-reachable, one tap.
 // Tapping the active tab scrolls to the top, the standard social-app behavior.
 //
 // Messages are panels, not views — the chat bubble opens the full-screen
@@ -58,6 +58,15 @@ const TABS: { id: TabId; label: string; icon: (active: boolean) => ReactNode }[]
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    id: 'resources', label: 'Resources',
+    icon: active => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 7v14" />
+        <path d="M3 3h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5v16h-5a4 4 0 0 0-4 2 4 4 0 0 0-4-2H3z" />
       </svg>
     ),
   },
@@ -135,7 +144,7 @@ export default function BottomTabBar() {
             aria-label={tab.label}
             aria-current={active ? 'page' : undefined}
             style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: '2px', minHeight: '52px', padding: '6px 2px',
               border: 'none', background: 'none', cursor: 'pointer',
               fontFamily: 'var(--font-sans)',
@@ -156,7 +165,7 @@ export default function BottomTabBar() {
               )}
             </span>
             <span style={{
-              fontSize: '10px', fontWeight: active ? 800 : 600,
+              fontSize: 'clamp(9px, 2.5vw, 10px)', fontWeight: active ? 800 : 600,
               letterSpacing: '0.2px',
             }}>{tab.label}</span>
           </button>

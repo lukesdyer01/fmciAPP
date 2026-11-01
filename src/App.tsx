@@ -1,5 +1,5 @@
-const EditProfileModal = lazy(() => import('./components/EditProfileModal'))
 import { lazy, Suspense } from 'react'
+const EditProfileModal = lazy(() => import('./components/EditProfileModal'))
 import { readMessageNotificationUrl, readGroupNotificationUrl } from './lib/messageNotification'
 import { useEffect, useRef, Component, type ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
