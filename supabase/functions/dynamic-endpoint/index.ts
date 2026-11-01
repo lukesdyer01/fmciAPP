@@ -1,3 +1,4 @@
+import { visibleActiveMembers } from "./activeMembers.ts";
 import { registerEmailPreferences } from "./emailPreferences.ts";
 import { visibleReactionNotifications } from "./reactionNotifications.ts";
 import { applyPostReactions } from "./postReactions.ts";
@@ -421,20 +422,8 @@ app.get(`${BASE}/members/active`, async (c) => {
   const caller = await getCallerUser(c.req.header("Authorization"));
   if (!caller) return c.json({ error: "Must be signed in" }, 401);
   const users = await listAuthUsers();
-  const cutoff = Date.now() - 5 * 60 * 1000;
-  const active = users
-    .filter((u: any) => u.id !== caller.id)
-    .map((u: any) => ({ u, lastActiveAt: u.user_metadata?.lastActiveAt }))
-    .filter((x: any) => x.lastActiveAt && new Date(x.lastActiveAt).getTime() > cutoff)
-    .sort((a: any, b: any) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime())
-    .map(({ u, lastActiveAt }: any) => ({
-      id: u.id,
-      name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? "",
-      avatarUrl: u.user_metadata?.avatar_url ?? u.user_metadata?.avatarUrl ?? "",
-      title: u.user_metadata?.title ?? "",
-      church: u.user_metadata?.church ?? "",
-      lastActiveAt,
-    }));
+  const blocks = await kv.get("user_blocks") ?? {};
+  const active = visibleActiveMembers(users, caller.id, blocks);
   return c.json(active);
 });
 

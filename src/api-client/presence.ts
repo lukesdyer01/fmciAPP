@@ -1,3 +1,4 @@
+import { useAuth } from '../providers/AuthProvider'
 import { useQuery } from '@tanstack/react-query'
 import { api } from './server'
 import { trackHeartbeat } from '../lib/analytics'
@@ -27,8 +28,9 @@ export function useHeartbeat() {
 }
 
 export function useActiveMembers() {
+  const { currentUser } = useAuth()
   return useQuery({
-    queryKey: ['members', 'active'],
+    queryKey: ['members', 'active', currentUser?.id],
     queryFn: () => api<ActiveMember[]>('/members/active'),
     refetchInterval: 30_000,
   })

@@ -1,3 +1,4 @@
+import OnlineMembersRow from './OnlineMembersRow'
 import GroupMessages from './GroupMessages'
 import { useNetworkSettings } from '../api-client/features'
 import { useQuery } from '@tanstack/react-query'
@@ -373,6 +374,7 @@ export default function MessagesPanel() {
               mobile class rules that expand this pane full-width and hide it
               once a conversation is open. */}
           <div className="messages-list-pane" style={{ borderRight: '1px solid var(--color-border)', flexDirection: 'column' }}>
+            {tab === 'inbox' && <OnlineMembersRow busy={startConversation.isPending || !!messageTargetUserId} onSelect={id => { startConversation.reset(); setMenu(null); useUIStore.setState({ messageTargetUserId: id, messageTargetMessageId: null }) }} />}
             {/* Inbox / Archived toggle */}
             <div style={{ display: 'flex', gap: '6px', padding: '10px 16px 6px' }}>
               {(['inbox', 'archived'] as const).map(t => (
