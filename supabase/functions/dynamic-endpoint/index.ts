@@ -35,6 +35,10 @@ const app = new Hono();
 const BASE = "/dynamic-endpoint";
 
 app.use("*", logger(console.log));
+app.use("*", async (c, next) => {
+  c.header('Cache-Control', 'private, no-store');
+  await next();
+});
 app.use("/*", cors({
   origin: "*",
   allowHeaders: ["Content-Type", "Authorization", "X-Story-Caption"],

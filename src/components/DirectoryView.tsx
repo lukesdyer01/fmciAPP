@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import ActiveMembersCarousel from './ActiveMembersCarousel'
 import { MINISTRY_ROLES as FIVE_FOLD_ROLES, ADDITIONAL_ROLES } from '../core/types/ministryRoles'
 import { useState, useEffect } from 'react'
@@ -49,18 +50,15 @@ export default function DirectoryView() {
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
   }, [])
-  const [members, setMembers] = useState<Member[]>([])
-  const [loading, setLoading] = useState(true)
-
-  function loadMembers() {
-    setLoading(true)
-    return api<Member[]>('/members')
-      .then(setMembers)
-      .catch(() => setMembers([]))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { loadMembers() }, [])
+  const directory = useQuery({
+    queryKey: ['directory', currentUser?.id],
+    queryFn: ({ signal }) => api<Member[]>('/members', { signal }),
+    enabled: !!currentUser,
+    staleTime: 120_000,
+  })
+  const members = directory.data ?? []
+  const loading = directory.isPending
+  const loadMembers = () => directory.refetch()
 
   const { refreshing, pulling, distance } = usePullToRefresh(async () => { await Promise.all([loadMembers(), refreshActiveMembers()]) })
 
@@ -92,7 +90,7 @@ export default function DirectoryView() {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-      <RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
+      <>{directory.isError && <p role="alert">Unable to refresh members. <button onClick={() => directory.refetch()}>Retry</button></p>}</><RefreshIndicator refreshing={refreshing} pulling={pulling} distance={distance} />
       {/* Header */}
       <div style={{
         backgroundColor: 'var(--color-card)', borderRadius: '12px',

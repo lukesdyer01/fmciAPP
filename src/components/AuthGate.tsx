@@ -333,7 +333,7 @@ export default function AuthGate({ children }: AuthGateProps) {
     // Using only one path avoids a race where getSession() resolves after onSession() and clears the session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUserId = session?.user.id
-      if (event === 'SIGNED_OUT' || (nextUserId && previousUserId && nextUserId !== previousUserId)) queryClient.clear()
+      if (event === 'SIGNED_OUT' || (nextUserId && previousUserId && nextUserId !== previousUserId)) { void queryClient.cancelQueries(); queryClient.clear() }
       if (nextUserId || event === 'SIGNED_OUT') previousUserId = nextUserId
       if (event === 'PASSWORD_RECOVERY') { sessionStorage.setItem('fmci-password-recovery', 'true'); setRecovery(true) }
       setSession(prev => {

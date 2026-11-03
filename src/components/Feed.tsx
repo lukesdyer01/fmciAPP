@@ -125,12 +125,12 @@ function MainFeed() {
   const timeline = useInfiniteQuery({
     queryKey: ['timeline', filter === 'ministry' ? primaryMinistry?.id : null, activeHashtag],
     initialPageParam: '',
-    queryFn: ({ pageParam }) => {
+    queryFn: ({ pageParam, signal }) => {
       const params = new URLSearchParams({ limit: '20' })
       if (pageParam) params.set('cursor', pageParam)
       if (filter === 'ministry' && primaryMinistry) params.set('orgId', primaryMinistry.id)
       if (activeHashtag) params.set('hashtag', activeHashtag)
-      return api<Page>(`/feed?${params}`)
+      return api<Page>(`/feed?${params}`, { signal })
     },
     getNextPageParam: page => page.nextCursor ?? undefined,
   })

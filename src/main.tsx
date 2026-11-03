@@ -1,3 +1,5 @@
+import { focusManager } from '@tanstack/react-query'
+import { App as NativeApp } from '@capacitor/app'
 import { PushNotifications } from '@capacitor/push-notifications'
 import { readMessageNotificationUrl, readGroupNotificationUrl } from './lib/messageNotification'
 import React from 'react'
@@ -6,6 +8,25 @@ import { Capacitor } from '@capacitor/core'
 import App from './App'
 import { ThemeProvider } from './providers/ThemeProvider'
 import './index.css'
+
+// Keep native polling aligned with the actual foreground state.
+if (Capacitor.isNativePlatform()) {
+  focusManager.setEventListener(handleFocus => {
+    let disposed = false
+    let changed = false
+    const listener = NativeApp.addListener('appStateChange', ({ isActive }) => {
+      changed = true
+      handleFocus(isActive)
+    })
+    NativeApp.getState().then(({ isActive }) => {
+      if (!disposed && !changed) handleFocus(isActive)
+    }).catch(() => {})
+    return () => {
+      disposed = true
+      void listener.then(handle => handle.remove()).catch(() => {})
+    }
+  })
+}
 
 // Register before React/auth mounts so cold-start taps are retained in the URL.
 if (Capacitor.isNativePlatform()) {

@@ -1,44 +1,35 @@
-// Minimal service worker: exists to (1) satisfy PWA installability, and
-// (2) receive Web Push on iOS/Android for an installed home-screen app.
-// Deliberately does NOT precache the Vite build — bundle filenames are
-// content-hashed per deploy and there's no build-time manifest generator
-// (e.g. vite-plugin-pwa) in this project to keep a precache list in sync,
-// so a hardcoded list would go stale and serve broken JS/CSS after a
-// future deploy.
-const SHELL_CACHE = 'fmci-shell-v1'
-
-self.addEventListener('install', () => {
-  self.skipWaiting()
+// Only immutable public build assets are cached. Private data stays in memory.
+const ASSET_CACHE = 'fmci-assets-v1'
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    for (const key of await caches.keys()) {
+      if (key.startsWith('fmci-shell-')) await caches.delete(key)
+    }
+    await self.clients.claim()
+  })())
 })
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
-})
-
-self.addEventListener('fetch', (event) => {
-  // Only special-case top-level page navigations. Everything else (JS, CSS,
-  // images) passes straight through to the network untouched.
-  if (event.request.mode !== 'navigate') return
-
-  event.respondWith(
-    fetch(event.request)
-      .then((res) => {
-        // Opportunistically keep a copy of the shell so a later offline/
-        // failed navigation (see catch below) has something to serve.
-        const copy = res.clone()
-        caches.open(SHELL_CACHE).then((cache) => cache.put('/index.html', copy))
-        return res
-      })
-      .catch(async () => {
-        // Network failed, or (more commonly here) a direct/deep-link load of
-        // an inner route like /resources — this serves the cached shell
-        // directly instead of round-tripping through GitHub Pages' 404.html
-        // redirect trick (public/404.html + the decode script in index.html).
-        const cache = await caches.open(SHELL_CACHE)
-        const cached = await cache.match('/index.html')
-        return cached ?? fetch('/index.html')
-      })
-  )
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url)
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin ||
+      !/^\/assets\/.+-[a-zA-Z0-9_-]{8,}\.(js|css|png|jpg|jpeg|webp|gif|woff2?)$/.test(url.pathname)) return
+  event.respondWith((async () => {
+    let cache
+    try {
+      cache = await caches.open(ASSET_CACHE)
+      const cached = await cache.match(event.request)
+      if (cached) return cached
+    } catch {}
+    const response = await fetch(event.request)
+    if (response.ok && cache) {
+      try {
+        await cache.put(event.request, response.clone())
+        const keys = await cache.keys()
+        for (const key of keys.slice(0, Math.max(0, keys.length - 100))) await cache.delete(key)
+      } catch {}
+    }
+    return response
+  })())
 })
 
 self.addEventListener('push', (event) => {
