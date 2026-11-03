@@ -33,7 +33,7 @@ const TESTIMONY_CATEGORIES = [
 
 const MAX_IMAGE_MB = 20
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024
-const DEFAULT_POST_PROMPT = 'Share a post, testimony, teaching, or prayer request with the network…'
+const DEFAULT_POST_PROMPT = 'Share a message with the fmci network...'
 
 // No SVG on purpose: served from the public storage bucket it would be a
 // script-execution vector, and a post photo never needs to be vector art.
@@ -74,6 +74,7 @@ function imageFromClipboard(dt: DataTransfer | null): File | null {
 }
 
 interface Props {
+  allowTypeSelection?: boolean
   type?: 'post' | 'prayer' | 'testimony'
   placeholder?: string
   // When set, the post always lands in this ministry's feed (orgId). If the
@@ -97,7 +98,8 @@ interface Props {
   forcedVisibility?: 'private'
 }
 
-export default function PostComposer({ type = 'post', placeholder, fixedOrgId, wallUserId, wallUserName, hidePostAs, forcedVisibility }: Props) {
+export default function PostComposer({ type: initialType = 'post', allowTypeSelection = false, placeholder, fixedOrgId, wallUserId, wallUserName, hidePostAs, forcedVisibility }: Props) {
+  const [type, setType] = useState(initialType)
   const { currentUser } = useAuth()
   const [composerOpen, setComposerOpen] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -133,7 +135,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
   // with what has actually been typed. An attached photo wins — the author
   // picked that deliberately, where a link may just be part of what they wrote.
   const detected = findYouTubeLink(text)
-  const videoId = detected && !image && detected.id !== dismissedVideoId ? detected.id : ''
+  const videoId = detected && !(type === 'post' && image) && detected.id !== dismissedVideoId ? detected.id : ''
 
   // Suggestions for the @… under the caret. Derived rather than stored so they
   // always describe the text as it stands.
@@ -300,7 +302,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
 
   function handlePost() {
     // A photo alone is a valid post — text is optional when an image is attached.
-    if ((!text.trim() && !image) || isPending || uploadingImage) return
+    if ((!text.trim() && !(type === 'post' && image)) || isPending || uploadingImage) return
     if (type === 'testimony' && !testimonyCategory) { setComposerError('Choose a category for this testimony.'); return }
     // Set only when the user has actively selected an org identity via the
     // pill — orgId still gets set below whenever fixedOrgId is present (so
@@ -326,8 +328,8 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       pinned: orgIdentity?.type === 'headquarters' && pin ? true : undefined,
       wallUserId,
       wallUserName,
-      image: image || undefined,
-      imageAlt: image ? 'Post photo' : undefined,
+      image: type === 'post' ? image || undefined : undefined,
+      imageAlt: type === 'post' && image ? 'Post photo' : undefined,
       videoId: videoId || undefined,
       isAnonymous: anonymous || undefined,
       testimonyCategory: type === 'testimony' ? testimonyCategory : undefined,
@@ -338,6 +340,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
       onSuccess: () => {
         setText(''); setImage(''); setDismissedVideoId(''); setCaret(0)
         setAnonymous(false); setTestimonyCategory(''); setTaggedUsers([])
+        setType(initialType)
         setVisibility('public'); setPin(false)
         setComposerOpen(false); setFocused(false)
       },
@@ -367,6 +370,26 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
             </header>
             <div className="post-composer-form">
       <div style={{ padding: '14px 16px' }}>
+        {allowTypeSelection && (
+          <div className="post-composer-types" role="group" aria-label="Post type">
+            {([
+              { value: 'post', label: 'Post', icon: '✍️' },
+              { value: 'prayer', label: 'Prayer Request', icon: '🙏' },
+              { value: 'testimony', label: 'Testimonial', icon: '✨' },
+            ] as const).map(option => (
+              <button key={option.value} type="button" aria-pressed={type === option.value}
+                disabled={isPending || uploadingImage}
+                onClick={() => {
+                  setType(option.value)
+                  setAnonymous(false)
+                  setComposerError('')
+                  setCaret(-1)
+                }}>
+                <span aria-hidden="true">{option.icon}</span> {option.label}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Post as selector */}
         {myOrgs.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
@@ -483,7 +506,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
               ref={textareaRef}
               placeholder={selectedOrg
                 ? `Share something on behalf of ${selectedOrg.name}…`
-                : placeholder ?? (type === 'post' ? DEFAULT_POST_PROMPT : `Share your ${type}…`)
+                : type === 'prayer' ? 'Share a prayer request with the network…' : type === 'testimony' ? 'Share what God has done…' : placeholder ?? DEFAULT_POST_PROMPT
               }
               value={text}
               onChange={e => onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
@@ -524,7 +547,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
         </div>
 
         {/* Image preview */}
-        {image && (
+        {type === 'post' && image && (
           <div style={{ position: 'relative', marginTop: '12px', borderRadius: '10px', overflow: 'hidden' }}>
             <img src={image} alt="" style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', display: 'block' }} />
             <button onClick={() => setImage('')} style={{
@@ -563,6 +586,7 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
           <div
             role="switch"
             aria-checked={anonymous}
+            aria-label="Post anonymously"
             tabIndex={0}
             onClick={() => setAnonymous(a => !a)}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAnonymous(a => !a) } }}
@@ -675,16 +699,16 @@ export default function PostComposer({ type = 'post', placeholder, fixedOrgId, w
           <button
             className="post-composer-submit"
             onClick={handlePost}
-            disabled={(!text.trim() && !image) || isPending || uploadingImage}
+            disabled={(!text.trim() && !(type === 'post' && image)) || isPending || uploadingImage}
             style={{
               marginLeft: 'auto', padding: '8px 22px', borderRadius: '8px', border: 'none',
-              backgroundColor: (text.trim() || image) && !isPending && !uploadingImage ? 'var(--color-navy)' : 'var(--color-border)',
-              color: (text.trim() || image) && !isPending && !uploadingImage ? '#fff' : 'var(--color-text-3)',
+              backgroundColor: (text.trim() || (type === 'post' && image)) && !isPending && !uploadingImage ? 'var(--color-navy)' : 'var(--color-border)',
+              color: (text.trim() || (type === 'post' && image)) && !isPending && !uploadingImage ? '#fff' : 'var(--color-text-3)',
               fontSize: '14px', fontWeight: 700,
-              cursor: (text.trim() || image) && !isPending && !uploadingImage ? 'pointer' : 'not-allowed',
+              cursor: (text.trim() || (type === 'post' && image)) && !isPending && !uploadingImage ? 'pointer' : 'not-allowed',
               fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
             }}
-          >{isPending ? 'Posting…' : 'Post'}</button>
+          >{isPending ? 'Posting…' : type === 'prayer' ? 'Post prayer request' : type === 'testimony' ? 'Share testimonial' : 'Post'}</button>
         </div>
       )}
             </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import {
   useNotifications,
   useReadNotification,
+  useClearNotifications,
   type ReactionNotification,
 } from "../api-client/notifications"
 import PostCard from "./PostCard"
@@ -17,6 +18,7 @@ export default function NotificationsPanel() {
   )
   const notifications = useNotifications(),
     read = useReadNotification()
+  const clear = useClearNotifications()
   const [selected, setSelected] = useState<ReactionNotification | null>(null)
   const openMessagesWith = useUIStore((s) => s.openMessagesWith)
   const reactions = {
@@ -27,6 +29,17 @@ export default function NotificationsPanel() {
   }
   const setNotifOpen = useUIStore((s) => s.setNotifOpen)
 
+  const openProfile = useUIStore((s) => s.openProfile)
+  const selectNotification = (item: ReactionNotification) => {
+    read.mutate(item)
+    if (item.kind === "signup" && item.actorId) {
+      openProfile(item.actorId)
+      setNotifOpen(false)
+    } else {
+      setSelected(item)
+    }
+  }
+
   const emailTargetHandled = useRef(false)
   useEffect(() => {
     if (emailTargetHandled.current || !notifications.data) return
@@ -36,8 +49,7 @@ export default function NotificationsPanel() {
     emailTargetHandled.current = true
     const item = notifications.data.find((item) => item.id === target)
     if (item) {
-      setSelected(item)
-      read.mutate(item)
+      selectNotification(item)
     }
     url.searchParams.delete("notification")
     window.history.replaceState(null, "", url.pathname + url.search + url.hash)
@@ -83,7 +95,14 @@ export default function NotificationsPanel() {
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
           <section aria-label="Notification activity">
-            <h2 style={{ fontSize: 16, marginTop: 0 }}>Recent activity</h2>
+            <div className="notification-activity-heading">
+              <h2 style={{ fontSize: 16, margin: 0 }}>Recent activity</h2>
+              <button type="button" disabled={clear.isPending || !notifications.data?.length}
+                onClick={() => clear.mutate(notifications.data ?? [], {onSuccess: () => setSelected(null)})}>
+                {clear.isPending ? 'Clearing…' : 'Clear activity'}
+              </button>
+            </div>
+            {clear.isError && <p role="alert">Unable to clear notifications. Please try again.</p>}
             {notifications.isPending && (
               <p role="status">Loading notifications…</p>
             )}
@@ -132,16 +151,15 @@ export default function NotificationsPanel() {
                 </p>
               )}
             {notifications.data?.map((item) => (
+              <div className="notification-dismiss-row" key={item.id}>
               <button
-                key={item.id}
                 className="reaction-notification"
                 onClick={() => {
-                  setSelected(item)
-                  read.mutate(item)
+                  selectNotification(item)
                 }}
               >
                 <span aria-hidden="true">
-                  {item.kind && item.kind !== "reaction"
+                  {item.kind === "signup" ? "👤" : item.kind && item.kind !== "reaction"
                     ? item.kind === "mention"
                       ? "@"
                       : "💬"
@@ -149,7 +167,9 @@ export default function NotificationsPanel() {
                 </span>
                 <span>
                   <strong>{item.actorName}</strong>{" "}
-                  {item.kind === "mention"
+                  {item.kind === "signup"
+                    ? "signed up for FMCI Network"
+                    : item.kind === "mention"
                     ? "tagged you in a post"
                     : item.kind === "wall_post"
                       ? "posted on your wall"
@@ -174,13 +194,17 @@ export default function NotificationsPanel() {
                   <span className="notification-unread" aria-label="Unread" />
                 )}
               </button>
+              <button type="button" className="notification-dismiss" aria-label={`Dismiss notification from ${item.actorName}`}
+                disabled={clear.isPending}
+                onClick={() => clear.mutate([item], {onSuccess: () => { if(selected?.id === item.id) setSelected(null) }})}>×</button>
+              </div>
             ))}
             {read.isError && (
               <p role="alert">
                 Unable to mark notification read. Please try again.
               </p>
             )}
-            {selected && (
+            {selected?.post && (
               <div style={{ margin: "16px 0" }}>
                 <button onClick={() => setSelected(null)}>Close post</button>
                 <PostCard

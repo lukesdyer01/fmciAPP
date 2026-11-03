@@ -197,9 +197,9 @@ function MainFeed() {
         // personal-only composer shown in All Network mode. Keyed by mode so
         // switching the toggle remounts with a clean draft rather than
         // carrying over half-typed text/state from the other composer.
-        <PostComposer key="ministry" fixedOrgId={primaryMinistry.id} placeholder={`Share something with ${primaryMinistry.name}…`} />
+        <PostComposer allowTypeSelection key="ministry" fixedOrgId={primaryMinistry.id} placeholder={`Share something with ${primaryMinistry.name}…`} />
       ) : (
-        <PostComposer key="network" hidePostAs />
+        <PostComposer allowTypeSelection key="network" hidePostAs />
       )}
       {editingEvent && (
         <CreateEventModal

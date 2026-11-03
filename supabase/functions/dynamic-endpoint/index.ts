@@ -848,11 +848,35 @@ app.get(`${BASE}/notifications`, async c => {
  if(!caller)return c.json({error:'Sign in to view notifications'},401);
  const {data,error}=await kvClient().from('network_reaction_notifications').select('*').eq('recipient_id',caller.id).order('created_at',{ascending:false}).limit(100);
  if(error)return c.json({error:'Unable to load notifications'},500);
- if(!data?.length)return c.json([]);
+ const signupResult=callerRole(caller)==='superadmin'
+  ? await kvClient().from('network_signup_notifications').select('*').eq('recipient_id',caller.id).order('created_at',{ascending:false}).limit(100)
+  : {data:[],error:null};
+ if(signupResult.error)return c.json({error:'Unable to load signup notifications'},500);
+ if(!data?.length&&!signupResult.data?.length)return c.json([]);
  const response=await app.request(`https://internal.invalid${BASE}/posts`,{headers:{Authorization:c.req.header('Authorization')??''}});
  if(!response.ok)return c.json({error:'Unable to load notification content'},503);
  const posts=await response.json() as any[],blocked=new Set(await getBlockedIds(caller.id)),users=await listAuthUsers();
- return c.json(visibleReactionNotifications(data,posts,blocked,users));
+ const signups=(signupResult.data??[]).flatMap((notice:any)=>{
+  const member=users.find((user:any)=>user.id===notice.actor_id);
+  if(!member)return [];
+  return [{id:notice.id,kind:'signup',actorId:member.id,actorName:member.user_metadata?.full_name??member.user_metadata?.name??'A new member',reaction:null,createdAt:notice.created_at,readAt:notice.read_at,commentId:null,preview:'Welcome the newest member to FMCI Network.',post:null}];
+ });
+ return c.json([...visibleReactionNotifications(data??[],posts,blocked,users),...signups].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,100));
+});
+// Delete only the caller's displayed revisions; newer arrivals remain intact.
+app.post(`${BASE}/notifications/clear`,async c=>{
+ const caller=await getCallerUser(c.req.header('Authorization'));
+ if(!caller)return c.json({error:'Sign in to continue'},401);
+ const body=await c.req.json();
+ if(!Array.isArray(body.items)||body.items.length>100||body.items.some((item:any)=>!item||typeof item.id!=='string'||!/^[a-f0-9-]{36}$/i.test(item.id)||typeof item.createdAt!=='string'||!Number.isFinite(Date.parse(item.createdAt))))return c.json({error:'Invalid notifications'},400);
+ const tables=['network_reaction_notifications',...(callerRole(caller)==='superadmin'?['network_signup_notifications']:[])];
+ for(const table of tables){
+  for(const item of body.items){
+   const {error}=await kvClient().from(table).delete().eq('recipient_id',caller.id).eq('id',item.id).eq('created_at',item.createdAt);
+   if(error)return c.json({error:'Unable to clear notifications'},500);
+  }
+ }
+ return c.json({ok:true});
 });
 app.post(`${BASE}/notifications/:id/read`,async c=>{
  const caller=await getCallerUser(c.req.header('Authorization'));
@@ -861,6 +885,10 @@ app.post(`${BASE}/notifications/:id/read`,async c=>{
  // Match the displayed revision so a concurrent new reaction remains unread.
  const {error}=await kvClient().from('network_reaction_notifications').update({read_at:new Date().toISOString()}).eq('recipient_id',caller.id).eq('id',c.req.param('id')).eq('created_at',body.createdAt);
  if(error)return c.json({error:'Unable to mark notification read'},500);
+ if(callerRole(caller)==='superadmin'){
+  const {error:signupError}=await kvClient().from('network_signup_notifications').update({read_at:new Date().toISOString()}).eq('recipient_id',caller.id).eq('id',c.req.param('id')).eq('created_at',body.createdAt);
+  if(signupError)return c.json({error:'Unable to mark notification read'},500);
+ }
  return c.json({ok:true});
 });
 
